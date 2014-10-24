@@ -16,6 +16,9 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 ---------------------------------------------------------------------------
 ---------------------------------------------------------------------------
 [UPDATES 2014/10/24] by Babak
+* Change version to 1.00 2014/10/24
+> Modifed code:
+	[Pipeline_PART1]
 * Change CODEPATH to CODE_PATH 
 > Modifed code:
 	[Pipeline_PART1_afni_steps]

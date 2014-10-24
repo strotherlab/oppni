@@ -90,7 +90,7 @@ function Pipeline_PART1(InputStruct, input_pipeset, analysis_model, modelparam, 
 %          Babak Afshin-Pour, Rotman reseach institute
 %          email: bafshinpour@research.baycrest.org
 % ------------------------------------------------------------------------%
-% version history: 2014/08/13
+% version history: 1.00 2014/10/24
 % ------------------------------------------------------------------------%
 
 
@@ -122,7 +122,7 @@ if isempty(AFNI_PATH) || isempty(FSL_PATH)
     read_settings;
 end
 
-version = '2014_04_29';
+version = '1.00 2014_10_24';
 
 if ischar(niiout)
     niiout = str2double(niiout);

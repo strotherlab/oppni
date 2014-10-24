@@ -477,7 +477,7 @@ for ksub = 1:numel(InputStruct)
         suffix = '';
         if  ~exist('OCTAVE_VERSION','builtin')
              save(strcat(Subject_OutputDirectory,'/results0_noanalysis', subjectprefix,suffix,'.mat'),'prior_brain_maps','modelparam', 'pipechars', 'pipenames', 'pipeset','modeltype','version');
-        else save(strcat(Subject_OutputDirectory,'/results0_noanalysis', subjectprefix,suffix,'.mat'),'prior_brain_maps','modelparam', 'pipechars', 'pipenames', 'pipeset','modeltype','version', '-mat7-binary'););
+        else save(strcat(Subject_OutputDirectory,'/results0_noanalysis', subjectprefix,suffix,'.mat'),'prior_brain_maps','modelparam', 'pipechars', 'pipenames', 'pipeset','modeltype','version', '-mat7-binary');
         end
 
         % ------------------------------------------------------------------------------------------------

@@ -1,0 +1,2 @@
+AFNI_PATH=
+FSL_PATH=

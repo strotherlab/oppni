@@ -6,7 +6,7 @@ function dataMat = nifti_to_mat( niiVol, niiMask )
 % dataMat = nifti_to_mat( niiVol, niiMask )
 %
 msk     = double(niiMask.img);
-dataMat = zeros( sum(msk(:)>0), size(vol,4) );
+dataMat = zeros( sum(msk(:)>0), size(niiVol.img,4) );
 
 for(t=1:size(niiVol.img,4))
     tmp=double(niiVol.img(:,:,:,t));

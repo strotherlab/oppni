@@ -15,6 +15,13 @@ This document lists updates to pipeine scripts for each archived version.
 Can be used to track changes in code, and identify ongoing pipeline issues.
 ---------------------------------------------------------------------------
 ---------------------------------------------------------------------------
+[UPDATES 2014/10/27] by Babak
+* Prevent a warning in spatial normalization
+> Modifed code:
+	[spatial_normalization.m]: add line 154, if the file *_T1toREF_downsamp.nii exist, the code won't run the step.
+* Resolving a bug in spatial_normalization.m
+> Modifed code:
+	[spatial_normalization.m] lines 126-127 were added to the code. STRUCT_Name is not a field in InputStruct.run. 
 [UPDATES 2014/10/24] by Babak
 * Change version to 1.00 2014/10/24
 > Modifed code:

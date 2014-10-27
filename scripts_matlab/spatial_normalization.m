@@ -18,7 +18,7 @@ end
 
 global CODE_PATH AFNI_PATH FSL_PATH
 if isempty(CODE_PATH)
-    CODE_PATH = fileparts(which('Pipeline_PART1_afni_steps.m'));
+    CODE_PATH = fileparts(which('spatial_normalization.m'));
     if CODE_PATH(end)~='/'
         CODE_PATH = [CODE_PATH '/'];
     end
@@ -123,9 +123,11 @@ if flag_step==0 || flag_step==1
     
     
     % skull stripping the reference
+    [path_temp,name,ext] = fileparts(InputStruct(1).run(1).STRUCT_File);
+    STRUCT_Name = name;
     [ref_path,ref_name,ref_ext] = fileparts(reference_file);
     ref_path2 = [InputStruct(1).run(1).Output_nifti_file_path '/spat_norm'];
-    reference_file2 = sprintf('%s/%s_%s_brain%s',ref_path2,ref_name,InputStruct(1).run(1).STRUCT_Name,ref_ext);
+    reference_file2 = sprintf('%s/%s_%s_brain%s',ref_path2,ref_name,STRUCT_Name,ref_ext);
     if ~exist(reference_file2,'file');
         unix([AFNI_PATH sprintf('3dSkullStrip -prefix %s -input %s',reference_file2,reference_file)]);
     end
@@ -149,28 +151,29 @@ if flag_step==0 || flag_step==1
         if ~exist(trans_t1_ref,'file')
             unix([FSL_PATH sprintf('flirt -in %s/spat_norm/%s_strip.nii -ref %s -out %s/spat_norm/%s_T1toREF.nii -omat %s/spat_norm/Transmat_T1toREF_%s.mat -bins 256 -cost corratio -searchrx -180 180 -searchry -180 180 -searchrz -180 180 -dof 12  -interp sinc -sincwidth 7 -sincwindow hanning',InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,reference_file,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name)]);
         end
-        if voxelsize_type==0
-            hdr = load_nii_hdr([InputStruct(ksub).run(1).Output_nifti_file_path '/' InputStruct(ksub).run(1).subjectprefix(2:end) '_baseproc.nii']);
-            dim1 = hdr.dime.dim(2);dim2 = hdr.dime.dim(3);dim3 = hdr.dime.dim(4);
-            pixdim1 = hdr.dime.pixdim(2);pixdim2 = hdr.dime.pixdim(3);pixdim3 = hdr.dime.pixdim(4);pixdim4 = hdr.dime.pixdim(5);
-            
-            % create eye.mat
-            eye_file = [InputStruct(ksub).run(1).Output_nifti_file_path '/spat_norm/eye.mat'];
-            File = fopen(eye_file,'w');
-            fprintf(File,'1 0 0 0\n');fprintf(File,'0 1 0 0\n');
-            fprintf(File,'0 0 1 0\n');fprintf(File,'0 0 0 1\n');
-            fclose(File);
-
-            % create blank vol
-            unix([FSL_PATH sprintf('fslcreatehd %.1f %.1f %.1f 1 %d %d %d %d 0 0 0 16 %s/spat_norm/blankvol.nii',dim1,dim2,dim3,pixdim1,pixdim2,pixdim3,pixdim4,InputStruct(ksub).run(1).Output_nifti_file_path)]); 
-            unix([FSL_PATH 'flirt -in ' InputStruct(ksub).run(1).Output_nifti_file_path '/spat_norm/' STRUCT_Name '_T1toREF.nii -applyxfm -interp sinc -ref ' InputStruct(ksub).run(1).Output_nifti_file_path '/spat_norm/blankvol.nii -init ' InputStruct(ksub).run(1).Output_nifti_file_path '/spat_norm/eye.mat -out ' InputStruct(ksub).run(1).Output_nifti_file_path '/spat_norm/' STRUCT_Name '_T1toREF_downsamp.nii']);
-            
-        elseif voxelsize_type==1
-            unix([AFNI_PATH sprintf('3dresample -dxyz%s -inset %s/spat_norm/%s_T1toREF.nii -prefix %s/spat_norm/%s_T1toREF_downsamp.nii -rmode Cu',voxelsize,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name)]);
-        else
-            unix([AFNI_PATH sprintf('3dresample -master %s -inset %s/spat_norm/%s_T1toREF.nii -prefix %s/spat_norm/%s_T1toREF_downsamp.nii -rmode Cu',voxelsize,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name)]);
+        if ~exist(sprintf('%s/spat_norm/%s_T1toREF_downsamp.nii',InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name),'file')
+            if voxelsize_type==0
+                hdr = load_nii_hdr([InputStruct(ksub).run(1).Output_nifti_file_path '/' InputStruct(ksub).run(1).subjectprefix(2:end) '_baseproc.nii']);
+                dim1 = hdr.dime.dim(2);dim2 = hdr.dime.dim(3);dim3 = hdr.dime.dim(4);
+                pixdim1 = hdr.dime.pixdim(2);pixdim2 = hdr.dime.pixdim(3);pixdim3 = hdr.dime.pixdim(4);pixdim4 = hdr.dime.pixdim(5);
+                
+                % create eye.mat
+                eye_file = [InputStruct(ksub).run(1).Output_nifti_file_path '/spat_norm/eye.mat'];
+                File = fopen(eye_file,'w');
+                fprintf(File,'1 0 0 0\n');fprintf(File,'0 1 0 0\n');
+                fprintf(File,'0 0 1 0\n');fprintf(File,'0 0 0 1\n');
+                fclose(File);
+                
+                % create blank vol
+                unix([FSL_PATH sprintf('fslcreatehd %.1f %.1f %.1f 1 %d %d %d %d 0 0 0 16 %s/spat_norm/blankvol.nii',dim1,dim2,dim3,pixdim1,pixdim2,pixdim3,pixdim4,InputStruct(ksub).run(1).Output_nifti_file_path)]);
+                unix([FSL_PATH 'flirt -in ' InputStruct(ksub).run(1).Output_nifti_file_path '/spat_norm/' STRUCT_Name '_T1toREF.nii -applyxfm -interp sinc -ref ' InputStruct(ksub).run(1).Output_nifti_file_path '/spat_norm/blankvol.nii -init ' InputStruct(ksub).run(1).Output_nifti_file_path '/spat_norm/eye.mat -out ' InputStruct(ksub).run(1).Output_nifti_file_path '/spat_norm/' STRUCT_Name '_T1toREF_downsamp.nii']);
+                
+            elseif voxelsize_type==1
+                unix([AFNI_PATH sprintf('3dresample -dxyz%s -inset %s/spat_norm/%s_T1toREF.nii -prefix %s/spat_norm/%s_T1toREF_downsamp.nii -rmode Cu',voxelsize,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name)]);
+            else
+                unix([AFNI_PATH sprintf('3dresample -master %s -inset %s/spat_norm/%s_T1toREF.nii -prefix %s/spat_norm/%s_T1toREF_downsamp.nii -rmode Cu',voxelsize,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name)]);
+            end
         end
-            
     end
 end
 

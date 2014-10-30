@@ -15,6 +15,10 @@ This document lists updates to pipeine scripts for each archived version.
 Can be used to track changes in code, and identify ongoing pipeline issues.
 ---------------------------------------------------------------------------
 ---------------------------------------------------------------------------
+[UPDATES 2014/10/30] by Babak
+* Add Missing files : fdr.m rSVD_splithalf.m to the ./script_matlab directory
+> Modifed code:
+	[spatial_normalization.m]: add line 154, if the file *_T1toREF_downsamp.nii exist, the code won't run the step.
 [UPDATES 2014/10/27] by Babak
 * Prevent a warning in spatial normalization
 > Modifed code:

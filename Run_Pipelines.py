@@ -204,7 +204,7 @@ else:
     list_of_unique_subjects, position = uniq(stdir)
 
 autodetect = options.autodetect
-
+input_file_for_part2 = options.inputdata
 # Detect runs
 if autodetect == True:
     print "{0} subjects were detected".format(len(list_of_unique_subjects))
@@ -213,6 +213,8 @@ if autodetect == True:
     os.mkdir(input_files_temp)
     ulines = [lines[i-1] for i in list_of_unique_subjects]
     current_subject = 0
+    input_file_for_part2 = "{0}/subject_autodetect.txt".format(input_files_temp)
+    F3 = open(input_file_for_part2,"w")
     for i in range(0,len(ulines)):
         current_subject = current_subject  + 1
         inds = [j for (j, val) in enumerate(position) if val==i]
@@ -223,6 +225,8 @@ if autodetect == True:
         mline = merge_lines(mline)
         F2.write(mline)
         F2.close()
+        F3.write(mline+"\n")
+    F3.close()
     list_of_unique_subjects = range(1,current_subject+1)
 
 if hasattr(options,'part'):
@@ -416,7 +420,7 @@ if part==0 or part==2:
     if part==0:
         print "(The post-processing optimization jobs will be on hold until the estimation jobs are finished)"
     # declare pipeline step-3;  NB replaced "-q all.q" with "-q bigmem.q" to call all nodes
-    cmd = "qsub {0} -q {1} -N pipopt_final -wd {2} -j y -b y python ./scripts_other/optimization_wrapper.py  -n {3} -i {4} -m {5} -o {6} -k {7} -e '{8}' >{9}".format(job_id_str,queue_name,codefull_path,numcores,options.inputdata, options.metric, options.out_prefix,keepmean,environment,job_id_file)
+    cmd = "qsub {0} -q {1} -N pipopt_final -wd {2} -j y -b y python ./scripts_other/optimization_wrapper.py  -n {3} -i {4} -m {5} -o {6} -k {7} -e '{8}' >{9}".format(job_id_str,queue_name,codefull_path,numcores,input_file_for_part2, options.metric, options.out_prefix,keepmean,environment,job_id_file)
     os.system(cmd)
     jobfile = open(job_id_file,"r");
     jobid_str = jobfile.read();

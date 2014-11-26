@@ -15,6 +15,9 @@ This document lists updates to pipeine scripts for each archived version.
 Can be used to track changes in code, and identify ongoing pipeline issues.
 ---------------------------------------------------------------------------
 ---------------------------------------------------------------------------
+[UPDATES 2014/11/26] by Babak
+	Bug fixed in the Run_pipeline.py python wrapper, In multi-run optimization when autodetect switch is used, the part 2 was craching, because the code does not pass the correct multi-run input file to the part 2.
+
 [UPDATES 2014/10/30] by Babak
 * Add Missing files : fdr.m rSVD_splithalf.m to the ./script_matlab directory
 > Modifed code:

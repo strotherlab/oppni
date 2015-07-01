@@ -19,6 +19,15 @@ function [ bold_hrf ] = design_to_hrf( design, TR, PSET )
 %  3dDeconvolve: AFNI version=AFNI_2010_10_19_1028 (Feb 22 2011) [32-bit]
 %  Authored by:  B. Douglas Ward, et al.
 %
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
 
 [T K]     = size(design); % design matrix size (T=time, K=#stimuli)
 bold_hrf  = zeros(T,K);   % initialize the convolved HRF matrix

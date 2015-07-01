@@ -130,10 +130,20 @@ function output = group_analyses_wrapper( datamat, split_info, analysis_model )
 %                  split_info.type      = 'event'  (this needs to be a fixed parameter!)
 %                  split_info.TR_MSEC   = integer specifying TR (acquisition rate) in milliseconds
 %
-%  ** {Nsplit, WIND, drf, subspace, type} fields are only required in cell split_info{1}
+%  ** {Nblock, WIND, drf, subspace, type} fields are only required in cell split_info{1}
 %
 
 %==========================================================================
+
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
 
 % MODIFIER: performs spatial re-weighting for multivariate models
 
@@ -145,7 +155,7 @@ if( sum(strcmpi( analysis_model, univar_list ))==0 )
     
     for( is=1:length(datamat) )
         % vascular down-weighting applied to current, preprocessed data
-        datamat{is} = datamat{is} .* repmat(split_info{is}.spat_weight, [1 size(datamat{is},2)]);  % denoised volume x weight
+        datamat{is} = bsxfun(@times,datamat{is},split_info{is}.spat_weight);  % denoised volume x weight
     end
 end
 

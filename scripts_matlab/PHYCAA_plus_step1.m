@@ -82,8 +82,9 @@ function output = PHYCAA_plus_step1( dataMat, dataInfo )
 %      Measuring and Controlling Physiological Noise in BOLD fMRI". NeuroImage 82: 306-325
 %
 % ------------------------------------------------------------------------%
-% version history: 2014/03/27
-% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%% ------------------------------------------------------------------------%
 
 disp('Running PHYCAA+, Step-1: spatial weighting of non-neuronal tissues' );
 
@@ -112,6 +113,13 @@ if( ~isfield(dataInfo, 'out_format') || isempty(dataInfo.out_format)  )
     disp('    (default out_format=1)');
     %
     dataInfo.out_format = 1; 
+end
+% If renormalization chosen (removes variance), implement ... otherwise retain var
+if( ~isfield(dataInfo, 'renorm') || isempty(dataInfo.renorm)  ) 
+    %
+    disp('    (default renorm=0)');
+    %
+    dataInfo.renorm = 0; 
 end
 
 % store unaltered data, if chosen to output later
@@ -149,7 +157,22 @@ for( r=1:Nruns ) %% estimate on each split
     % get sum of spectral power values, for f > dataInfo.FreqCut
     powMat  = abs( fft( dataMat{r} , NFFT ,2) ) / Ntime(r); 
     powMat  = powMat(:,1:NFFT/2+1);
-    powHgh  = sum( sqrt(powMat(:,numlow+1:end)), 2 );
+    % index for non-ill-posed voxels
+    ikeep = find( sum(powMat.^2,2) > eps );
+    % if any ill-posed voxels, drop from the index
+    if(length(ikeep)<Nvox)
+        disp(['you have ',num2str(Nvox-length(ikeep)),' "empty" voxel timeseries; correcting, but check your masks!']);
+        powMat = powMat(ikeep,:);
+    end
+    % parameters for threshold estimation
+    NumList = (1:size(powMat,1))'; 
+    Nqart   = round(Nvox/4);
+    
+    % take variance (possibly renormalized)
+    if    ( dataInfo.renorm == 0 ) powHgh  = sum( sqrt(powMat(:,numlow+1:end)), 2 );
+    elseif( dataInfo.renorm == 1 ) powHgh  = sum( sqrt(powMat(:,numlow+1:end)), 2 ) ./ sum( sqrt(powMat(:,3:end)), 2 );
+    else  error('if renorm is specified, must be =0,1');
+    end
 
     % order high-frequency power values, smallest to largest
     PowSort = sort(powHgh);
@@ -195,6 +218,10 @@ for( r=1:Nruns ) %% estimate on each split
             error( 'Need to specify binary spatial prior in "dataInfo.priorMask"' );
         else
             NN_msk = double( dataInfo.priorMask > 0.5 );
+            % drop out "ill-posed" voxels from mask
+            if(length(ikeep)<Nvox)
+               NN_msk = NN_msk(ikeep,1);
+            end
         end
         %
         % find threshold that maximizes overlap with the binary "prior" mask
@@ -235,11 +262,6 @@ for( r=1:Nruns ) %% estimate on each split
     
 % =========================================================================
 %   converting into map of spatial weights, of values [0, 1]
-
-    % get non-neuronal tissue mask (general purpose),
-    % for regions with any appreciable non-neuronal content
-    % * not really necessary in current algorithm - maybe useful though *
-    NNmask(:,r) = double(RSD > minRSD);
     
     % convert RSD values into [0,1] scale
     % where 0= greater than maxRSD (non-neuronal threshold)
@@ -250,38 +272,40 @@ for( r=1:Nruns ) %% estimate on each split
     HI_wt(HI_wt>1)=1; 
     HI_wt = 1-HI_wt;
 
+    % if missing voxels, adjust:
+    if(length(ikeep)<Nvox)
+        tmp = 0.5*ones(Nvox,1); % default setting of 0.5=equal likelihood of either type, all vox
+        tmp(ikeep) = HI_wt; % for retained voxels, replace with actual values
+        HI_wt = tmp; % swap in for original HI_wt
+    end
+    
     % recording split information:
     WTset(:,r)   = HI_wt;
-    RSDset(:,r)  = RSD;        
     percentNT(r) = MinThr;
     percentNN(r) = 100 - MaxThr;
 end
 
-% average NN weighting mat
-NN_weight_avg = mean( WTset, 2 );
+% ====== Output-1: physiological mask parameters ====== %
 
-% output downweighted data, if selected
-if    (dataInfo.out_format==0) % do not produce de-noised data
-    %
-    weightMat = [];
+    output.NN_weight = mean( WTset, 2 ); % average non-neuronal weighting map
+    output.NN_mask   = prod( double(WTset>=0.5), 2 ); % intersection of mask estimates
+    % reproducibility across splits
+    CC = triu( corr(WTset), 1 );
+    output.NN_rep  = mean( CC(CC~=0) );
 
-elseif(dataInfo.out_format==1) % non-neuronal downweighting
-    %
-    % initialize
-    weightMat = cell(Nruns,1);
-    % regress physiological components:
-    for(r=1:Nruns)
+% ====== Output-2: reweighted fMRI data, if selected ====== %
+
+    if    (dataInfo.out_format==0) % do not produce de-noised data
         %
-        weightMat{r} = bsxfun(@times,dataMat_ref{r},NN_weight_avg);
+        weightMat = [];
+
+    elseif(dataInfo.out_format==1) % non-neuronal downweighting
+
+        % initialize
+        weightMat = cell(Nruns,1);
+        % rescale based on physio. noise
+        for(r=1:Nruns)  weightMat{r} = bsxfun(@times,dataMat_ref{r},output.NN_weight);  end
     end
-end
 
-% ====== Output: ====== %
-
-output.NN_weight = NN_weight_avg; % average non-neuronal weighting map
-output.NN_mask   = prod( NNmask, 2 ); % intersection of mask estimates
-% reproducibility across splits
-CC = triu( corr(WTset), 1 );
-output.NN_rep  = mean( CC(CC~=0) );
-% down-weighted data matrices
-output.dataMat_weighted = weightMat;
+    % down-weighted data matrices
+    output.dataMat_weighted = weightMat;

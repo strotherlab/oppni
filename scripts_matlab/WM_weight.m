@@ -1,11 +1,16 @@
 function output = WM_weight( dataMat, dataInfo )
 %
-% Work In Progress.
+%     output = WM_weight( dataMat, dataInfo )
 %
 
 % Get basic data info
 % ====================
 % get data dimensions
+
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+
+
 Nruns = length( dataMat );
 for(r=1:Nruns) 
     % dimensions of each split
@@ -14,12 +19,8 @@ for(r=1:Nruns)
     dataMat{r} = bsxfun(@minus,dataMat{r},mean(dataMat{r},2));
 end
 
-% parameters for threshold estimation
-NumList = (1:Nvox)'; 
-Nqart   = round(Nvox/4);
 % initialize matrix values
 WTset     = zeros(Nvox,Nruns);
-RSDset    = zeros(Nvox,Nruns);
 percentGM = zeros(Nruns,1);
 percentWM = zeros(Nruns,1);
 
@@ -27,6 +28,17 @@ for( r=1:Nruns ) %% estimate on each split
 
     % Inverse variance
     IvrMat  = 1./var(dataMat{r},0,2); 
+    % index for non-ill-posed voxels
+    ikeep = find( isfinite(IvrMat) );
+    % if any ill-posed voxels, drop from the index
+    if(length(ikeep)<Nvox)
+        disp(['you have ',num2str(Nvox-length(ikeep)),' "empty" voxel timeseries; correcting, but check your masks!']);
+        IvrMat = IvrMat(ikeep,:);
+    end
+    % parameters for threshold estimation
+    NumList = (1:length(IvrMat))'; 
+    Nqart   = round(Nvox/4);
+    
     % Get Ordered voxel variance values
     IvrSort = sort(IvrMat);
     IvrIndx = sortrows([IvrMat NumList],1); 
@@ -65,6 +77,12 @@ for( r=1:Nruns ) %% estimate on each split
         if( ~isfield( dataInfo.priorMask ) )
             disp( 'Need to specify binary spatial prior to make this choice' );
             return;
+        else
+            WM_msk = double( dataInfo.priorMask > 0.5 );
+            % drop out "ill-posed" voxels from mask
+            if(length(ikeep)<Nvox)
+               WM_msk = WM_msk(ikeep,1);
+            end
         end
         %
         % find threshold that maximizes overlap with the binary "prior" mask
@@ -80,7 +98,7 @@ for( r=1:Nruns ) %% estimate on each split
             % map of supra-threshold voxels (white matter regions)
             Z=double(RSD>prctile(RSD,qc));        
             % Jaccard overlap of (thresholded RSD, binary prior mask)
-            Overlap(k,1) = ( sum( Z.*NN_msk ) )./ sum( double((Z+NN_msk)>0) ); 
+            Overlap(k,1) = ( sum( Z.*WM_msk ) )./ sum( double((Z+WM_msk)>0) ); 
         end
 
         % convolve with simple running average smoother (width of 1%), to avoid local minima in curve
@@ -106,11 +124,6 @@ for( r=1:Nruns ) %% estimate on each split
 % =========================================================================
 %   converting into map of spatial weights, of values [0, 1]
 
-    % get non-neuronal tissue mask (general purpose),
-    % for regions with any appreciable non-neuronal content
-    % * not really necessary in current algorithm - maybe useful though *
-    WMmask(:,r) = double(RSD > minRSD);
-    
     % convert RSD values into [0,1] scale
     % where 0= greater than maxRSD (white matter threshold)
     %       1= less than minRSD (grey matter threshold)
@@ -120,17 +133,23 @@ for( r=1:Nruns ) %% estimate on each split
     HI_wt(HI_wt>1)=1; 
     HI_wt = 1-HI_wt;
 
+    % if missing voxels, adjust:
+    if(length(ikeep)<Nvox)
+        tmp = 0.5*ones(Nvox,1); % default setting of 0.5=equal likelihood of either type, all vox
+        tmp(ikeep) = HI_wt; % for retained voxels, replace with actual values
+        HI_wt = tmp; % swap in for original HI_wt
+    end
+    
     % recording split information:
     WTset(:,r)   = HI_wt;
-    RSDset(:,r)  = RSD;        
     percentGM(r) = MinThr;
     percentWM(r) = 100 - MaxThr;
 end
 
-% ====== Output: ====== %
+% ====== Output-1: physiological mask parameters ====== %
 
-output.WM_weight = mean( WTset, 2 );
-output.WM_mask   = prod( WMmask, 2 );
-% reproducibility across splits
-CC = triu( corr(WTset), 1 );
-output.WM_rep  = mean( CC(CC~=0) );
+    output.WM_weight = mean( WTset, 2 ); % average non-neuronal weighting map
+    output.WM_mask   = prod( double(WTset>=0.5), 2 ); % intersection of mask estimates
+    % reproducibility across splits
+    CC = triu( corr(WTset), 1 );
+    output.WM_rep  = mean( CC(CC~=0) );

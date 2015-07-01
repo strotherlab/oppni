@@ -7,6 +7,15 @@ function result_set = lda_optimization ( data_sp1, data_sp2, design_sp1, design_
 %
 % design vectors = single-string vectors:
 %     -1= condition 1 // +1= condition2
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
 
 %% 1. drop censored scans + concatenate
 
@@ -57,7 +66,7 @@ s = s(1:drfPCs,1:drfPCs);
 img_bases      = data_full * v * inv(s);
 Z_full         = s*v'; % [pcs x time] matrix
 % SVD on full data set (used for reference)
-Z_full         = Z_full - repmat (mean (Z_full, 2), [1 size(Z_full, 2)]);
+Z_full         = bsxfun(@minus,Z_full,mean (Z_full, 2));
 [u_full, s, v] = svd (Z_full, 0);
 Z_reproj_full  = s*v';
 
@@ -69,8 +78,8 @@ Z_reproj_full  = s*v';
 Z_sp1 = Z_full(:,      1:N_sp1);
 Z_sp2 = Z_full(:,N_sp1+1:end   );
 % centering PCs
-Z_sp1  = Z_sp1 - repmat (mean (Z_sp1, 2), [1 N_sp1]);
-Z_sp2  = Z_sp2 - repmat (mean (Z_sp2, 2), [1 N_sp2]);
+Z_sp1  = bsxfun(@minus,Z_sp1,mean (Z_sp1, 2));
+Z_sp2  = bsxfun(@minus,Z_sp2,mean (Z_sp2, 2));
 % get class-splits for laters
 Z_full_class1 = Z_full(:,design_full<0); Z_full_class2 = Z_full(:,design_full>0);
 Z_sp1_class1  =  Z_sp1(:,design_sp1 <0); Z_sp1_class2  =  Z_sp1(:,design_sp1 >0);
@@ -219,9 +228,9 @@ warning off;
 N = size (data, 2);
 coord1 = data (:, T_class > 0);
 coord0 = data (:, T_class < 0);
-coord_norm = data - repmat (mean (data, 2), [1 size(data,2)]);
-coord1_norm = coord1 - repmat (mean (coord1, 2), [1 size(coord1,2)]);
-coord0_norm = coord0 - repmat (mean (coord0, 2), [1 size(coord0,2)]);
+coord_norm  = bsxfun(@minus,data,  mean (data, 2));
+coord1_norm = bsxfun(@minus,coord1,mean (coord1, 2));
+coord0_norm = bsxfun(@minus,coord0,mean (coord0, 2));
 
 lin_discr = zeros( Range, Range );
 Kmax_out = Range;

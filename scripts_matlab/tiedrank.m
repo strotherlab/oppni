@@ -19,7 +19,10 @@ function [r, tieadj] = tiedrank(x, tieflag, bidirectional)
 %   See also ANSARIBRADLEY, CORR, PARTIALCORR, RANKSUM, SIGNRANK.
 
 %   Copyright 1993-2005 The MathWorks, Inc.
-%   $Revision: 1.5.2.6 $  $Date: 2005/07/29 11:42:04 $
+
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+
 
 if nargin < 2
     tieflag = false;

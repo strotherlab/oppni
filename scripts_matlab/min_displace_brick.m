@@ -18,6 +18,15 @@ function imed_out = min_displace_brick( volname, maskname, outname )
 %          *note that output is zero-indexed, eg a value of '0' corresponds
 %           to timepoint #1 in the fMRI data, etc.
 %
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
 
 % add the path to use code for converting NIFTI files into MatLab
 addpath scripts_matlab;
@@ -30,7 +39,7 @@ MM     = load_untouch_nii(maskname);
 rawepi = convert_nii_to_mat( VV,MM ); 
 % subtract the mean from each voxel timeseries, so that this doesn't
 % dominate the Principal Component Analysis (PCA)
-epimat = rawepi - repmat( mean(rawepi,2), [1 size(rawepi,2)] );
+epimat = bsxfun(@minus,rawepi,mean(rawepi,2));
 % get fMRI data matrix dimensions
 [Nvox Ntime] = size(rawepi);
 % singular value decomposition -- gives the Principal Component vectors (V)
@@ -41,7 +50,7 @@ Qdat     = (V * sqrt(S2))';
 % compute the median PC-space coordinate (robust measure of the center of the dataset)
 Qmed     = median( Qdat,2 );
 % measure distnace of each data-point from Qmed
-Dist     = sqrt(sum((Qdat - repmat( Qmed, [1 Ntime] )).^2));
+Dist     = sqrt(sum(bsxfun(@minus,Qdat,Qmed).^2));
 % find datapoint closest to Qmed; this is the "most central" datapoint
 [v imed] = min( Dist );
 % output the index of this datapoint to a text file

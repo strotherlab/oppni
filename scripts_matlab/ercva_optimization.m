@@ -28,12 +28,23 @@ function [out] = ercva_optimization( DATA, List, opt_crit )
 %                         one per CV dimension
 %
 
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
+
+
 PCA1 = List(1); % Number of PCs to keep after avg; 0=skip
 PCA2 = List(2); % range 2-PCAsp for split-halves
 % data dimensions
 [Nvox Nlag Nfull] = size(DATA);
 % mean-center the individual data windows
-DATA = DATA - repmat( mean(DATA,2), [1 Nlag 1] );
+DATA = bsxfun(@minus,DATA,mean(DATA,2));
 for(n=1:Nfull) DATA(:,:,n) = DATA(:,:,n)./mean(std(DATA(:,:,n),0,2)); end
 % DATA = DATA ./ repmat( std(DATA,0,2), [1 Nlag 1] );
 DATA(~isfinite(DATA)) = eps;
@@ -43,7 +54,7 @@ Nhalf = ceil(Nfull/2);
 if( Nfull < 4 ) error('At least 4 data splits are required!'); end
 %%
 %--------------------------------------------------
-% Splitting Structure Design: (random for Nsplit>6)
+% Splitting Structure Design: (random for Nblock>6)
 switch Nfull
                
     case 4    
@@ -99,7 +110,7 @@ TCR0avg= cell(PCA2,1);
 
 % pca computations on fulldata:
 QSET_ful         = reshape( QSET, PCA1,[],1 );  %%%  
-QSET_ful         = QSET_ful - repmat( mean(QSET_ful,2), [1 size(QSET_ful,2)] );
+QSET_ful         = bsxfun(@minus, QSET_ful, mean(QSET_ful,2));
 [Uful Sful temp] = svd( QSET_ful ); %%%
 Q2SET_ful        = Uful'*QSET_ful; %%%
     
@@ -113,8 +124,8 @@ for( w=1:TopIter ) %% for each resampling split...
     QSET_trn = reshape( QSET(:,:,list(1:Nhalf)),     PCA1,[],1 );
     QSET_tst = reshape( QSET(:,:,list(Nhalf+1:end)), PCA1,[],1 );
     %
-    QSET_trn = QSET_trn - repmat( mean(QSET_trn,2), [1 size(QSET_trn,2)] );
-    QSET_tst = QSET_tst - repmat( mean(QSET_tst,2), [1 size(QSET_tst,2)] );
+    QSET_trn = bsxfun(@minus,QSET_trn,mean(QSET_trn,2));
+    QSET_tst = bsxfun(@minus,QSET_tst,mean(QSET_tst,2));
     %
     [Utrn Strn temp] = svd( QSET_trn );
     [Utst Stst temp] = svd( QSET_tst );
@@ -299,7 +310,7 @@ for( w=1:TopIter ) %% for each resampling split...
             % test-data reshaped into (lags x splits) matrix
             Zx = reshape( Z_tstOtrn(:,i), Nlag, [] );
             % RMS distance
-            DRMS1 = sqrt( (Zx - repmat(Z0, [1 size(Zx,2)])).^2 );
+            DRMS1 = sqrt( bsxfun(@minus,Zx,Z0).^2 );
 
             % (2) Predict Training from Test
             %
@@ -308,7 +319,7 @@ for( w=1:TopIter ) %% for each resampling split...
             % train-data reshaped into (lags x splits) matrix
             Zx = reshape( Z_trnOtst(:,i), Nlag, [] );
             % RMS distance
-            DRMS2 = sqrt( (Zx - repmat(Z0, [1 size(Zx,2)])).^2 );
+            DRMS2 = sqrt( bsxfun(@minus,Zx,Z0).^2 );
 
             % record RMS error in predictions
             RMSset{q}(i,w) = mean( [DRMS1(:); DRMS2(:)] );

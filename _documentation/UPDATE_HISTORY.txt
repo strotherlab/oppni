@@ -1,22 +1,304 @@
+VERSION     = 1.2            % This is the major version number.
+DATE        = '$Date: 2014-12-17 10:53:34 -0500 (Wed, 17 Dec 2014) $'       % do not edit this line, it will be automatically updated
+REVISION    = '$Revision: 171 $'   % do not edit this line, it will be automatically updated
+DESCRIPTION ='PRONTO with LOWPASS, more de-spiking options, and DEOBLIQUE, TPATTERN Options'
+% END - The above lines are written in Matlab/Octave format, and they will be evaluated in matlab or octave.
 
-===========================================================================
-     UPDATE_HISTORY:  FMRI Preprocessing Pipeline scripts (2014/10/24)  
-===========================================================================
-     Author: Nathan Churchill, University of Toronto
-             Babak Afshin-pour, Rotman research institute, Baycrest
+====================================================================================
+          UPDATE_HISTORY:  FMRI Preprocessing Pipeline scripts (2015/04/29)  
+====================================================================================
+  Authors: Nathan Churchill, Neuroscience Research Program, St. Michael's Hospital
+           Babak Afshin-pour, Rotman research institute, Baycrest
          
-      email: nchurchill@research.baycrest.org
-	   : bafshinpour@research.baycrest.org
-     	
-
-
-
+    email: nchurchill.research@gmail.com
+         : bafshinpour@research.baycrest.org
+====================================================================================	
+  
 This document lists updates to pipeine scripts for each archived version.
 Can be used to track changes in code, and identify ongoing pipeline issues.
+
+------------------------------------------------------------------------------------
+Overview Change Log:
+------------------------------------------------------------------------------------
+
+[UPDATES 2015/04/29] by Nathan & Babak
+corrected bug in single-run optimization that does double low-pass filtering of
+data with PHYCAA+ correction
+> edited Pipeline_PART1.mat (lines 1005, 1073-1075)
+> also minor change -- no longer define "full pipeline" names within 
+  apply_regression_step and apply_regression_step_group, instead done in main body of code (line 504)
+
+[UPDATES 2015/04/28] by Nathan
+primary change is that users can now define task paradigms based on a formatted textfile
+input. Major changes:
+> created "Parse_Split_Info.m" file (can read in both .mat and .txt formatted split_info files)
+> modified the following files to use Parse_Split_Info, instead of just loading .mat file:
+  group_mask_tissue_maps, interpret_contrast_list_str, Pipeline_PART2, Read_Input_File
+
+Also added catch during auto-splitting, to terminate blocked analysis if
+task condition is not found in both split-halves
+> modified "interpret_contrast_list_str" (lines 388-293, 403-408)
+
+Finally, replaced all references to "Nsplit" variable (for erCVA and erGNB models)
+with "Nblock" due to ambiguity of this terminology
+
+[UPDATES 2015/04/09] by Nathan
+three specific changes made to code. In order of importance:
+
+> interpret_contrast_list_str.m
+fixed minor bug, when checking if "dropped" scans are accounted for in user-specified design matrix (lines 117-120)
+put more specific error catch, in case units not specified (lines 141-143)
+adjusted block-design indexing (TR= 1-relative; sec/msec allocated to nearest TR; lines 203-205)
+
+> GLM_model_fmri.m
+catch instances of zero-variance so T-statistics = 0, instead of NaN (lines 43-44)
+
+multiple code lines: replaced repmat with more efficient bsxfun for singleton expansions:
+> simple_averaging_for_ER.m
+> lda_optimization_group.m
+> group_analyses_wrapper.m
+> ergnb_optimization.m
+> min_displace_brick.m
+> module_SCONN.m
+> module_SCONN_group.m
+> ercva_optimization.m
+> lda_optimization.m
+> module_gPCA.m
+> rSVD_splithalf.m
+> diagnostic_fmri_pca.m
+> simple_averaging_for_ER.m
+
+
+[UPDATES 2015/03/27] by Nathan
+added folder "spatial_normalization_doall" containing scripts for generic spatial
+normalization procedure, that can register any brain images (functional or structural)
+to a template.
+
+[UPDATES 2015/01/11] by Nathan
+There have been major modifications to the structure (and naming) of output data.
+Check the manual for more details, but the new directory structure is as follows:
+
+<output directory>
+	intermediate_processed
+		afni_processed
+		diagnostic
+		masks
+		mpe
+		spat_norm
+		split_info
+	intermediate_metrics
+		res0_params
+		res1_spms
+		res2_temp
+		res3_stats
+		regressors
+	optimization_results
+		matfiles
+		processed
+		spms
+
+The important results are all now stored in "optimization_results/processed" 
+(optimally processed data) and "optimization_results/spms" (optimally processed SPMs)
+Quality Control results and Group tissues masks are also now automatically created,
+and stored in output folder of first subject input file
+Quality Control scripts have also been updated to account for new pipelines steps 
+(LOWPASS and additional CENSOR=2,3 options). 
+In addition, many analysis models no longer require that you specify ALL model parameters, 
+and will instead substitute a default value if not is given (e.g. the "drf" field for LDA and erCVA analysis)
+Finally, there has been a massive overhaul of the pipeline manual to reflect all of these changes.
+
 ---------------------------------------------------------------------------
+Detailed Change Log:
 ---------------------------------------------------------------------------
+
+[UPDATES 2015/01/14] by Nathan
+minor fixes for "group_mask_tissue_maps.m". Rewrote the header for clarity,
+fixed data-type error in output niftis (lines 257-261).
+Also rewrote the headers for QC1 and QC2 scripts.
+
+[UPDATES 2015/01/14] by Nathan
+fixed line 353 of Pipeline_PART1_afni_steps.m; deletes mask that is only used in early part of
+pipeline; original version deleted all such masks, which caused problems when queueing system
+was creating multiple datasets within the same output directory
+
+[UPDATES 2015/01/11] by Nathan
+Too many changes in code to report here. Major changes are summarized:
+ 
+  (1) redefined output directory structure: see "Overview change log" above for description of new directory struct: 
+	Primarily involves modification of: Pipeline_PART1, Pipeline_PART1_afni_steps, Pipeline_PART2, spatial_normalization
+  (2) gave output files simpler names: the optimal SPMs and preprocessed data have simpler names. i.e.
+	for SPMs, we have gone from "Images_<prefix>_opt_<metric>_Std_Fix_Ind.nii" to "rSPM_<prefix>_CON_FIX_IND.nii"
+	for processed data, we have gone from "<output prefix>_<analysis model>_opt_<metric>_<prefix>_IND.nii"
+	to "Proc_<prefix>_IND.nii"
+      * NOTE: due to this change, we have removed the flag "-o" which specifies an additional output prefix for optimized results.
+	It over-complicated the syntax and was generally redundant, since we are already specifying an output prefix. 
+  (3) redundant files are no longer produced: this included unnecessary masks, mean functional volumes, and data duplicated
+      across multiple matfiles
+  (4) analysis models now take "default" options: for most models, you now only need to specify onsets/durations.
+      this makes it easier for naive users to quickly start using it. This includes:
+
+	split_info.drf --> if not specified, default = 0.5
+	split_info.decision_model --> if not specified, default = 'linear'
+	split_info.WIND --> if not specified, default = 10
+	split_info.N_splits --> if not specified, default = 4
+	split_info.subspace --> if not specified, default = 'onecomp'
+	split_info.spm --> if not specified, default = 'zscore'
+
+      these changes are done within the module_LDA, module_GNB, etc. but "check_input_file_integrity" throws a warning
+      to notify users when the default setting is applied
+  (5) metric "Dneg" has been replaced with "dPR" as this is more intuitive to explain (distance measure combining P and R), 
+  (6) the "dPR" metric is now a "default" option, if user does not specify a metric using "-m" flag. Again, makes things more 
+      intuitive, since we generally encourage the use of both Prediction and Reproducibility.
+      changes mainly to "Run_Pipelines.py" and "Run_Pipelines_noSGE.m" scripts
+  (7) Removed a code option that uses an empty "split_info_nocontrast.mat" file, if split_info file cannot be detected.
+      This was problematic as (a) users still need to specify a TR to run pipelines, and (b) if there were minor
+      errors in specifying the path/name, it would default to "NONE" analysis option, which produces massive amounts of data.
+      Seems safer to simply throw an error and force users to define appropriate split_info
+      (or use "Run_Pipelines_noSGE" which compiles the appropriate split_info file automatically)
+
+
+
+[UPDATES 2014/12/17] by Babak
+ A minor bug fixed in the mask_tissue_wrapper.py wrapper. The sys package is now imported. 
+
+[UPDATES 2014/12/16] by Babak
+ Add a feature to set the parallel environment in the SETTINGS.txt 
+ This essential when running multi-thread jobs.
+		
+[UPDATES 2014/12/15] by Babak
+ Try to fix the bug with low-pass filtering( some testing required).
+ File quick_lo.m was revised.
+
+[UPDATES 2014/12/15] by Babak
+ Bug fixed in spatial_normalization.m which messed up the QC results.
+ Lines 290,291 where removed. This lines remove the mean time-series.
+
+[UPDATES 2014/12/12] by Babak
+ A minor bug fixed in Pipeline_PART2.m
+
+[UPDATES 2014/12/04] by Babak
+Low pass filter problem, the trasnposed matrix was entered in the code.
+    > 	
+
+
+[UPDATES 2014/12/03] by Babak
+Version information described in this txt file, will be inside in each mat file, and nii file generated by PRONTO
+The version and other information will go in CODE_PROPERTY and save in all mat and nii files.
+The revised code are as follow:
+    > Pipeline_PART1
+    > Pipeline_PART2 
+    > Pipeline_PART1_afni_steps
+    > spatial_normalization_noise_roi
+    > read_version.m	
+
+
+[UPDATES 2014/12/03] by Nathan
+Only a few minor bug fixes from last code iteration:
+    > "Parse_Input_File.m": fixed minor typo (line 51)
+    > "component_auto_filter.m": fixed error in output display (lines 64,83)
+    > "spatial_normalization.m": corrected errors in auto-unzipping step required for compatibility in some systems (lines 167-168, 190, 193)
+
+[UPDATES 2014/12/01] by Babak
+*Resovling an important bug which happens when running on HPCVL Grid
+[Modified Code]: Run_Pipelines.py: put a single quote around the python command.
+
+
+[UPDATES 2014/12/01] by Babak
+*Resovling some minor bugs in 
+[Modified Code]: Pipeline_PART1.m, change strcmp to strcmpi 
+[Modified Code]: interpret_contrast_list_str.m : modify line 27. Uncontrolled exit when TR_MSEC is not provided.
+
+
+[UPDATES 2014/11/27] by Babak
+*Adding the Capability to run in more general environments like HPCVL,
+	that needs specific settings.
+[Modified Codes]: read_settings.m, SETTING.txt, spatial_normalization_wrapper.py, pipeline_wrapper.py, optimization_wrapper.py,  mask_tissue_wrapper.py
+	
+	
+
 [UPDATES 2014/11/26] by Babak
 	Bug fixed in the Run_pipeline.py python wrapper, In multi-run optimization when autodetect switch is used, the part 2 was craching, because the code does not pass the correct multi-run input file to the part 2.
+
+
+[UPDATES 2014/11/24] by Babak
+	UPDATE #1: A major update of the python wrappers were updated to be compatible with the changes made in the previous update by Nathan [2014/11/18]. 
+	UPDATE #2: noSGE, numprocess options were added to the main warpper. Now it is possible to run the pipeline in a non-SGE environement. 
+	UPDATE #3: The option TR_MSEC was provided in the python wrapper to specify TR_MSEC if not in the split_info file, or want to override the previous value in the split_info file
+	UPDATE #4: The code can handles the case no Task file is provided in the input file, it uses a default mat file (useful when --contrast nocontrast, and analysis model not provided)
+
+	
+
+[UPDATES 2014/11/18] by Nathan
+This is a moderately large update. Owing to its size, major changes are summarized
+here. See below for the full list of modifications in each script.
+    UPDATE#1: pipeline options now include a low-pass filter option LOWPASS, which attenuates BOLD frequencies
+              above 0.10 Hz. This is a widely used step in connectivity analyses to minimize
+              high-frequency physiological confounds
+    UPDATE#2: we now include an even more aggressive variant of motion de-spiking based on component analysis.
+              Users can choose CENSOR=2,3 options to perform Principal Component or Independent Component 
+              analysis respectively (PCA or ICA), and remove component with (a) significant temporal spiking
+              or (b) significant "rimming" artifact, using an automated statistical procedure.
+    UPDATE#3: the non-Sungrid batch script (Run_Pipelines_noSGE.m) can now perform preprocessing, optimizaiton and spatial normalization.
+    UPDATE#4: additional user-specified options: we can now correct for oblique scans (DEOBLIQUE) and
+              data without slice-timing information stored in the NIFTI headers (TPATTERN)
+
+    Specific Changes:
+
+    >"Run_Pipelines_noSGE.m": complete overhaul, can now parse multiple input fields and
+      perform standard preprocessing, optimization of analysis results, and spatial normalization.
+	>"diagnostic_fmri_pca.m": fixed error in indexing (lines 190,237), which
+	lead to slightly convervative under-estimates of displacement. Very minor effects for most data.
+	> created "component_auto_filter.m": script takes in a set of spatial components
+	  (as 4D nifti volumes) and timeseries. Identifies outliers based on timeseries
+	  and spatial correlation with "edge maps"
+	> created "gen_fmri_pca.m": script that performs PCA and produces spatial component maps,
+	  in NIFTI format, along with temporal components. Low computational-cost alternative to
+	  running MELODIC
+	> "get_pipe_list.m": 
+	    function now outputs "lpSet" structure, accounting for if low-pass filtering is on/off. (line 1)
+	    list of preprocessing options "proclist" now includes "LOWPASS=" option (lin 16)
+	    now runs through 11 different options (line 19) with modified output (line 22)
+	    now parses additional CENSOR options =2,3 corresponding to extra filtering using PCA or MELODIC, respectively (line 51)
+	    now parses LOWPASS filter options (lines 156-173)
+	> "Pipeline_PART1.m"
+	    now admits further input options (line 1) implemented in Pipeline_PART1_afni_steps.m: 
+			DEOBLIQUE corrects for data that is currently at oblique angle from cardinal axes
+			TPATTERN allows user to specify slice-timing pattern if not available in the header
+	    reorganized input parsing, now parses DEOBLIQUE and TPATTERN options too(lines 125-155)
+	    include "lpSet" output parsing low-pass filter option (line 172)
+	    call to "Pipeline_PART1_afni_steps" now includes DEOBLIQUE and TPATTERN options (line 188)
+	    altered input to "apply_regression_step" and "apply_regression_step_group" to include low-pass filter option (lines 487-488)
+	    moved pipeline descriptive information to lines (500-506), so that pipelines with no analysis (analysis_model='NONE') can properly record variables
+	    also include low-pass filter flag options (lines 500-506)
+	    "apply_regression_step(_group)" have full pipeline set including LP=lowpass (lines 669,909)
+	    low-pass filter step (lines 724-734, 1100-1107)
+	    removed erroneous extra vascular down-weighting step in group analyses (originally in lines 687-692, 775)
+	    removed unnecessary extra copy of data cell created (originally lines 778-782)
+	    added vascular downweighting when producing preprocessed output (analysis_model='NONE'), (lines 785,874,1052,1142)
+	> "Pipeline_PART1_afni_steps.m":
+	    input now admits (line 1): 
+			DEOBLIQUE corrects for data that is currently at oblique angle from cardinal axes
+			TPATTERN allows user to specify slice-timing pattern if not available in the header
+	    catch to parse DEOBLIQE and TPATTERN inputs (lines 43-48)
+	    modified M_select,C_select,R_select,T_select (lines 90-95) and conditional statements (throughout script) to check for presence of specific flags - now permits more than 2 options per pipeline step (e.g. CENSOR)
+	    optional "deobliquing" step using 3dWarp (lines 115-122)
+	    CENSOR now includes options =2,3 which correspond to component-based filtering (lines 158-219, 235-196)
+	    now checks if pre-specified TPATTERN (lines 330-334)
+	> "Pipeline_PART2.m":
+	    include 'Lowpass' element of pipeline list (line 165)
+        corrected the "conservative" pipeline -- now picks most consistent with conservative criteria; doesn't require direct match (line 268)
+	    when generating optimally preprocessed data; regressor loading modified to account for low-pass filter option included in file names (line 965)
+	    when generating optimally preprocessed data; now performs lowpass filtering if included (lines 992-998)
+	> "quick_lopass.m": performs low-pass filtering above 0.10 Hz using an optimized Butterworth filter
+	> "spatial_normalization.m":
+	    input now admits (line 1): 
+			DEOBLIQUE corrects for data that is currently at oblique angle from cardinal axes
+	    parsing DEOBLIQUE (lines 52-55)
+	    currently commented out skull-stripping on template, as this is almost always unnecessary? (lines 128-137)
+	    optional "deobliquing" step using 3dWarp (lines 150-159)
+	    gunzip of files, which AFNI can't read on some servers (lines 165-168)
+	    check if files exist before running, for efficiency (lines 229,242,267)
+	    remove erroneous check on gzip function which caused crashes (line 235)
 
 [UPDATES 2014/10/30] by Babak
 * Add Missing files : fdr.m rSVD_splithalf.m to the ./script_matlab directory

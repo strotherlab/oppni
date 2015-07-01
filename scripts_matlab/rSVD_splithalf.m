@@ -38,11 +38,14 @@ function [ output ] = rSVD_splithalf( X, Npc, Niters, threshold )
 %
 %
 % ------------------------------------------------------------------------%
-% Author: Nathan Churchill, University of Toronto
-%  email: nathan.churchill@rotman.baycrest.on.ca
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
 % ------------------------------------------------------------------------%
-% version history: May 30 2013
-% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%% ------------------------------------------------------------------------%
 %
 
  % get dimensions, and number of subjects in 1 split-half
@@ -119,7 +122,7 @@ R_signif= sum( double(repr_set>0), 2 )./Niters;
 % project data onto SPMs to get subject scores
 subj_weights = X' * rSPM_match;
 % normalize subject scores to have unit variance
-subj_weights = subj_weights ./ repmat( sqrt(sum(subj_weights.^2)), [Nsubj 1] );
+subj_weights = bsxfun(@rdivide,subj_weights,sqrt(sum(subj_weights.^2)));
 % get median %variance of each component
 Var_match    = median( svar, 2 );
 

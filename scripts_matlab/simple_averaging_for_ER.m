@@ -14,7 +14,7 @@ function [windowAvg] = simple_averaging_for_ER( dataMat, onsets, params )
 %                       
 %                           params.TR    : acqusition time (IN MILLISECONDS)
 %                           params.WIND  : time window size (integer, #TR)
-%                           params.Nsplit: number of data splits produced; must be an even number >=4
+%                           params.Nblock: number of data splits produced; must be an even number >=4
 %                           params.delay : interpolation delay from slice-timing correction (usually TR/2)
 %                           params.norm  : integer defining normalization on time-windows before averaging
 %                                             { 0=do nothing / 1=subtract mean / 2=normalize variance }
@@ -22,15 +22,24 @@ function [windowAvg] = simple_averaging_for_ER( dataMat, onsets, params )
 %                           ** if there is no good reason, just set norm=0
 % Output:
 %
-%           windowAvg : a (voxels x WIND x Nsplit) matrix, of "Nsplit" time-averaged, stimulus-locked BOLD response blocks
+%           windowAvg : a (voxels x WIND x Nblock) matrix, of "Nblock" time-averaged, stimulus-locked BOLD response blocks
 %
 %
 %
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
 
 % parameter settings in data
 TR       = params.TR;     % in ms
 WIND     = params.WIND;   % # windows
-Nsplit   = params.Nsplit; % # splits
+Nblock   = params.Nblock; % # splits
 delay    = params.delay;
 norm     = params.norm;
 %
@@ -52,25 +61,25 @@ end
 % normalization options
 if( norm > 0 )
 
-    fullAvgSet =  fullAvgSet - repmat( fullAvgSet(:,1,:), [1 WIND 1] );
+    fullAvgSet =  bsxfun(@minus, fullAvgSet , fullAvgSet(:,1,:) );
     % normalize: take SD at each voxel / get mean over all volumes
     if( norm==2 )
-    fullAvgSet = fullAvgSet ./ repmat(std( fullAvgSet, 0,2 ),[1 WIND 1] );
+    fullAvgSet =  bsxfun(@rdivide,fullAvgSet, std( fullAvgSet,0,2 ) );
     fullAvgSet(~isfinite(fullAvgSet)) = 0;
     end
 end
 
-if( Nsplit == 1 )
+if( Nblock == 1 )
     % 
     windowAvg = mean( fullAvgSet, 3 );
 else
     % 
     midOn     = onsetsTR + WIND/2;
     onList    = 1:Nonsets;
-    Ntrunc    = floor( Ntime / Nsplit );
-    windowAvg = zeros( Nvox, WIND, Nsplit );
+    Ntrunc    = floor( Ntime / Nblock );
+    windowAvg = zeros( Nvox, WIND, Nblock );
     % for each split, now get windowed averaging
-    for( kk=1:Nsplit )
+    for( kk=1:Nblock )
 
         CutLo = (kk-1)*Ntrunc + 1;
         CutHi = ( kk )*Ntrunc;

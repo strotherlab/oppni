@@ -93,6 +93,15 @@ function diagnostic_fmri_pca( volname, maskname, mpename, outprefix )
 % ------------------------------------------------------------------------%
 % version history: 2013/09/18
 % ------------------------------------------------------------------------%
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
 
 if( exist('OCTAVE_VERSION','builtin') )
     % load stats packages
@@ -116,7 +125,7 @@ end
 % (1) load the motion parameters (matrix of [time x 6] elements)
  MPE    = load(mpename);
 % mean-center (subtract the mean from each timecourse)
- MPE    = MPE - repmat( mean(MPE), [size(MPE,1) 1] );
+ MPE    = bsxfun(@minus,MPE,mean(MPE));
 
 % (2) load fMRI NIFTI-format data into MatLab
 VV     = load_untouch_nii(volname); % load 4D fMRI dataset
@@ -126,7 +135,7 @@ mask   = double(MM.img);
 % convert 4D fMRI data into (voxels x time) matrix
 rawepi = convert_nii_to_mat( VV,MM ); 
 % mean-center (subtract mean from each voxel
-epimat = rawepi - repmat( mean(rawepi,2), [1 size(rawepi,2)] );
+epimat = bsxfun(@minus,rawepi,mean(rawepi,2));
 % get fMRI data matrix dimensions
 [Nvox Ntime] = size(rawepi);
 
@@ -159,7 +168,7 @@ for(t=1:Ntime)
     wind=(t-7):(t+7);
     if(wind( 1 )< 1   ) wind(wind<1)     = []; end
     if(wind(end)>Ntime) wind(wind>Ntime) = []; end
-                        wind(wind==i)    = [];
+                        wind(wind==t)    = [];
 	% get distance estimate at each timepoint, relative to median coordinate
     Dist_mot2(t,1)=sum(( Qmot(:,t) - median( Qmot(:,wind),2 ) ).^2);
 end
@@ -187,7 +196,7 @@ for(t=1:Ntime)
     wind=(t-7):(t+7);
     if(wind( 1 )< 1   ) wind(wind<1)     = []; end
     if(wind(end)>Ntime) wind(wind>Ntime) = []; end
-                        wind(wind==i)    = [];
+                        wind(wind==t)    = [];
 	% get distance estimate at each timepoint, relative to median coordinate
     Dist_vol2(t,1)=sum(( Qvol(:,t) - median( Qvol(:,wind),2 ) ).^2);
     %
@@ -234,7 +243,7 @@ for( z=1:Nz )
             wind=(t-7):(t+7);
             if(wind( 1 )< 1   ) wind(wind<1)     = []; end
             if(wind(end)>Ntime) wind(wind>Ntime) = []; end
-                                wind(wind==i)    = [];
+                                wind(wind==t)    = [];
             % get distance estimate at each timepoint, relative to median coordinate
             Dist_tmp2(t,1)=sum(( Qslc(:,t) - median( Qslc(:,wind),2 ) ).^2);
         end
@@ -252,7 +261,7 @@ for( z=1:Nz )
 end
 
  % Rescale slice-based distance values, so that =1 indicates significant outlier
- Dist_slc2_rescal = Dist_slc2_norm ./ repmat( outThr_slc, [size(Dist_slc2_norm,1) 1] );
+ Dist_slc2_rescal = bsxfun(@rdivide,Dist_slc2_norm,outThr_slc);
  % Get significant outliers, based on each metric
  outlier_mot   = double( probChi2_mot <= 0.05 );
  outlier_vol   = double( probChi2_vol <= 0.05 );
@@ -262,7 +271,7 @@ end
  % -accounts for potential delay effects
  outlier_delay = double( (outlier_mot + [0; outlier_mot(1:end-1)]) > 0 );
  outlier_volmot= outlier_vol .* outlier_delay;
- outlier_slcmot= outlier_slc .* repmat( outlier_delay, [1 Nz] );
+ outlier_slcmot= bsxfun(@times,outlier_slc,outlier_delay);
  
 % outliers based on volume/motion only
   maxout    = round( 0.10*Ntime );

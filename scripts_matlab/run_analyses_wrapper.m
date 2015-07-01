@@ -80,7 +80,7 @@ function output = run_analyses_wrapper( datamat, split_info, analysis_model )
 % 
 %                  split_info.onsetlist = vector list of integers representing stimulus onset times
 %                                         in milliseconds, zero-relative to the first TR volume
-%                  split_info.Nsplit    = number of equal sized splits to break the data into, to do 
+%                  split_info.Nblock    = number of equal sized splits to break the data into, to do 
 %                                         time-locked averaging. Must be at least 2, with even numbers >=4 
 %                                         recommended to obtain robust covariance estimates
 %                  split_info.WIND      = window size to average on, in TR (usually in range 6-10 TR)
@@ -102,7 +102,7 @@ function output = run_analyses_wrapper( datamat, split_info, analysis_model )
 % 
 %                  split_info.onsetlist = vector list of integers representing stimulus onset times
 %                                         in milliseconds, zero-relative to the first TR volume
-%                  split_info.Nsplit    = number of equal sized splits to break the data into, to do 
+%                  split_info.Nblock    = number of equal sized splits to break the data into, to do 
 %                                         time-locked averaging. Must be at least 2, with even numbers >=4 
 %                                         recommended to obtain robust covariance estimates
 %                  split_info.WIND      = window size to average on, in TR (usually in range 6-10 TR)
@@ -150,6 +150,17 @@ function output = run_analyses_wrapper( datamat, split_info, analysis_model )
 %                  split_info.TR_MSEC   = integer specifying TR (acquisition rate) in milliseconds
 
 % MODIFIER: performs spatial re-weighting for multivariate models
+
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
+
 
 % list of univariate models to exclude
 univar_list = {'gnb', 'glm', 'erglm', 'ergnb', 'sconn' };

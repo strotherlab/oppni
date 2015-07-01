@@ -1,5 +1,16 @@
 function check_input_file_integrity(InputStruct, retroicor_flag, task_flag)
 
+
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
+
 if ~isstruct(InputStruct)
     [InputStruct,MULTI_RUN_INPUTFILE] = Read_Input_File(InputStruct);
 end

@@ -9,12 +9,34 @@ function output = module_erGNB_group( datamat, split_info )
 %           output = module_erGNB( datamat, split_info )
 %
 %
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
+
+if( ~isfield(split_info{1},'WIND')   || isempty(split_info{1}.WIND)   ) 
+    disp('erGNB uses default window-size WIND=10');
+    split_info{1}.WIND =10; 
+end
+if( ~isfield(split_info{1},'Nblock') || isempty(split_info{1}.Nblock) ) 
+    disp('erGNB uses default number of blocks Nblock=4');
+    split_info{1}.Nblock=4; 
+end
+if( ~isfield(split_info{1},'norm')   || isempty(split_info{1}.norm)   ) 
+    disp('erGNB uses default normalization turned on (norm=1)');
+    split_info{1}.norm  =1; 
+end
 
 % initialized parameters
 params.TR     = split_info{1}.TR_MSEC;
 params.delay  = split_info{1}.TR_MSEC ./ 2;
 params.WIND   = split_info{1}.WIND;
-params.Nsplit = 1; %% now, only 1 split per subject!
+params.Nblock = 1; %% now, only 1 blocks per subject!
 params.norm   = 1;
 % number of subjects
 N_subject = length(datamat);
@@ -29,7 +51,7 @@ for(n=1:N_subject)
 end
 
 % % % count #leftovers, if we do even multiples of splits
-% % leftover = rem( size(datamat,2) , params.Nsplit);
+% % leftover = rem( size(datamat,2) , params.Nblock);
 % % % trim "overhang" from the data matrix
 % % datamat_trim  = datamat(:,1:end-leftover);
 
@@ -49,7 +71,7 @@ output.metrics.R_global =  out.R_global;
 output.metrics.R_1hrf   =  out.R_hrf1;
 output.metrics.P_class  =  out.P_class;
 output.metrics.P_rms    =  out.P_rms;
-output.metrics.Dneg     = -sqrt( (1-out.R_hrf1).^2 + (1-out.P_class).^2 );
+output.metrics.dPR      = -sqrt( (1-out.R_hrf1).^2 + (1-out.P_class).^2 );
 % special format of temporal output
 tempstruct.hrf          = out.HRF1;
 tempstruct.sens         = out.sens_global;

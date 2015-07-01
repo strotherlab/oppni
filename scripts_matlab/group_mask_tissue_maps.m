@@ -15,6 +15,8 @@ function group_mask_tissue_maps( inputfile, newmaskname )
 %                input subject information
 %   newmaskname= string specifying name/path of the new group-level 
 %                consensus mask being produced as output
+%                * If running PRONTO, leave it empty *
+%                  Default newmaskname=[] puts it in first output folder specified in "inputfile" 
 %
 % OUTPUT:  
 %
@@ -28,7 +30,15 @@ function group_mask_tissue_maps( inputfile, newmaskname )
 % ------------------------------------------------------------------------%
 % version history: 2013/08/15
 % ------------------------------------------------------------------------%
-
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
 if( exist('OCTAVE_VERSION','builtin') )
     % load stats packages
     pkg load statistics;
@@ -37,11 +47,6 @@ end
  
 addpath scripts_matlab;
 addpath scripts_matlab/NIFTI_tools;
-   
-if( (length(newmaskname) < 5 ) || ~strcmp( newmaskname(end-3:end), '.nii' ) )
-    %% make sure mask-name terminates with .nii string
-    newmaskname = [newmaskname, '.nii'];
-end
 
 %% Load individual masks
 
@@ -63,19 +68,31 @@ while ischar(tline) % for every input line in textfile...
     prefix   = fullline(isepr+1:end);
     outdir   = fullline(1:isepr-1);
     
-    if( ksub==1 ) %% load in "split_info" structure to get TR
+    if( ksub==1 ) %% check masks, load in "split_info" structure to get TR
 
+        if( isempty(newmaskname) )
+            %%% create directory + new mask files, in first output dir.
+            newpath = [outdir, '/GroupMasks'];
+            mkdir_r(newpath);
+            newmaskname = [newpath '/group'];                
+        else
+            [apath,aprefix,aext] = fileparts(newmaskname);
+            mkdir_r(apath);
+            %%% make sure mask-name terminates with .nii string
+            newmaskname = [apath,'/',aprefix];
+        end
+        
         itask = strfind( tline, 'TASK=' ); itask = itask+5;
         ips   = [strfind( tline, ' ' )-1 length(tline)];
         ips   = ips(ips>itask);
         fullline = tline(itask:ips(1));    
         % load file
-        load( fullline );
+        [split_info] = Parse_Split_Info(fullline);
         TR_MSEC = split_info.TR_MSEC; %% get TR
         clear split_info; %% remove the rest of structure
     end
     
-    xbase_string  = strcat(outdir,'/spat_norm/',prefix,'_mask_sNorm.nii');
+    xbase_string  = strcat(outdir,'/intermediate_processed/spat_norm/',prefix,'_mask_sNorm.nii');
     MX     = load_untouch_nii(  xbase_string );
     % save into 4D matrix
     maskSet(:,:,:,ksub) = double(MX.img);
@@ -122,7 +139,7 @@ nii     = MX; % copy nifti struct
 nii.img = consensus_mask; % replace volume
 nii.hdr.dime.dim(5) = 1; % adjust for #timepoints
 %
-save_untouch_nii(nii,newmaskname);  
+save_untouch_nii(nii,[newmaskname '_consensus_mask.nii']);  
 
 %% Load transformed data
    
@@ -144,7 +161,7 @@ while ischar(tline) % for every input line in textfile...
     prefix   = fullline(isepr+1:end);
     outdir   = fullline(1:isepr-1);
     
-    xbase_string  = strcat(outdir,'/',prefix,'_baseproc_sNorm.nii');
+    xbase_string  = strcat(outdir,'/intermediate_processed/afni_processed/',prefix,'_baseproc_sNorm.nii');
     VX     = load_untouch_nii(  xbase_string );
     vxmat  = nifti_to_mat(VX,nii);
     [Nvox Ntime] = size(vxmat);
@@ -237,11 +254,13 @@ tmp1=double(consensus_mask); tmp1(tmp1>0) = MEAN_avg;
 tmp2=double(consensus_mask); tmp2(tmp2>0) = 1-NN_weight_avg;
 tmp3=double(consensus_mask); tmp3(tmp3>0) = 1-WM_weight_avg;
 %
-nii     = VX; % copy nifti struct
+nii=VX; % copy nifti struct
 nii.img = cat(3,tmp1,tmp2,tmp3); % replace volume
-nii.hdr.dime.dim(5) = 3; % adjust for #timepoints
+nii.hdr.dime.datatype = 16;
+nii.hdr.hist = VX.hdr.hist;
+nii.hdr.dime.dim(5) = 3;
 %
-save_untouch_nii(nii,[newmaskname(1:end-4), '_Mean_NN_WM.nii']);  
+save_untouch_nii(nii,[newmaskname, '_mean_NN_WM.nii']);  
 
 % subject statistics on similarity of maps
 volume_stats.MEAN_distance = cmed_mean;
@@ -264,7 +283,7 @@ brain_volumes.MASK_fract = maskFract_vect;
 
 % save results to matfile
      % matlab-compatible
-save([newmaskname(1:end-4),'_outputs.mat'],'brain_volumes','volume_stats', '-v7');
+save([newmaskname,'_spat_norm_qc.mat'],'brain_volumes','volume_stats', '-v7');
 
 
 %%

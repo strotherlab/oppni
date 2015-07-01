@@ -1,8 +1,35 @@
-function Run_Pipelines_noSGE( subject_inputs, pipelines, analysis_model, TR_MSEC )
+function Run_Pipelines_noSGE( subject_inputs, pipelines, analysis_model, TR_MSEC, contrast_list, TEMPLATE_VOL, VOXDIMS, DEOBLIQUE, TPATTERN )
+%
+% RUN_PIPELINES_NOSGE: script for running pipelines directly in matlab, for
+% instance where SGE system is not available.
+%
+%  Syntax:
+%
+%     Run_Pipelines_noSGE( subject_inputs, pipelines, analysis_model, TR_MSEC, contrast_list, TEMPLATE_VOL, VOXDIMS, DEOBLIQUE, TPATTERN )
+%
+%
+
+CODE_VERSION = '$Revision: 158 $';
+CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
 
 addpath scripts_matlab;
 addpath scripts_matlab/optimization;
 addpath scripts_matlab/NIFTI_tools;
+
+if nargin<5
+    contrast_list=[];
+end
+
+if nargin<6 || isempty(TEMPLATE_VOL) || isempty(VOXDIMS)
+     normflag = false;
+else normflag = true;
+end
+if nargin<8 || isempty(DEOBLIQUE)
+    DEOBLIQUE = 0;
+end
+if nargin<9 
+    TPATTERN = [];
+end
 
 %quick check to see if split_info specified, if not add it
 [subject_inputs make_splitfile] = Read_Inputs(subject_inputs,analysis_model);
@@ -16,10 +43,22 @@ end
 
 %if pipelines=[], make "conservative"
 if( isempty(pipelines) )
-    
+    error('Need to specify pipeline list');
 end
 
-Pipeline_PART1(subject_inputs,pipelines,analysis_model,[],0);
+% run preprocessing pipeline
+Pipeline_PART1(subject_inputs,pipelines,analysis_model,[],0,contrast_list,false,DEOBLIQUE,TPATTERN);
+% run optimization, if analysis model included
+if( ~strcmp(analysis_model ,'NONE') )
+    disp('WARNING: pipeline optimization uses default metric of dPR');
+    Pipeline_PART2(subject_inputs,'dPR',[1 0],1,0);
+end
+
+% run spatial normalization
+if(normflag)
+    spatial_normalization(subject_inputs,TEMPLATE_VOL,VOXDIMS,0,DEOBLIQUE);
+    group_mask_tissue_maps( subject_inputs, [] );
+end
 
 %%
 function [inputfile_update make_splitfile] = Read_Inputs(inputfile,analysis_model)
@@ -54,7 +93,6 @@ while ischar(tline)
            if( strcmp(analysis_model ,'NONE') )
                
                 tflag=1;
-               
                 % create temporary local split_info name
                 ifile = strfind( upper(tline), 'IN=' ); 
                 ifile = ifile+3;
@@ -70,8 +108,6 @@ while ischar(tline)
            else
                error('cannot specify an analysis model without defining split-info structure (TASK in subject_inputs)');
            end
-            
-            
         end
 
         tline = fgetl(fid);

@@ -5,6 +5,16 @@ function result_set = gnb_optimization( data_trn, data_tst, design_trn, design_t
 %  res = gnb_optimization( data_trn, data_tst, design_trn, design_tst, decision_model, spatial_prior )
 %
 
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
+
 %% ============= (I) DEFINE LABEL INPUTS AND CLASS MATRICES ================
 
 % truncate "empty" scans

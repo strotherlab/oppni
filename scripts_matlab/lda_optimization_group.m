@@ -5,6 +5,15 @@ function result_set = lda_optimization_group ( data_class1, data_class2, drf, Re
 %
 % result_set = lda_optimization_group( data_class1, data_class2, drf, N_iters )
 %
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
 
 %% 1. concatenate
     N_iters = size(Resampling_Index,1);
@@ -26,8 +35,8 @@ function result_set = lda_optimization_group ( data_class1, data_class2, drf, Re
         %
         avg_temp = mean([data_class1{n} data_class2{n}],2);
         %
-        data_class1{n} = data_class1{n} - repmat( avg_temp, [1 size(data_class1{n},2)] );
-        data_class2{n} = data_class2{n} - repmat( avg_temp, [1 size(data_class2{n},2)] );        
+        data_class1{n} = bsxfun(@minus,data_class1{n},avg_temp);
+        data_class2{n} = bsxfun(@minus,data_class2{n},avg_temp);
         %
         data_class1_full = [data_class1_full data_class1{n}];
         data_class2_full = [data_class2_full data_class2{n}];
@@ -65,7 +74,7 @@ function result_set = lda_optimization_group ( data_class1, data_class2, drf, Re
     img_bases      = data_full * v * inv(s);
     Z_full         = s*v'; % [pcs x time] matrix
     % SVD#2 on full data set (used for reference)
-    Z_full     = Z_full - repmat (mean (Z_full, 2), [1 size(Z_full, 2)]);
+    Z_full     = bsxfun(@minus,Z_full,mean (Z_full, 2) );
     % record splits for later
     Z_full_class1 = Z_full(:, 1:N_class1_full );
     Z_full_class2 = Z_full(:, N_class1_full+1:end);
@@ -137,14 +146,14 @@ for( iter = 1:N_iters )
     % centering PCs
     %
     avg_temp     = mean(Z_sp1,2);
-    Z_sp1        = Z_sp1       -repmat( avg_temp, [1        size(Z_sp1,2)]);
-    Z_sp1_class1 = Z_sp1_class1-repmat( avg_temp, [1 size(Z_sp1_class1,2)]);
-    Z_sp1_class2 = Z_sp1_class2-repmat( avg_temp, [1 size(Z_sp1_class2,2)]);
+    Z_sp1        = bsxfun(@minus,Z_sp1       ,avg_temp);
+    Z_sp1_class1 = bsxfun(@minus,Z_sp1_class1,avg_temp);
+    Z_sp1_class2 = bsxfun(@minus,Z_sp1_class2,avg_temp);
     %
     avg_temp     = mean(Z_sp2,2);
-    Z_sp2        = Z_sp2       -repmat( avg_temp, [1        size(Z_sp2,2)]);
-    Z_sp2_class1 = Z_sp2_class1-repmat( avg_temp, [1 size(Z_sp2_class1,2)]);
-    Z_sp2_class2 = Z_sp2_class2-repmat( avg_temp, [1 size(Z_sp2_class2,2)]);
+    Z_sp2        = bsxfun(@minus,Z_sp2       ,avg_temp);
+    Z_sp2_class1 = bsxfun(@minus,Z_sp2_class1,avg_temp);
+    Z_sp2_class2 = bsxfun(@minus,Z_sp2_class2,avg_temp);
     
     % number 'o' scans
     n_sp1_cl1 = size( Z_sp1_class1, 2 );

@@ -9,12 +9,38 @@ function output = module_erCVA_group( datamat, split_info )
 %           output = module_erCVA_group( datamat, split_info )
 %
 %
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
+
+if( ~isfield(split_info{1},'WIND')   || isempty(split_info{1}.WIND)   ) 
+    disp('erCVA uses default window-size WIND=10');
+    split_info{1}.WIND =10; 
+end
+if( ~isfield(split_info{1},'Nblock') || isempty(split_info{1}.Nblock) ) 
+    disp('erCVA uses default number of blocks Nblock=4');
+    split_info{1}.Nblock=4; 
+end
+if( ~isfield(split_info{1},'norm')   || isempty(split_info{1}.norm)   ) 
+    disp('erCVA uses default normalization turned on (norm=1)');
+    split_info{1}.norm  =1; 
+end
+if( ~isfield(split_info{1},'drf') || isempty(split_info{1}.drf) )
+    disp('erCVA uses default data reduction drf=0.5');
+    split_info.drf = 0.5;
+end
 
 % initialized parameters
 params.TR     = split_info{1}.TR_MSEC;
 params.delay  = split_info{1}.TR_MSEC ./ 2;
 params.WIND   = split_info{1}.WIND;
-params.Nsplit = 1; %% now, only 1 split per subject!
+params.Nblock = 1; %% now, only 1 split per subject!
 params.norm   = 1;
 % number of subjects
 N_subject = length(datamat);
@@ -84,7 +110,7 @@ if   ( ~isfield( split_info{1}, 'subspace' ) || strcmp(split_info{1}.subspace, '
         %
         output.metrics.R    =  tmpR(id);
         output.metrics.P    =  tmpP(id);
-        output.metrics.Dneg = -vd;
+        output.metrics.dPR  = -vd;
         
 % OPTION 2: multi component subspace analysis; estimated based on 
 %           spatial reproducibility of stable SPM bases, 
@@ -124,7 +150,7 @@ elseif( strcmp(split_info{1}.subspace, 'multicomp') )
         %
         output.metrics.R    =  outer.R{id};
         output.metrics.P    =  tmpP(id);
-        output.metrics.Dneg = -vd;
+        output.metrics.dPR  = -vd;
 else
     error('invalid component selection method');
 end

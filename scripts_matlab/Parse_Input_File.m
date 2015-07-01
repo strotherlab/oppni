@@ -1,5 +1,16 @@
 function [Input_nifti_file_path,Input_nifti_file_prefix,Output_nifti_file_path,Output_nifti_file_prefix,split_info_file,STRUCT_File,PHYstr,NOISE_ROI,DROP_first,DROP_last] = Parse_Input_File(tline)
 
+global CODE_PATH
+if isempty(CODE_PATH)
+    CODE_PATH = fileparts(which('Parse_Input_File.m'));
+    if CODE_PATH(end)~='/'
+        CODE_PATH = [CODE_PATH '/'];
+        addpath(CODE_PATH);
+        addpath([CODE_PATH '/NIFTI_tools'])
+    end
+end
+
+
 % parse output directory
 ifile = strfind( upper(tline), 'IN=' ); 
 ifile = ifile+3;
@@ -36,21 +47,27 @@ end
 
 % load in "split_info" structure with information about task onset and
 % analysis model parameters
-itask = strfind(  upper(tline), 'TASK=' ); itask = itask+5;
-ips   = [strfind( tline, ' ' )-1 length(tline)];
-ips   = ips(ips>itask);
-split_info_file_temp = tline(itask:ips(1));
-split_info_file_temp = strrep(split_info_file_temp,'.mat','');
-[split_info_file_path_temp,split_info_file_prefix,ext] = fileparts(split_info_file_temp);
-
-if(isempty(strfind(split_info_file_prefix,',')))
-     split_info_file_prefix = cellstr(split_info_file_prefix);
-else split_info_file_prefix = regexp(split_info_file_prefix,',','split');
-end
-
-if length(split_info_file_prefix)~=N_run
-    display(sprintf('Error the number of split info files does not match with the number of inputs, please check the line %s',tline));
-    sge_exit(100);
+itask = strfind(  upper(tline), 'TASK=' );
+if ~isempty(itask)
+    itask = itask+5;
+    ips   = [strfind( tline, ' ' )-1 length(tline)];
+    ips   = ips(ips>itask);
+    split_info_file_temp = tline(itask:ips(1));
+    % file parts
+    [split_info_file_path_temp,split_info_file_prefix,split_info_file_ext] = fileparts(split_info_file_temp);
+    
+    if(isempty(strfind(split_info_file_prefix,',')))
+        split_info_file_prefix = cellstr(split_info_file_prefix);
+    else split_info_file_prefix = regexp(split_info_file_prefix,',','split');
+    end
+    
+    if length(split_info_file_prefix)~=N_run
+        display(sprintf('Error the number of split info files does not match with the number of inputs, please check the line %s',tline));
+        sge_exit(100);
+    end
+else
+    split_info_file_path_temp = [];
+    split_info_file_prefix = cell(1,N_run);
 end
 
 istruct = strfind(  upper(tline), 'STRUCT=' ); istruct = istruct+7;
@@ -112,10 +129,8 @@ if ~isempty(ifile)
     end
 else
     noise_roi_file_prefix = cell(N_run,1);
-    noise_roi_path_temp = [];
+    noise_roi_path_temp   = [];
 end
-
-
 
 for k = 1:N_run
     Input_nifti_file_prefix{k} = [Input_nifti_file_prefix{k} '.nii'];
@@ -129,7 +144,15 @@ for k = 1:N_run
     end
     DROP_first{k} = DROP_first_temp;
     DROP_last{k}  = DROP_last_temp;
-    split_info_file{k} = [split_info_file_path_temp '/' split_info_file_prefix{k} '.mat'];
+    if ~isempty(split_info_file_prefix{k})
+        % re-generate split_info path+filename        
+        if(isempty(split_info_file_path_temp))
+              split_info_file{k} = [split_info_file_prefix{k} split_info_file_ext];
+        else  split_info_file{k} = [split_info_file_path_temp '/' split_info_file_prefix{k} split_info_file_ext];
+        end
+    else
+        error('split_info file missing for one of the runs');
+    end
     if ~isempty(noise_roi_path_temp)
         NOISE_ROI{k} = [noise_roi_path_temp '/' noise_roi_file_prefix{k} '.nii'];
     else

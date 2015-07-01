@@ -55,8 +55,9 @@ function nn_weight_avg = NN_group_average( nn_mat )
 %      Measuring and Controlling Physiological Noise in BOLD fMRI". NeuroImage 82: 306-325
 %
 % ------------------------------------------------------------------------%
-% version history: 2013/07/21
-% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%% ------------------------------------------------------------------------%
 
 disp('Robust averaging of non-neuronal maps...');
 

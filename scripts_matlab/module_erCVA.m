@@ -9,16 +9,42 @@ function output = module_erCVA( datamat, split_info )
 %           output = module_erCVA( datamat, split_info )
 %
 %
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
+
+if( ~isfield(split_info,'WIND')   || isempty(split_info.WIND)   ) 
+    disp('erCVA uses default window-size WIND=10');
+    split_info.WIND =10; 
+end
+if( ~isfield(split_info,'Nblock') || isempty(split_info.Nblock) ) 
+    disp('erCVA uses default number of blocks Nblock=4');
+    split_info.Nblock=4; 
+end
+if( ~isfield(split_info,'norm')   || isempty(split_info.norm)   ) 
+    disp('erCVA uses default normalization turned on (norm=1)');
+    split_info.norm  =1; 
+end
+if( ~isfield(split_info,'drf') || isempty(split_info.drf) )
+    disp('erCVA uses default data reduction drf=0.5');
+    split_info.drf = 0.5;
+end
 
 % initialized parameters
 params.TR     = split_info.TR_MSEC;
 params.delay  = split_info.TR_MSEC./2;
 params.WIND   = split_info.WIND;
-params.Nsplit = split_info.Nsplit;
+params.Nblock = split_info.Nblock;
 params.norm   = 1;
 
 % % % count #leftovers, if we do even multiples of splits
-% % leftover = rem( size(datamat,2) , params.Nsplit);
+% % leftover = rem( size(datamat,2) , params.Nblock);
 % % % trim "overhang" from the data matrix
 % % datamat_trim  = datamat(:,1:end-leftover);
 
@@ -31,7 +57,7 @@ params.norm   = 1;
 [windowAvg] = simple_averaging_for_ER( datamat, split_info.onsetlist, params );
 
 % --- CVAanalysis --- %
-fullPC = floor(split_info.drf*split_info.Nsplit*split_info.WIND);
+fullPC = floor(split_info.drf*split_info.Nblock*split_info.WIND);
 spltPC = round( fullPC / 2 );
 
 [outer] = ercva_optimization( windowAvg, [fullPC spltPC],'spat');
@@ -87,7 +113,7 @@ if   ( ~isfield( split_info, 'subspace' ) || strcmp(split_info.subspace, 'onecom
         %
         output.metrics.R    =  tmpR(id);
         output.metrics.P    =  tmpP(id);
-        output.metrics.Dneg = -vd;
+        output.metrics.dPR  = -vd;
         
 % OPTION 2: multi component subspace analysis; estimated based on 
 %           spatial reproducibility of stable SPM bases, 
@@ -127,7 +153,7 @@ elseif( strcmp(split_info.subspace, 'multicomp') )
         %
         output.metrics.R    =  outer.R{id};
         output.metrics.P    =  tmpP(id);
-        output.metrics.Dneg = -vd;
+        output.metrics.dPR  = -vd;
 else
     error('invalid component selection method');
 end

@@ -4,19 +4,28 @@ function result_set = ergnb_optimization( data_all, spatial_prior )
 %
 %  res = gnb_optimization( data_trn, data_tst, design_trn, design_tst, decision_model, spatial_prior )
 %
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
 
 %% ============= (I) DEFINE LABEL INPUTS AND CLASS MATRICES ================
 
 % dimensions
 [Nvox Nclass Nfull] = size( data_all );
 % mean-center the individual data windows
-data_all = data_all - repmat( mean(data_all,2), [1 Nclass 1] );
+data_all = bsxfun(@minus, data_all,mean(data_all,2) );
 % number of window samples per split
 Nhalf = ceil(Nfull/2);
 
 if( Nfull < 4 ) error('At least 4 data splits are required!'); end
 %--------------------------------------------------
-% Splitting Structure Design: (random for Nsplit>6)
+% Splitting Structure Design: (random for Nblock>6)
 switch Nfull
         
     case 4    
@@ -193,11 +202,11 @@ result_set.pmap        = mean(pSPM, 2);
 % -------- single component representation starts -------- %
 
     % average time-window, for normalized vox-variance
-    DSET_all = data_all ./ repmat( std(data_all,0,2), [1 size(data_all,2) 1] );
+    DSET_all = bsxfun(@rdivide,data_all,std(data_all,0,2));
     DSET_all = mean(DSET_all,3);
     DSET_all(~isfinite(DSET_all))=eps;
     % rescale by activation sensitivity
-    DSET_all = DSET_all .* repmat( result_set.sens_global, [1 size(DSET_all,2)] );
+    DSET_all = bsxfun(@times,DSET_all,result_set.sens_global);
     % svd on the map
     [u s v] = svd(DSET_all'*DSET_all); v1comp = v(:,1);
     %
@@ -217,14 +226,14 @@ result_set.pmap        = mean(pSPM, 2);
         DSET_trn = data_all(:,:,list(1:Nhalf))    ;
         DSET_tst = data_all(:,:,list(Nhalf+1:end));
 
-        DSET_trn = DSET_trn ./ repmat( std(DSET_trn,0,2), [1 size(DSET_trn,2) 1] );
-        DSET_tst = DSET_tst ./ repmat( std(DSET_tst,0,2), [1 size(DSET_tst,2) 1] );
+        DSET_trn = bsxfun(@rdivide,DSET_trn,std(DSET_trn,0,2));
+        DSET_tst = bsxfun(@rdivide,DSET_tst,std(DSET_tst,0,2));
         %
         DSET_trn = mean(DSET_trn ,3);     DSET_trn(~isfinite(DSET_trn))=eps;
         DSET_tst = mean(DSET_tst ,3);     DSET_tst(~isfinite(DSET_tst))=eps;
         %
-        DSET_trn = DSET_trn .* repmat( result_set.sens_global, [1 size(DSET_trn,2)] );
-        DSET_tst = DSET_tst .* repmat( result_set.sens_global, [1 size(DSET_tst,2)] );
+        DSET_trn = bsxfun(@times,DSET_trn,result_set.sens_global );
+        DSET_tst = bsxfun(@times,DSET_tst,result_set.sens_global );
         
         sa = DSET_trn * v1comp;
         sb = DSET_tst * v1comp;

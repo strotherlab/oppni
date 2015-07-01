@@ -9,6 +9,20 @@ function output = module_LDA( datamat, split_info )
 %           output = module_LDA( datamat, split_info )
 %
 %
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
+
+if( ~isfield(split_info,'drf') || isempty(split_info.drf) )
+    disp('LDA uses default data reduction drf=0.5');
+    split_info.drf = 0.5;
+end
 
 % define 4 different task blocks for analysis:
 block_cond1_sp1 = datamat(:,split_info.idx_cond1_sp1);
@@ -31,7 +45,7 @@ DD = sqrt( (1-results.R).^2 + (1-results.P).^2 );
 %
 output.metrics.R    =  results.R(id);
 output.metrics.P    =  results.P(id);
-output.metrics.Dneg = -vd;
+output.metrics.dPR  = -vd;
 % optimal eigenimage
 output.images  = results.eig(:,id);
 

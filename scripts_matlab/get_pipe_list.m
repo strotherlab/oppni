@@ -1,4 +1,14 @@
-function [pipeset_half, detSet, mprSet, tskSet, phySet, gsSet, Nhalf, Nfull] = get_pipe_list( filename )
+function [pipeset_half, detSet, mprSet, tskSet, phySet, gsSet, lpSet, Nhalf, Nfull] = get_pipe_list( filename )
+
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
 
 % reads in the inputfile
 fid = fopen(filename);
@@ -13,13 +23,14 @@ while ischar(newline)
 end
 fclose(fid);
 substr = cell(11,1);
-proclist = {'MOTCOR='; 'CENSOR='; 'RETROICOR='; 'TIMECOR=';'SMOOTH='; 'DETREND=';'MOTREG=';'TASK=';'PHYPLUS='; 'GSPC1='; 'CUSTOMREG='};
+proclist = {'MOTCOR='; 'CENSOR='; 'RETROICOR='; 'TIMECOR=';'SMOOTH='; 'DETREND=';'MOTREG=';'TASK=';'PHYPLUS='; 'GSPC1='; 'CUSTOMREG='; 'LOWPASS'};
 ileft  = strfind( pipelinelist, '[' );
 iright = strfind( pipelinelist, ']' );
-for(s=1:11)
+for(s=1:length(proclist))
     iStep = strfind( upper(pipelinelist), proclist{s} );
     if isempty(iStep)
-        display(sprintf('WARNING: Preprocessing step %s has not been defined. Please check the spelling!',proclist{s}));
+        display(sprintf('WARNING: Preprocessing step %s has not been defined, please check the spelling!',proclist{s}));
+        display('This step will be turned off for current results');
         substr{s,1} = '[0]';
     else
         bleft       = ileft (ileft >iStep);   bleft= bleft(1);
@@ -28,14 +39,14 @@ for(s=1:11)
     end
 end
 
-% PIPE-1:Motion
+% PIPE-1:Motion --------------------------------------------
 pipeset_old=[];
 pipeset_new=[]; K=1;
 %
 if( ~isempty( strfind(substr{K},'0') ) )  pipeset_new = [pipeset_new; 0];   end
 if( ~isempty( strfind(substr{K},'1') ) )  pipeset_new = [pipeset_new; 1];   end
 
-% PIPE-2:Censor
+% PIPE-2:Censor --------------------------------------------
 pipeset_old = pipeset_new;
 pipeset_new = []; K=2;
 %
@@ -47,8 +58,16 @@ if( ~isempty( strfind(substr{K},'1') ) )
     tmpset     =[ pipeset_old, 1*ones(size(pipeset_old,1),1) ];
     pipeset_new=[pipeset_new; tmpset];
 end
+if( ~isempty( strfind(substr{K},'2') ) )
+    tmpset     =[ pipeset_old, 2*ones(size(pipeset_old,1),1) ];
+    pipeset_new=[pipeset_new; tmpset];
+end
+if( ~isempty( strfind(substr{K},'3') ) )
+    tmpset     =[ pipeset_old, 3*ones(size(pipeset_old,1),1) ];
+    pipeset_new=[pipeset_new; tmpset];
+end
 
-% PIPE-3:Retroicor
+% PIPE-3:Retroicor --------------------------------------------
 pipeset_old = pipeset_new;
 pipeset_new = []; K=3;
 %
@@ -61,7 +80,7 @@ if( ~isempty( strfind(substr{K},'1') ) )
     pipeset_new=[pipeset_new; tmpset];
 end
 
-% PIPE-4:Timecor
+% PIPE-4:Timecor --------------------------------------------
 pipeset_old = pipeset_new;
 pipeset_new = []; K=4;
 %
@@ -74,7 +93,7 @@ if( ~isempty( strfind(substr{K},'1') ) )
     pipeset_new=[pipeset_new; tmpset];
 end
 
-% PIPE-5:Smooth
+% PIPE-5:Smooth --------------------------------------------
 pipeset_old = pipeset_new;
 pipeset_new = []; K=5;
 fulidx  = [1  strfind(substr{K},',')  length(substr{K})];
@@ -85,13 +104,12 @@ for(i=1:numscal)
     pipeset_new=[pipeset_new; tmpset];
 end
 
-
-pipeset_half = pipeset_new; % everything that was already done!!
+pipeset_half = pipeset_new; % everything that was already done
 Nhalf = size( pipeset_half, 1 );
 
-% -------------------------------------------------------------------
+% ===========================================================
 
-% PIPE-6:Detrend
+% PIPE-6:Detrend --------------------------------------------
 detSet = [];
 K=6;
 fulidx  = [1  strfind(substr{K},',')  length(substr{K})];
@@ -100,7 +118,7 @@ for(i=1:numscal)
     scaltok = substr{K}( fulidx(i)+1:fulidx(i+1)-1 );
     detSet = [detSet str2num(scaltok)];
 end
-% PIPE-7:Motreg
+% PIPE-7:Motreg --------------------------------------------
 mprSet = [];
 K=7;
 %
@@ -111,7 +129,7 @@ if( ~isempty( strfind(substr{K},'1') ) )
     mprSet     =[ mprSet, 1];
 end
 
-% PIPE-8:Taskreg
+% PIPE-8:Taskreg --------------------------------------------
 tskSet = [];
 K=8;
 %
@@ -122,7 +140,7 @@ if( ~isempty( strfind(substr{K},'1') ) )
     tskSet     =[ tskSet, 1];
 end
 
-% PIPE-9:phycaa
+% PIPE-9:phycaa --------------------------------------------
 phySet = [];
 K=9;
 %
@@ -133,29 +151,39 @@ if( ~isempty( strfind(substr{K},'1') ) )
     phySet     =[ phySet, 1];
 end
 
-% PIPE-10:globalsig
+% PIPE-10+11:globalsig --------------------------------------------
 gsSet = [];
 K=10;
 %
-
 if( ~isempty( strfind(substr{K},'0') ) ) 
-    if( ~isempty( strfind(substr{11},'0') ) )
+    if( ~isempty( strfind(substr{K+1},'0') ) )
         gsSet     =[0];
     end
-    if( ~isempty( strfind(substr{11},'1') ) )
+    if( ~isempty( strfind(substr{K+1},'1') ) )
         gsSet     =[gsSet 2];
     end
 end
 if( ~isempty( strfind(substr{K},'1') ) )
-    if( ~isempty( strfind(substr{11},'0') ) )
+    if( ~isempty( strfind(substr{K+1},'0') ) )
         gsSet     =[gsSet 1];
     end
-    if( ~isempty( strfind(substr{11},'1') ) )
+    if( ~isempty( strfind(substr{K+1},'1') ) )
         gsSet     =[gsSet 3];
     end
+end
+
+% PIPE-12:lowpass filter --------------------------------------------
+lpSet = [];
+K=12;
+%
+if( ~isempty( strfind(substr{K},'0') ) )
+    lpSet     =[ lpSet, 0];
+end
+if( ~isempty( strfind(substr{K},'1') ) )
+    lpSet     =[ lpSet, 1];
 end
 
 
 
 
-Nfull = Nhalf * length(detSet) * length(mprSet) * length(tskSet) * length(gsSet);
+Nfull = Nhalf * length(detSet) * length(mprSet) * length(tskSet) * length(gsSet) * length(lpSet);

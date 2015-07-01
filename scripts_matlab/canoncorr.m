@@ -58,8 +58,16 @@ function [A,B,r,U,V,stats] = canoncorr(X,Y,signif_cutoff)
 %     [2] Seber, G.A.F., Multivariate Observations, Wiley, New York, 1984.
 
 %   Copyright 1993-2008 The MathWorks, Inc.
-%   $Revision: 1.4.4.4 $  $Date: 2008/12/01 08:08:54 $
 
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
 if nargin < 2
     error('stats:canoncorr:TooFewInputs','Requires two arguments.');
 end

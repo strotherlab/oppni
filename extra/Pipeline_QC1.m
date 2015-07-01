@@ -1,4 +1,4 @@
-function Pipeline_QC1( inputfile, optimize_matfile_name, prefix_result, save_prefix )
+function Pipeline_QC1( inputfile )
 %
 %==========================================================================
 % PIPELINE_QC1: Quality Control plotting tool. Shows impact of running
@@ -13,14 +13,6 @@ function Pipeline_QC1( inputfile, optimize_matfile_name, prefix_result, save_pre
 %
 %   inputfile             = string specifying "input" textfile (path/name), 
 %                           containing subject information
-%   optimize_matfile_name = string specifying FULL path+name of summary optimization 
-%                           file created during pipeline step-3
-%                           NOTE: this is stictly optional! If you haven't run optimization, 
-%                           you can still do QC. Just set it as empty:
-%                               optimize_matfile_name = []
-%   prefix_result         = string specifying the exact prefix used when
-%                           runnin the pipeline 
-%   save_prefix           = string specifying prefix, for saved plots 
 %
 % OUTPUT:  set of results saved to "QC1_results" local directory
 %
@@ -43,10 +35,20 @@ function Pipeline_QC1( inputfile, optimize_matfile_name, prefix_result, save_pre
 % 3. set of diagnostic figures showing optimally preprocessed datasets.
 %    Only available if "optimize_matfile_name" input is provided!
 % 
-%    ['QC1_results/diagnostics/STD/',prefix]: plots for standard (convservative) pipeline
+%    ['QC1_results/diagnostics/CON/',prefix]: plots for standard (convservative) pipeline
 %    ['QC1_results/diagnostics/FIX/',prefix]: plots for optimal fixed pipeline
 %    ['QC1_results/diagnostics/IND/',prefix]: plots for individually optimized pipelines 
 %
+
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
 
 % add paths
 % addpath MatFiles;
@@ -58,18 +60,6 @@ pathstr = fileparts(pathstr);
 pathstr = fileparts(pathstr);
 addpath([pathstr '/scripts_matlab']);
 addpath([pathstr '/scripts_matlab/NIFTI_tools']);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%
-QC1_results = ['QC1_results_',save_prefix];
-mkdir (QC1_results);
-
-% load pipeline optimization data --> only if this is specified
-if( isempty(optimize_matfile_name) )
-    optflag = 0;
-else
-    load(strcat(optimize_matfile_name));
-    optflag = 1;
-end
 
 % opens the inputfile (includes subject/dataset names that preprocessing is performed on...
 fid = fopen(inputfile);
@@ -92,29 +82,60 @@ while ischar(tline) % for every input line in textfile...
     isepr    = isepr(end);
     prefix   = fullline(isepr+1:end);
     outdir   = fullline(1:isepr-1);
-    % load in "split_info" structure with information about task onset and
-    % analysis model parameters
+    
+    % Check if optimization results are available
+    if(ksub==1)
+        
+        % --> find optimized results
+        summaryname = [outdir, '/optimization_results/matfiles/optimization_summary.mat'];
+        if( isempty( ls(summaryname) ) )
+              optflag=0;
+        else  optflag=1;
+              load(summaryname);
+        end
+        % --> create outputs folder
+        QC1_folder= [outdir, '/QC1_results'];
+        mkdir (QC1_folder);
+    end
+    
+    
+    % load "split_info" structure with info. about task onset and analysis parameters
     itask = strfind( tline, 'TASK=' ); itask = itask+5;
     ips   = [strfind( tline, ' ' )-1 length(tline)];
     ips   = ips(ips>itask);
     fullline = tline(itask:ips(1));    
     % load file
-    load( fullline );
+    [split_info] = Parse_Split_Info(fullline);
+  
+    % dropped scans?
+    isdrop = strfind(  upper(tline), 'DROP=[' );
+    if ~isempty(isdrop)
+        isdrop = isdrop+6;
+        xline=tline(isdrop:end);
+        ips = strfind(xline,',');
+        DROP_first = str2num(xline(1:ips(1)-1));
+        ips2 = strfind(xline,']');
+        DROP_last = str2num(xline(ips(1)+1:ips2(1)-1));
+    else
+        DROP_first = 0;
+        DROP_last = 0;
+    end
+    
     
 %%  % ------------------------------------------------------------------------------------------------
     % Loading information on motion effects in data
     
     % load spiking information 
-    qc_instring  = strcat(outdir,'/diagnostic/',prefix,'_smo_QC_output.mat'    ); % without motion correction
+    qc_instring  = strcat(outdir,'/intermediate_processed/diagnostic/',prefix,'_smo_QC_output.mat'    ); % without motion correction
     load(qc_instring); o1 = output;
-    qc_instring  = strcat(outdir,'/diagnostic/',prefix,'_mc+smo_QC_output.mat'    ); % with motion correction
+    qc_instring  = strcat(outdir,'/intermediate_processed/diagnostic/',prefix,'_mc+smo_QC_output.mat'    ); % with motion correction
     load(qc_instring); o2 = output;
     % record spike information
     Ntime = length( o1.censor_mot );
     spikeset(ksub,:) = [sum(o1.censor_mot==0) sum(o1.censor_vol==0) sum(o2.censor_vol==0) sum(o1.censor_volmot==0) sum(o2.censor_volmot==0)];
     
     % load motion parameter estimates (MPEs)
-    mpe_instring  = strcat(outdir,'/mpe/',prefix,'_mpe'    );
+    mpe_instring  = strcat(outdir,'/intermediate_processed/mpe/',prefix,'_mpe'    );
     X = load(mpe_instring);
     motor(ksub,:) = mean( abs(X) ); % average displacement values
 
@@ -122,66 +143,107 @@ while ischar(tline) % for every input line in textfile...
 if( optflag>0 )
 
     if(ksub==1) 
-        mkdir (QC1_results,'/diagnostics/STD');
-        mkdir (QC1_results,'/diagnostics/FIX');
-        mkdir (QC1_results,'/diagnostics/IND');
+        mkdir_r ([QC1_folder,'/diagnostics_CON']);
+        mkdir_r ([QC1_folder,'/diagnostics_FIX']);
+        mkdir_r ([QC1_folder,'/diagnostics_IND']);
     end
     
-    MM=(strcat(outdir,'/masks/',prefix,'_mask.nii'));  
-    % STD pipeline
-    VV=(strcat(outdir,'/matfiles/niftis_',prefix,'/',prefix_result,'_opt_',pipeline_sets.optimize_metric,'_',prefix,'_STD.nii'));  
-    
-    diagnostic_fmri_pca( VV, MM, mpe_instring, [QC1_results,'/diagnostics/STD/',prefix] );%Saman
+    MM=(strcat(outdir,'/intermediate_processed/masks/',prefix,'_mask.nii'));  
+    % CON pipeline
+    VV=(strcat(outdir,'/optimization_results/processed/Proc_',prefix,'_CON.nii'));  
+    diagnostic_fmri_pca( VV, MM, mpe_instring, [QC1_folder,'/diagnostics_CON/',prefix] );%Saman
     % FIX pipeline
-    VV=(strcat(outdir,'/matfiles/niftis_',prefix,'/',prefix_result,'_opt_',pipeline_sets.optimize_metric,'_',prefix,'_FIX.nii'));%Saman
-    diagnostic_fmri_pca( VV, MM, mpe_instring, [QC1_results,'/diagnostics/FIX/',prefix] );
+    VV=(strcat(outdir,'/optimization_results/processed/Proc_',prefix,'_FIX.nii'));  
+    diagnostic_fmri_pca( VV, MM, mpe_instring, [QC1_folder,'/diagnostics_FIX/',prefix] );
     % IND pipeline
-    VV=(strcat(outdir,'/matfiles/niftis_',prefix,'/',prefix_result,'_opt_',pipeline_sets.optimize_metric,'_',prefix,'_IND.nii'));%Saman
-    diagnostic_fmri_pca( VV, MM, mpe_instring, [QC1_results,'/diagnostics/IND/',prefix] );
+    VV=(strcat(outdir,'/optimization_results/processed/Proc_',prefix,'_IND.nii'));  
+    diagnostic_fmri_pca( VV, MM, mpe_instring, [QC1_folder,'/diagnostics_IND/',prefix] );
 end    
 %%
 
-    %% Acquire task-design information, to measure task-coupled motion
+    if( isfield(split_info,'type') && ( strcmp( split_info.type, 'block' ) || strcmp( split_info.type, 'event' )) )
+    %=============RECREATING TASK DESIGN MATRIX
     %
-    if    ( isfield(split_info,'type') && strcmp( split_info.type, 'block' ) )
-
-        % build task-design vector from input information
-        % this is a vector of signed values; -1=task condition1, 1=task condition2
-        design = zeros(Ntime,1);
-        design( [split_info.idx_cond1_sp1(:); split_info.idx_cond1_sp2(:)] ) = -1;
-        design( [split_info.idx_cond2_sp1(:); split_info.idx_cond2_sp2(:)] ) =  1; 
-        % smooth with standard HRF function
-        HRFdesign = design_to_hrf( design, (split_info.TR_MSEC/1000), [5.0 15.0] );        
-        
-    elseif( isfield(split_info,'type') && strcmp( split_info.type, 'event' ) )
-        
-        % building design vector: we want to subsample at 100 ms (faster than human RT)
-        Nsubs  = max([1 round(split_info.TR_MSEC/100)]); % (#samples per TR) catch in case TR<100ms
-        design = zeros( Ntime*Nsubs, 1 );     % initialize design matrix
-        % index allocates onsets to appropriate design-points
-        didx = unique(round( split_info.onsetlist./(split_info.TR_MSEC/Nsubs) ));
-        % catch + adjust overruns, setvalue=1 on design vector
-        didx(didx==0)          = 1;
-        didx(didx>Ntime*Nsubs) = Ntime*Nsubs;
-        design( didx )         = 1;
-        % convolve with HRF (must convert into seconds!)
-        HRFdesign = design_to_hrf( design, (split_info.TR_MSEC/Nsubs)/1000, [5.0 15.0] );
-        % now, subsample back to get HRF at actual fMRI sampling rate
-        HRFdesign = HRFdesign( round(Nsubs/2): Nsubs : end );
-    else
-        % otherwise leave empty
-        HRFdesign = [];
+    % Making task-design matrix:
+    Nsubs  = max([1 round(split_info.TR_MSEC/100)]); % (#samples per TR) catch in case TR<100ms
+    design = zeros( Ntime*Nsubs, length(split_info.cond));     % initialize design matrix
+    % if units is not defined consider split_info.unit = TR
+    if ~isfield(split_info,'unit')
+        split_info.unit = 'TR';
     end
+    % convert sec to msec
+    if strcmpi(split_info.unit,'sec')
+        for i = 1:length(split_info.cond)
+            split_info.cond(i).onsetlist = split_info.cond(i).onsetlist*1000;
+            split_info.cond(i).blklength = split_info.cond(i).blklength*1000;
+        end
+    end
+    % convert TR to msec
+    if strcmpi(split_info.unit,'TR')
+        for i = 1:length(split_info.cond)
+            split_info.cond(i).onsetlist = split_info.cond(i).onsetlist*split_info.TR_MSEC;
+            split_info.cond(i).blklength = split_info.cond(i).blklength*split_info.TR_MSEC;
+        end
+    end
+    for cond_counter = 1:length(split_info.cond)
+        for onset_counter = 1:length(split_info.cond(cond_counter).onsetlist)
+            st = round(split_info.cond(cond_counter).onsetlist(onset_counter)./(split_info.TR_MSEC/Nsubs));
+            ed = st + round(split_info.cond(cond_counter).blklength(onset_counter)./(split_info.TR_MSEC/Nsubs));
+            st = st + 1;
+            ed = ed + 1;
+            if ed>size(design,1)
+                ed = size(design,1);
+            end
+            design(st:ed,cond_counter) = 1;
+        end
+    end
+    % compensate the offset in the split_info file
+    for i = 1:length(split_info.cond)
+        split_info.cond(i).onsetlist = split_info.cond(i).onsetlist - DROP_first*split_info.TR_MSEC;
+        % remove those onsets that in the first DROP_first scans
+        ind_temp = split_info.cond(i).onsetlist<0;
+        split_info.cond(i).onsetlist(ind_temp) = [];
+        split_info.cond(i).blklength(ind_temp) = [];
+    end
+    % Generate design_mat
+    Nsubs  = max([1 round(split_info.TR_MSEC/100)]); % (#samples per TR) catch in case TR<100ms
+    design = zeros( Ntime*Nsubs, length(split_info.cond));     % initialize design matrix
+    % index allocates onsets to appropriate design-points
+    for cond_counter = 1:length(split_info.cond)
+        for onset_counter = 1:length(split_info.cond(cond_counter).onsetlist)
+            st = round(split_info.cond(cond_counter).onsetlist(onset_counter)./(split_info.TR_MSEC/Nsubs));
+            ed = st + round(split_info.cond(cond_counter).blklength(onset_counter)./(split_info.TR_MSEC/Nsubs));
+            st = st + 1;
+            ed = ed + 1;
+            if ed>size(design,1)
+                ed = size(design,1);
+            end
+            design(st:ed,cond_counter) = 1;
+        end
+    end
+    % convolve with HRF (must convert into seconds!)
+    design_mat = design_to_hrf( design, (split_info.TR_MSEC/Nsubs)/1000, [5.0 15.0] );
+    design_mat = design_mat(1:Ntime*Nsubs,:);
+    design_mat = bsxfun(@minus,design_mat,mean(design_mat));
+    % now, subsample back to get HRF at actual fMRI sampling rate
+    HRFdesign = [design_mat( round(Nsubs/2): Nsubs : end, : )];
+    %
+    %=============RECREATING TASK DESIGN MATRIX
+    else
+    HRFdesign = [];
+    end
+    
     % record task-MPE correlation
-    if( ~isempty(HRFdesign) ) tcorrset(ksub,:) = abs( corr(HRFdesign, o1.eigvect_mot(:,1)) );
-    else                      tcorrset(ksub,:) = 0;
+    if( ~isempty(HRFdesign) ) 
+        [a,b, tcorrset(ksub,:), u,v]      = canoncorr( HRFdesign, o1.eigvect_mot(:,1) );
+    else                 tcorrset(ksub,:) = 0;
     end
            
 %%  % ------------------------------------------------------------------------------------------------
     % Loading information on SPM (brain map) and performance metrics
 
     % load subject SPM data
-    mat_instring  = strcat(outdir,'/matfiles/results1_spms_',prefix,'.mat'    );
+    mat_instring  = strcat(outdir,'/intermediate_metrics/res1_spms/spms_',prefix,'.mat'    );
     load(mat_instring);
 
     % compute cross-correlation between pipeline SPMs
@@ -198,14 +260,14 @@ end
 
     if(optflag>0) %%%---------------- ONLY TAKE VALUES IF OPTIMIZED RESULTS AVAILABLE
         % temporary indexing:
-        ixtemp = [pipeline_sets.std_index ... 
+        ixtemp = [pipeline_sets.con_index ... 
                   pipeline_sets.fix_index ...
                   pipeline_sets.ind_index(ksub)];
         %
         cor_opt(ksub,:) = median( cormat(ixtemp,:), 2 );
     end
     
-    mat_instring  = strcat(outdir,'/matfiles/results3_stats_',prefix,'.mat'    );
+    mat_instring  = strcat(outdir,'/intermediate_metrics/res3_stats/stats_',prefix,'.mat'    );
     load(mat_instring);
     
     % get the list of available performance metrics
@@ -234,7 +296,7 @@ end
         
         if(optflag>0) %%%---------------- ONLY TAKE VALUES IF OPTIMIZED RESULTS AVAILABLE
             % temporary indexing:
-            ixtemp = [pipeline_sets.std_index ... 
+            ixtemp = [pipeline_sets.con_index ...
                       pipeline_sets.fix_index ...
                       pipeline_sets.ind_index(ksub)];
             % get artifact measures for optimal pipelines
@@ -320,7 +382,7 @@ subplot(3,1,3);
     ylim([0 0.5]);
     xlim([0.5 length(tcorrset)+0.5]);
 
-savestring = [QC1_results,'/',save_prefix,'_FIG1_motion_statistics.png'];
+savestring = [QC1_folder,'/FIG1_motion_statistics.png'];
 img = getframe(gcf);
 imwrite(img.cdata, [savestring]);
 
@@ -357,7 +419,7 @@ else
     set(findall(gcf,'type','text'),'FontSize',11)    
 end
 if(optflag>0) %%%---------------- ONLY TAKE VALUES IF OPTIMIZED RESULTS AVAILABLE
-    % plot for STD/FIX/IND
+    % plot for CON/FIX/IND
     plot( (1:size(spat_mot_optSFI,1))', spat_mot_optSFI(:,1), 'xk', 'markersize', 5, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
     plot( (1:size(spat_mot_optSFI,1))', spat_mot_optSFI(:,2), 'vk', 'markersize', 5, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
     plot( (1:size(spat_mot_optSFI,1))', spat_mot_optSFI(:,3), 'ok', 'markersize', 5, 'color', 'k', 'linewidth',2, 'markerfacecolor', 'k' );
@@ -387,7 +449,7 @@ else
     set(findall(gcf,'type','text'),'FontSize',11)    
 end
 if(optflag>0) %%%---------------- ONLY TAKE VALUES IF OPTIMIZED RESULTS AVAILABLE
-    % plot for STD/FIX/IND
+    % plot for CON/FIX/IND
     plot( (1:size(spat_mot_optSFI,1))', spat_mot_optSFI(:,1), 'xk', 'markersize', 5, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
     plot( (1:size(spat_mot_optSFI,1))', spat_mot_optSFI(:,2), 'vk', 'markersize', 5, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
     plot( (1:size(spat_mot_optSFI,1))', spat_mot_optSFI(:,3), 'ok', 'markersize', 5, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
@@ -416,7 +478,7 @@ else
     set(findall(gcf,'type','text'),'FontSize',11)    
 end
 if(optflag>0) %%%---------------- ONLY TAKE VALUES IF OPTIMIZED RESULTS AVAILABLE
-    % plot for STD/FIX/IND
+    % plot for CON/FIX/IND
     plot( (1:size(spat_wmz_optSFI,1))', spat_wmz_optSFI(:,1), 'xk', 'markersize', 5, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
     plot( (1:size(spat_wmz_optSFI,1))', spat_wmz_optSFI(:,2), 'vk', 'markersize', 5, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
     plot( (1:size(spat_wmz_optSFI,1))', spat_wmz_optSFI(:,3), 'ok', 'markersize', 5, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
@@ -445,13 +507,13 @@ else
     set(findall(gcf,'type','text'),'FontSize',11)    
 end
 if(optflag>0) %%%---------------- ONLY TAKE VALUES IF OPTIMIZED RESULTS AVAILABLE
-    % plot for STD/FIX/IND
+    % plot for CON/FIX/IND
     plot( (1:size(spat_gsf_optSFI,1))', spat_gsf_optSFI(:,1), 'xk', 'markersize', 4, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
     plot( (1:size(spat_gsf_optSFI,1))', spat_gsf_optSFI(:,2), 'vk', 'markersize', 4, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
     plot( (1:size(spat_gsf_optSFI,1))', spat_gsf_optSFI(:,3), 'ok', 'markersize', 4, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
 end
 
-savestring = [QC1_results,'/',save_prefix,'_FIG2_spm_artifact.png'];
+savestring = [QC1_folder,'/FIG2_spm_artifact.png'];
 img = getframe(gcf);
 imwrite(img.cdata, [savestring]);
 
@@ -467,7 +529,7 @@ my_error_plot( corpct(:,2), corpct(:,1), corpct(:,3),'b',1 );
 
 if(optflag>0) %%%---------------- ONLY TAKE VALUES IF OPTIMIZED RESULTS AVAILABLE
     
-    % plot for STD/FIX/IND
+    % plot for CON/FIX/IND
     plot( (1:size(cor_opt,1))', cor_opt(:,1), 'xk', 'markersize', 4, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
     plot( (1:size(cor_opt,1))', cor_opt(:,2), 'vk', 'markersize', 4, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
     plot( (1:size(cor_opt,1))', cor_opt(:,3), 'ok', 'markersize', 4, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
@@ -491,13 +553,13 @@ for(n=1:N_metric)
         
         for(i=1:size(allMetrics{n},2))
             % temporary indexing:
-            ixtemp = [pipeline_sets.std_index ... 
+            ixtemp = [pipeline_sets.con_index ... 
                       pipeline_sets.fix_index ...
                       pipeline_sets.ind_index(i)];
             prt_opt(i,:) = allMetrics{n}(ixtemp,i);
         end        
         
-        % plot for STD/FIX/IND
+        % plot for CON/FIX/IND
         plot( (1:size(prt_opt,1))', prt_opt(:,1), 'xk', 'markersize', 4, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
         plot( (1:size(prt_opt,1))', prt_opt(:,2), 'vk', 'markersize', 4, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
         plot( (1:size(prt_opt,1))', prt_opt(:,3), 'ok', 'markersize', 4, 'color', 'k', 'linewidth',1, 'markerfacecolor', 'k' );
@@ -512,7 +574,7 @@ for(n=1:N_metric)
     if( strcmp(metric_names{n},'R') || strcmp(metric_names{n},'P'))  ylim([0.0 1.0]);    end
 end
 
-savestring = [QC1_results,'/',save_prefix,'_FIG3_pipeline_similarity_by_dataset.png'];
+savestring = [QC1_folder,'/FIG3_pipeline_similarity_by_dataset.png'];
 img = getframe(gcf);
 imwrite(img.cdata, [savestring]);
 
@@ -522,7 +584,7 @@ imwrite(img.cdata, [savestring]);
     set(gcf, 'Units', 'normalized');
     set(gcf, 'Position', [0.1 0.1 0.80 0.80]);
     % list of pipeline steps
-    el_list = {'MOTCOR', 'CENSOR', 'RETROICOR', 'TIMECOR', 'SMOOTH', 'DETREND', 'MOTREG', 'TASK',    'GSPC1', 'PHYPLUS'};
+    el_list = {'MOTCOR', 'CENSOR', 'RETROICOR', 'TIMECOR', 'SMOOTH', 'DETREND', 'MOTREG', 'TASK','GSPC1','LOWPASS','PHYPLUS'};
     % number of steps with varied parameters
     totest   = std(pipeset) >0;
     
@@ -534,11 +596,11 @@ imwrite(img.cdata, [savestring]);
 
 	subplot(1,2,1);barh( RNK2 );
     title('Pipeline steps, ranked by effect on SPM correlation');
-    set(gca, 'YTick', 1:10 );
+    set(gca, 'YTick', 1:11 );
     set(gca,'YTickLabel',el_list);
     hold on; 
-    plot( max(RNK).*[1 1], [0 11], ':r', (max(RNK)-sigdiff).*[1 1], [0 11], ':r' );
-    xlim([0 sum(totest)+0.5]); ylim([0 11]); xlabel('average rank');
+    plot( max(RNK).*[1 1], [0 12], ':r', (max(RNK)-sigdiff).*[1 1], [0 12], ':r' );
+    xlim([0 sum(totest)+0.5]); ylim([0 12]); xlabel('average rank');
     %%%%
     set(gca,'FontSize',11)
     set(findall(gcf,'type','text'),'FontSize',11)    
@@ -551,16 +613,16 @@ imwrite(img.cdata, [savestring]);
 
 	subplot(1,2,2); barh( RNK2 );
     title('Pipeline steps, ranked by effect on perform. metrics (combined)');
-    set(gca, 'YTick', 1:10 );
+    set(gca, 'YTick', 1:11 );
     set(gca,'YTickLabel',el_list);
     hold on; 
-    plot( max(RNK).*[1 1], [0 11], ':r', (max(RNK)-sigdiff).*[1 1], [0 11], ':r' );
-    xlim([0 sum(totest)+0.5]); ylim([0 11]); xlabel('average rank');
+    plot( max(RNK).*[1 1], [0 12], ':r', (max(RNK)-sigdiff).*[1 1], [0 12], ':r' );
+    xlim([0 sum(totest)+0.5]); ylim([0 12]); xlabel('average rank');
     %%%%
     set(gca,'FontSize',11)
     set(findall(gcf,'type','text'),'FontSize',11)    
 
-savestring = [QC1_results,'/',save_prefix,'_FIG4_effects_of_pipeline_steps.png'];
+savestring = [QC1_folder,'/FIG4_effects_of_pipeline_steps.png'];
 img = getframe(gcf);
 imwrite(img.cdata, [savestring]);
     
@@ -584,7 +646,7 @@ output_pc1.pipelines.pipechars      = pipechars;
 output_pc1.pipelines.pipenames      = pipenames;
 output_pc1.pipelines.pipeset        = pipeset;
 % save results --> must be in Matlab format, so no Octave checking required
-savestring = [QC1_results,'/',save_prefix,'_output_qc1.mat'];
+savestring = [QC1_folder,'/output_qc1.mat'];
 save(savestring,'output_qc1');
 
 %%

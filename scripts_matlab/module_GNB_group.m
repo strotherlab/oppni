@@ -9,6 +9,21 @@ function output = module_GNB_group( datamat, split_info, Resampling_Index )
 %           output = module_GNB( datamat, split_info )
 %
 %
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
+
+if( ~isfield(split_info{1},'decision_model') || isempty(split_info{1}.decision_model) )
+    disp('GNB uses default linear decision model');
+    split_info{1}.decision_model = 'linear';
+end
+
 N_resample = size(Resampling_Index,1);
 N_subject = length(datamat);
 eig = 0;
@@ -57,7 +72,7 @@ DD = sqrt( (1-results.R).^2 + (1-results.P).^2 );
 %
 output.metrics.R    =  results.R(id);
 output.metrics.P    =  results.P(id);
-output.metrics.Dneg = -vd;
+output.metrics.dPR  = -vd;
 % optimal eigenimage
 output.images  = results.eig(:,id);
 

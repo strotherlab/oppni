@@ -14,6 +14,17 @@ function [ rep, rSPM ] = get_rSPM( vect1, vect2, keepMean )
 % ------------------------------------------------------------------------%
 % version history: March 15 2012
 % ------------------------------------------------------------------------%
+
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
+
 inOctave = in_octave();
 if inOctave
     for k = 1:size(vect1,2)

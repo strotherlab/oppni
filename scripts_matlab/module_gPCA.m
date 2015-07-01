@@ -8,6 +8,15 @@ function output = module_gPCA( datamat, split_info )
 %           output = module_gPCA( datamat, split_info )
 %
 %
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
 
 % matrix dimensions
 [Nvox Ntime] = size(datamat);
@@ -17,6 +26,11 @@ datamat_sp2 = datamat(:,ceil(Ntime/2)+1:end);
 % mean-center splits, to do correlation later
 datamat_sp1 = bsxfun(@minus, datamat_sp1, mean(datamat_sp1,2) );
 datamat_sp2 = bsxfun(@minus, datamat_sp2, mean(datamat_sp2,2) );
+
+if( ~isfield(split_info,'num_PCs') || isempty(split_info.num_PCs) )
+    disp('gPCA uses default 50% of total PCs');
+    split_info.num_PCs = floor( 0.5 * Ntime );
+end
 
 % svd on splits
 [u1 l1 v1]  = svd( datamat_sp1,'econ');
@@ -107,8 +121,8 @@ function rv = RV_coef( X, Y )
 % rv = RV_coef( X, Y )
 %
 
-X = X - repmat( mean(X), [size(X,1) 1] );
-Y = Y - repmat( mean(Y), [size(Y,1) 1] );
+X = bsxfun(@minus,X,mean(X));
+Y = bsxfun(@minus,Y,mean(Y));
 
 SIG_xx = X'*X;
 SIG_yy = Y'*Y;

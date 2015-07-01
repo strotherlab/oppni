@@ -31,7 +31,15 @@ function [ output ] = interpolate_fmri( volname, outvolname, QC_name, censor_typ
 % ------------------------------------------------------------------------%
 % version history: May 5 2013
 % ------------------------------------------------------------------------%
-
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
 
 
 % load output .mat file, created as output in DIAGNOSTIC_FMRI_PCA.m

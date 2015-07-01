@@ -1,5 +1,15 @@
 function split_info_out = check_split_info_file_integrity(filename, analysis_model, Contrast_List)
 
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
+
 if ~isstruct(filename)
     try
         load(filename);
@@ -10,7 +20,7 @@ else
     split_info = filename;
 end
 
-if ~isfield(split_info,'TR_MSEC')
+if ~isfield(split_info,'TR_MSEC') && ~strcmpi(analysis_model,'NONE')
     error('Please specify TR in the split info file: %s',filename);
 end
 
@@ -19,7 +29,7 @@ split_info_out = split_info;
 switch analysis_model
     case 'LDA'
         if ~isfield(split_info,'drf')
-            error('Please specify drf in the split info file: %s',filename);
+            warning('Did not specify drf in split info file %s, set to default 0.5',filename);
         end
         if ~isfield(split_info,'type')
             warning('Please specify type in the split info file: %s, automatically type=block is considered for the LDA model',filename);
@@ -28,7 +38,7 @@ switch analysis_model
         
     case 'GNB'
         if ~isfield(split_info,'decision_model')
-            error('Please specify decision_model in the split info file: %s',filename);
+            warning('Did not specify decision_model in split info file %s, set to default "linear"',filename);
         end
         if ~isfield(split_info,'type')
             warning('Please specify type in the split info file: %s, automatically type=block is considered for the GNB model',filename);
@@ -45,17 +55,17 @@ switch analysis_model
         if ~isfield(split_info,'onsetlist')
             error('Please specify onsetlist in the split info file: %s',filename);
         end
-        if ~isfield(split_info,'Nsplit')
-            error('Please specify Nsplit in the split info file: %s',filename);
+        if ~isfield(split_info,'Nblock')
+            warning('Did not specify Nblock in split info file %s, set to default 4',filename);
         end
         if ~isfield(split_info,'WIND')
-            error('Please specify WIND in the split info file: %s',filename);
+            warning('Did not specify WIND in split info file %s, set to default 10TR',filename);
         end
         if ~isfield(split_info,'drf')
-            error('Please specify drf in the split info file: %s',filename);
+            warning('Did not specify drf in split info file %s, set to default 0.5',filename);
         end
         if ~isfield(split_info,'subspace')
-            error('Please specify subspace in the split info file: %s',filename);
+            warning('Did not specify subspace in split info file %s, set to default "onecomp"',filename);
         end
         if ~isfield(split_info,'type')
             warning('Please specify type in the split info file: %s, automatically type=event is considered for the erCVA model',filename);
@@ -65,11 +75,11 @@ switch analysis_model
         if ~isfield(split_info,'onsetlist')
             error('Please specify onsetlist in the split info file: %s',filename);
         end
-        if ~isfield(split_info,'Nsplit')
-            error('Please specify Nsplit in the split info file: %s',filename);
+        if ~isfield(split_info,'Nblock')
+            warning('Did not specify Nblock in split info file %s, set to default 4',filename);
         end
         if ~isfield(split_info,'WIND')
-            error('Please specify WIND in the split info file: %s',filename);
+            warning('Did not specify WIND in split info file %s, set to default 10TR',filename);
         end
         if ~isfield(split_info,'type')
             warning('Please specify type in the split info file: %s, automatically type=event is considered for the erGNB model',filename);

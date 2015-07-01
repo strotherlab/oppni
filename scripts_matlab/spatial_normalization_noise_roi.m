@@ -1,6 +1,17 @@
 function spatial_normalization_noise_roi(InputStruct)
 
-global NUMBER_OF_CORES
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 163 $';
+% CODE_DATE    = '$Date: 2014-12-03 17:30:16 -0500 (Wed, 03 Dec 2014) $';
+% ------------------------------------------------------------------------%
+
+
+global NUMBER_OF_CORES CODE_PROPERTY
 NUMBER_OF_CORES = str2double(getenv('PIPELINE_NUMBER_OF_CORES'));
 if isnan(NUMBER_OF_CORES)
     NUMBER_OF_CORES = 1;
@@ -22,6 +33,7 @@ if isempty(AFNI_PATH) || isempty(FSL_PATH)
 end
 addpath(CODE_PATH)
 addpath([CODE_PATH '/NIFTI_tools'])
+read_version;
 
 if ~isstruct(InputStruct)
     [InputStruct,MULTI_RUN_INPUTFILE] = Read_Input_File(InputStruct);
@@ -33,31 +45,32 @@ for ksub = 1:numel(InputStruct)
     if ~isempty(InputStruct(ksub).run(1).Noise_ROI)
         input_nifti_file  = InputStruct(ksub).run(1).Noise_ROI;
         [path_temp,input_nifti_name]  = fileparts(input_nifti_file);input_nifti_name = [input_nifti_name '.nii'];
-        output_nifti_file = [InputStruct(ksub).run(1).Output_nifti_file_path '/noise_roi/' input_nifti_name ];
+        output_nifti_file = [InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/noise_roi/' input_nifti_name ];
         if ~exist(output_nifti_file,'file')
             [tmp,STRUCT_Name,ext] = fileparts(InputStruct(ksub).run(1).STRUCT_File);
-            mean_file_name = sprintf('%s/matfiles/mean_%s.nii',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix);
+            mean_file_name = sprintf('%s/intermediate_processed/spat_norm/mean_%s_baseproc.nii',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix);
             if ~exist(mean_file_name,'file') % generate mean volume if not exist, then mask it.
-                nii      = load_untouch_nii([InputStruct(ksub).run(1).Output_nifti_file_path,'/',InputStruct(ksub).run(1).Output_nifti_file_prefix,'_baseproc.nii']);
-                nii_mask = load_untouch_nii([InputStruct(ksub).run(1).Output_nifti_file_path,'/masks/',InputStruct(ksub).run(1).Output_nifti_file_prefix,'_mask.nii']);
+                nii      = load_untouch_nii([InputStruct(ksub).run(1).Output_nifti_file_path,'/intermediate_processed/afni_processed/',InputStruct(ksub).run(1).Output_nifti_file_prefix,'_baseproc.nii']);
+                nii_mask = load_untouch_nii([InputStruct(ksub).run(1).Output_nifti_file_path,'/intermediate_processed/masks/',InputStruct(ksub).run(1).Output_nifti_file_prefix,'_mask.nii']);
                 nii.img =  mean(double(nii.img),4);
                 nii.img(nii_mask.img==0) = 0;
                 nii.hdr.dime.dim([1 5]) = [3 1];
                 nii.hdr.dime.datatype = 16;
-                mkdir_r([InputStruct(ksub).run(1).Output_nifti_file_path '/matfiles']);
+                mkdir_r([InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/spat_norm']);
+                nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
                 save_untouch_nii(nii,mean_file_name);
             end
             
-            mkdir_r([InputStruct(ksub).run(1).Output_nifti_file_path '/spat_norm']);
-            mkdir_r([InputStruct(ksub).run(1).Output_nifti_file_path '/noise_roi']);
-            out_trans = sprintf('%s/spat_norm/Transmat_T1toEPI_%s.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix);
+            mkdir_r([InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/spat_norm']);
+            mkdir_r([InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/noise_roi']);
+            out_trans = sprintf('%s/intermediate_processed/spat_norm/Transmat_T1toEPI_%s.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix);
             if ~exist(out_trans,'file')
-                unix([AFNI_PATH sprintf('3dSkullStrip -prefix %s/spat_norm/%s_strip.nii -input %s',InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,InputStruct(ksub).run(1).STRUCT_File)]);
+                unix([AFNI_PATH sprintf('3dSkullStrip -prefix %s/intermediate_processed/spat_norm/%s_strip.nii -input %s',InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,InputStruct(ksub).run(1).STRUCT_File)]);
                 
-                unix([FSL_PATH sprintf('flirt -in %s -ref %s/spat_norm/%s_strip.nii -omat %s/spat_norm/Transmat_EPItoT1_%s.mat -bins 256 -cost normmi -searchrx -180 180 -searchry -180 180 -searchrz -180 180 -dof 6 -interp sinc -sincwidth 7 -sincwindow hanning', ...
+                unix([FSL_PATH sprintf('flirt -in %s -ref %s/intermediate_processed/spat_norm/%s_strip.nii -omat %s/intermediate_processed/spat_norm/Transmat_EPItoT1_%s.mat -bins 256 -cost normmi -searchrx -180 180 -searchry -180 180 -searchrz -180 180 -dof 6 -interp sinc -sincwidth 7 -sincwindow hanning', ...
                     mean_file_name,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix)]);
                 
-                unix([FSL_PATH sprintf('convert_xfm -inverse  %s/spat_norm/Transmat_EPItoT1_%s.mat -omat %s/spat_norm/Transmat_T1toEPI_%s.mat',...
+                unix([FSL_PATH sprintf('convert_xfm -inverse  %s/intermediate_processed/spat_norm/Transmat_EPItoT1_%s.mat -omat %s/intermediate_processed/spat_norm/Transmat_T1toEPI_%s.mat',...
                     InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix,InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix)]);
             end
             
@@ -69,15 +82,16 @@ for ksub = 1:numel(InputStruct)
             end
             
             input_nifti_name = [input_nifti_name ext];
-            output_nifti_file = [InputStruct(ksub).run(1).Output_nifti_file_path '/noise_roi/' input_nifti_name ];
+            output_nifti_file = [InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/noise_roi/' input_nifti_name ];
             
             nii = load_untouch_nii(input_nifti_file);
             nii.img = smooth(double(nii.img));
+            nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
             save_untouch_nii(nii,[output_nifti_file(1:end-4) '_smoothed.nii']);
             
             input_nifti_file = [output_nifti_file(1:end-4) '_smoothed.nii'];
-            reference_file    = [InputStruct(ksub).run(1).Output_nifti_file_path,'/',InputStruct(ksub).run(1).Output_nifti_file_prefix,'_baseproc.nii'];
-            transform         = sprintf('%s/spat_norm/Transmat_T1toEPI_%s.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix);
+            reference_file    = [InputStruct(ksub).run(1).Output_nifti_file_path,'/intermediate_processed/afni_processed/',InputStruct(ksub).run(1).Output_nifti_file_prefix,'_baseproc.nii'];
+            transform         = sprintf('%s/intermediate_processed/spat_norm/Transmat_T1toEPI_%s.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix);
             unix([FSL_PATH sprintf('flirt -in %s -applyxfm -interp trilinear -ref %s -init %s -out %s',input_nifti_file,reference_file,transform,output_nifti_file)]);
             delete(input_nifti_file);
         end

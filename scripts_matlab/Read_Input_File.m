@@ -46,8 +46,12 @@ while ischar(tline)
             InputStruct(ksub).run(krun).subjectmask                       = [Output_nifti_file_path{1}  '/intermediate_processed/masks/' Output_nifti_file_prefix{1} '_mask.nii'];
             
             % load to get task-type for integrity check
-            [split_info] = Parse_Split_Info(split_info_file{krun});
-            InputStruct(ksub).run(krun).TaskType                          = split_info.type;
+            if exist(split_info_file{krun},'file')
+                [split_info] = Parse_Split_Info(split_info_file{krun});
+                InputStruct(ksub).run(krun).TaskType                          = split_info.type;
+            else
+                InputStruct(ksub).run(krun).TaskType =[];
+            end
         end
         if length(Input_nifti_file_path)>1
             MULTI_RUN_INPUTFILE=true;

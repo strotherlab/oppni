@@ -11,7 +11,9 @@ if(strcmp(ext,'.mat')) %% if in original .mat file format...
     try
         load(split_info_name);
     catch
-        sge_exit(100,sprintf('loading the split file info: %s The file might be corrupted!',filename));
+        warning('loading the split file info: %s The file might be corrupted!',split_info_name);
+         split_info_struct = [];
+         return;
     end    
     % copy over the output structure
     split_info_struct = split_info;
@@ -22,12 +24,16 @@ else %% if in textfile format...
     
     fid = fopen(split_info_name);
     if fid==-1
-        sge_exit(100,sprintf('loading the split file info: %s The file might be corrupted!',filename));
+        warning('loading the split file info: %s The file might be corrupted!',split_info_name);
+         return;
+        split_info_struct = [];
     end
     % read in first line
     tline = fgetl(fid);
     if ~ischar(tline)
-        sge_exit(100,sprintf('loading the split file info: %s file appears to be empty.',filename));
+        warning('loading the split file info: %s file appears to be empty.',split_info_name);
+        split_info_struct = [];
+        return;
     end
 
     %
@@ -59,7 +65,7 @@ else %% if in textfile format...
             if(~isempty(strfind(upper(tline),'NAME')))
                 n_name = n_name+1;
                 if( ~isempty(strfind(tline(istart:iend),'-')) || ~isempty(strfind(tline(istart:iend),'+')) )
-                    sge_exit(100,sprintf('split file info: %s condition names cannot have + or - symbols, as these define contrasts.',filename));
+                    sge_exit(100,sprintf('split file info: %s condition names cannot have + or - symbols, as these define contrasts.',split_info_name));
                 end
                 split_info_struct.cond(n_name).name = tline(istart:iend);
             end

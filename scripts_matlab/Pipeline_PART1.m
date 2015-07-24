@@ -309,62 +309,9 @@ for ksub = 1:numel(InputStruct)
         [Nvox Ntime]  = size(vxmat{krun});
         
         %%% ==== Step 2.2(d): simple task modelling === %%%
-        %
-        % used if pipeline step TASK=1, and there an overt task design to model.
-        %
-        % design_mat field was created using interpret_contrast_list_str.m
-        % function in the new version, 
-        if ~isfield(split_info,'design_mat') % In the new version of split_info the code generates design_mat from onsets.
-            
-            if (strcmp(split_info.type,'block') || strcmp(split_info.type,'multitask-block'))
-                
-                % build task-design vector from input information
-                % this is a vector of signed values; -1=task condition1, 1=task condition2
-                design = zeros(Ntime,size(Contrast_List,1));
-                for contrast_counter = 1:size(Contrast_List,1)
-%                     design(split_info.group.unbalanced_idx_cond(contrast_counter,1).sp, contrast_counter) = -1;
-%                     design(split_info.group.unbalanced_idx_cond(contrast_counter,2).sp, contrast_counter) =  1;
-                    design([ split_info.single.idx_cond(contrast_counter,1).sp1 split_info.single.idx_cond(contrast_counter,1).sp2], contrast_counter) = -1;
-                    design([ split_info.single.idx_cond(contrast_counter,2).sp1 split_info.single.idx_cond(contrast_counter,2).sp2], contrast_counter) =  1;
+       
+        HRFdesign{krun} = split_info.design_mat;
 
-                end
-                
-                
-                % WARNING: MUST check whether design is full-rank
-                
-                %% GROUP: smooth with standard HRF function, into cell array
-                HRFdesign_temp = design_to_hrf( design, (split_info.TR_MSEC/1000), [5.0 15.0] );
-                HRFdesign{krun} = HRFdesign_temp(1:Ntime,:);
-            elseif (strcmp( split_info.type,'event'))
-                
-                
-                % building design vector: we want to subsample at 100 ms (faster than human RT)
-                
-                Nsubs  = max([1 round(split_info.TR_MSEC/100)]); % (#samples per TR) catch in case TR<100ms
-                design = zeros( Ntime*Nsubs, size(split_info.cond,1));     % initialize design matrix
-                % index allocates onsets to appropriate design-points
-                for contrast_counter = 1:size(split_info.cond,1)
-                    didx = unique(round( split_info.cond(contrast_counter).onsetlist./(split_info.TR_MSEC/Nsubs) ));
-                    % catch + adjust overruns, setvalue=1 on design vector
-                    didx(didx==0)          = 1;
-                    didx(didx>Ntime*Nsubs) = Ntime*Nsubs;
-                    design( didx , contrast_counter)         = 1;
-                end
-                % convolve with HRF (must convert into seconds!)
-                
-                HRFdesign_temp = design_to_hrf( design, (split_info.TR_MSEC/Nsubs)/1000, [5.0 15.0] );
-                % now, subsample back to get HRF at actual fMRI sampling rate
-                HRFdesign{krun} = HRFdesign_temp( round(Nsubs/2): Nsubs : end );
-                % -------------------- %
-                
-            else
-                % GROUP: otherwise leave empty for each subject cell array
-                HRFdesign{krun} = [];
-            end
-        else
-            HRFdesign{krun} = split_info.design_mat;
-        end
-        
         %%% ==== Step 2.2(e): head motion spatial derivative maps ==== %%%
         %
         % used to detect large head motion artifact in brain maps

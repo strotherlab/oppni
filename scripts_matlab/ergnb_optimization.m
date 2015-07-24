@@ -103,6 +103,9 @@ for( w=1:TopIter ) %% for each resampling split...
     
     s_trn = Bmat_trn ./ Wmat_trn;
     s_tst = Bmat_tst ./ Wmat_tst;
+    
+    s_trn(isnan(s_trn)) = 0;
+    s_tst(isnan(s_tst)) = 0;
 
     if( ~isempty( spatial_prior ) )
         %

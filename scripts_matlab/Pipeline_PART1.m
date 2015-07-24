@@ -872,6 +872,8 @@ if(TASK==1 )
     nomen=[nomen 'x1']; 
     Xsig_sp1 = Xsignal(1:ceil(Ntime/2)    ,:);
     Xsig_sp2 = Xsignal(ceil(Ntime/2)+1:end,:);
+    Xsig_sp1(:,std(Xsig_sp1)<(1e-4/Ntime))=[];
+    Xsig_sp2(:,std(Xsig_sp2)<(1e-4/Ntime))=[]; 
 else nomen=[nomen 'x0']; Xsig_sp1 = [];
     Xsig_sp2 = [];
 end
@@ -879,7 +881,9 @@ end
 if ~isempty(Xsig_sp1)
     sr1 = [Xsig_sp1;zeros(size(Xsig_sp2,1),size(Xsig_sp1,2))];
     sr2 = [zeros(size(Xsig_sp1,1),size(Xsig_sp2,2));Xsig_sp2];
+    
     Regressors.Signal       = [sr1 sr2];
+    
 else
     Regressors.Signal = [];
 end

@@ -80,7 +80,8 @@ for ksub = 1:numel(InputStruct)
             split_info.type = 'nocontrast';
             contrast_list_str = '00';
         end
-        
+        num_real_condition = length(split_info.cond);
+
         % convert contrast string to contrast matrix
         split_info = extract_contrast_list(split_info,contrast_list_str);
         
@@ -128,9 +129,8 @@ for ksub = 1:numel(InputStruct)
             % If name is not provided use numbers for the conditions
             % If baseline condition is not defined those scans which do not
             % belong to a condition will be considered as baseline.
-            num_condition = length(split_info.cond);
             split_info.baseline_index = 0;
-            for i = 1:num_condition
+            for i = 1:num_real_condition
                 if ~isfield(split_info.cond(i),'name') % Name is optional
                     split_info.cond(i).name = num2str(i);
                 else
@@ -176,10 +176,10 @@ for ksub = 1:numel(InputStruct)
             % Generate design_mat
             
             Nsubs  = max([1 round(split_info.TR_MSEC/100)]); % (#samples per TR) catch in case TR<100ms
-            design = zeros( InputStruct(ksub).run(krun).Nt*Nsubs, length(split_info.cond));     % initialize design matrix
+            design = zeros( InputStruct(ksub).run(krun).Nt*Nsubs, num_real_condition);     % initialize design matrix
             % index allocates onsets to appropriate design-points
             
-            for cond_counter = 1:length(split_info.cond)
+            for cond_counter = 1:num_real_condition
                 for onset_counter = 1:length(split_info.cond(cond_counter).onsetlist)
                     st = round(split_info.cond(cond_counter).onsetlist(onset_counter)./(split_info.TR_MSEC/Nsubs));
                     ed = st + round(split_info.cond(cond_counter).blklength(onset_counter)./(split_info.TR_MSEC/Nsubs));

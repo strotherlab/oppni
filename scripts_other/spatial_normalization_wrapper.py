@@ -90,7 +90,7 @@ load_settings()
 if (environment.find("octave")>=0):
     cmd = "time -p {0} -q -p scripts_matlab --eval \"spatial_normalization('{1}','{2}','{3}','{4}','{5}');\"".format(environment,options.inputdata, options.reference, options.voxelsize, step,DEOBLIQUE)
 if (environment.find("matlab")>=0):
-    cmd = "time -p {0}  -nodesktop -nojvm -nosplash -r \"maxNumCompThreads({1});addpath('./scripts_matlab');try, spatial_normalization('{2}','{3}','{4}','{5}','{6}');catch,exception = MException.last;display(getReport(exception)); sge_exit(100);end, exit\"".format(environment,numcores,options.inputdata, options.reference, options.voxelsize, step,DEOBLIQUE)
+    cmd = "time -p {0}  -nodesktop -nojvm -nosplash -r \"maxNumCompThreads({1});addpath('./scripts_matlab');try, spatial_normalization('{2}','{3}','{4}','{5}','{6}');catch,display(lasterr); sge_exit(100);end, exit\"".format(environment,numcores,options.inputdata, options.reference, options.voxelsize, step,DEOBLIQUE)
 
 os.system(cmd)
 

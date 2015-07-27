@@ -73,14 +73,20 @@ else %% if in textfile format...
             if(~isempty(strfind(upper(tline),'ONSETS')))
                 n_onsets = n_onsets+1;
                 e = regexp( tline(istart:iend), ',','split' );
-                onsetsArray{n_onsets} = cellfun(@str2num,e);
+                onsetsArray{n_onsets} = [];
+                for e_counter_temp = 1:length(e)
+                    onsetsArray{n_onsets} = [onsetsArray{n_onsets} str2num(e{e_counter_temp})];
+                end
             end      
             % 
             if(~isempty(strfind(upper(tline),'DURATION')))
                 n_duration = n_duration+1;
                 e = regexp( tline(istart:iend), ',','split' );                
-                durationArray{n_duration} = cellfun(@str2num,e);
-            end              
+                durationArray{n_duration} = [];
+                for e_counter_temp = 1:length(e)
+                     durationArray{n_duration}= [ durationArray{n_duration} str2num(e{e_counter_temp})];
+                end
+            end                       
         end
 
         tline = fgetl(fid);

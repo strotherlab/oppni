@@ -104,6 +104,6 @@ load_settings()
 if (environment.find("octave")>=0):
     cmd = "time -p {0} -q -p scripts_matlab --eval \"Pipeline_PART1('{1}','{2}','{3}','{4}',0,'{5}',{6},'{7}','{8}');\"".format(environment,options.inputdata, options.pipeline, options.analysis,modelparam,contrast,dospnormfirst,DEOBLIQUE,TPATTERN)
 if (environment.find("matlab")>=0):
-    cmd = "time -p {0} -nodesktop -nojvm -nosplash -r \"maxNumCompThreads({1});addpath('./scripts_matlab');try,Pipeline_PART1('{2}','{3}','{4}','{5}',0,'{6}',{7},'{8}','{9}');catch,exception = MException.last;display(getReport(exception)),sge_exit(100);end,exit\"".format(environment,numcores, options.inputdata, options.pipeline, options.analysis,modelparam,contrast,dospnormfirst,DEOBLIQUE,TPATTERN)
+    cmd = "time -p {0} -nodesktop -nojvm -nosplash -r \"maxNumCompThreads({1});addpath('./scripts_matlab');try,Pipeline_PART1('{2}','{3}','{4}','{5}',0,'{6}',{7},'{8}','{9}');catch,display(lasterr);sge_exit(100);end,exit\"".format(environment,numcores, options.inputdata, options.pipeline, options.analysis,modelparam,contrast,dospnormfirst,DEOBLIQUE,TPATTERN)
 os.system(cmd)
 

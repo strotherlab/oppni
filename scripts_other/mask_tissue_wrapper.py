@@ -71,6 +71,6 @@ load_settings()
 if (environment.find("octave")>=0):
     cmd = "time -p {0} -q -p scripts_matlab --eval \"group_mask_tissue_maps('{1}',[]);\"".format(environment,options.inputdata)
 if (environment.find("matlab")>=0):
-    cmd = "time -p {0} -nodesktop -nojvm -nosplash -r \"maxNumCompThreads({1});addpath('./scripts_matlab');try, group_mask_tissue_maps('{2}',[]);catch,exception = MException.last;display(getReport(exception));sge_exit(100);end, exit\"".format(environment,numcores, options.inputdata)
+    cmd = "time -p {0} -nodesktop -nojvm -nosplash -r \"maxNumCompThreads({1});addpath('./scripts_matlab');try, group_mask_tissue_maps('{2}',[]);catch,display(lasterr);sge_exit(100);end, exit\"".format(environment,numcores, options.inputdata)
 
 os.system(cmd)

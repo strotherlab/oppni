@@ -127,8 +127,13 @@ if flag_step==0 || flag_step==1
             voxelsize_type = 1; % type = string input, split into cells
         end
         if isempty(voxelsize)   % the input is the master file
-            voxelsize = input_voxelsize;
-            voxelsize_type = 2;
+            if strcmpi(input_voxelsize,'NONE')
+                  voxelsize = [];
+                  voxelsize_type = 0; % otherwise --> use original input format
+            else
+                voxelsize = input_voxelsize;
+                voxelsize_type = 2;
+            end
         end
     else
         voxelsize = [];

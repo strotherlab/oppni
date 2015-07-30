@@ -309,23 +309,7 @@ if ~isempty(strfind(contrast_list_str,'-')) && isfield(split_info,'cond')
 
 end 
 
-if  ~isempty(strfind(contrast_list_str,'-')) && ~isfield(split_info,'cond')
-    ind=find(contrast_list_str==',');
-    contrast_list_str(ind) = ' ';
-    
-    if(isempty(strfind(contrast_list_str,' ')))
-        Contrast_name = cellstr(contrast_list_str);
-    else Contrast_name = regexp(contrast_list_str,' ','split');
-    end
-    
-    for k = 1:length(Contrast_name)
-        num = regexp(Contrast_name{k},'-','split');
-        Contrast(k,:) = [str2num(num{1}) str2num(num{2})];
-    end
-    split_info.Contrast_List = Contrast;
-end
-
-if  isempty(strfind(contrast_list_str,'-')) && ~isfield(split_info,'cond')
+if  isempty(strfind(contrast_list_str,'-'))
     ind=find(contrast_list_str==',');
     contrast_list_str(ind) = ' ';
     

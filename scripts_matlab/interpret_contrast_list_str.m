@@ -75,13 +75,24 @@ for ksub = 1:numel(InputStruct)
                 error('You must specify the field split_info.type (event, block or nocontrast)');
             end
         end
+        
+        % convert old version to new version (event-related)
+        if isfield(split_info,'onsetlist') % This part is for the compatibility for older version version event_related
+            split_info.cond(1).onsetlist = split_info.onsetlist;
+            split_info.cond(1).blklength = zeros(size(split_info.onsetlist));
+        end
+             
         % catch, if nocontrast is mistakenly placed in contrast list
         if strcmpi(contrast_list_str,'nocontrast')
             split_info.type = 'nocontrast';
             contrast_list_str = '00';
         end
-        num_real_condition = length(split_info.cond);
-
+        
+       
+        if isfield(split_info,'cond')   % Check whether it is the new version of split info
+            num_real_condition = length(split_info.cond);
+        end
+        
         % convert contrast string to contrast matrix
         split_info = extract_contrast_list(split_info,contrast_list_str);
         
@@ -218,12 +229,6 @@ for ksub = 1:numel(InputStruct)
             end
         end
         
-        % convert old version to new version (event-related)
-        if isfield(split_info,'onsetlist') % This part is for the compatibility for older version version event_related
-            split_info.cond(1).onsetlist = split_info.onsetlist;
-            split_info.cond(1).blklength = ones(size(split_info.onsetlist));
-        end
-        
         % add signle and group field to be used for signle subject or group
         % analysis, for the group analysis we do not need splitting, so it
         % merges the splitting content.
@@ -253,7 +258,7 @@ end
 function split_info = extract_contrast_list(split_info,contrast_list_str) % create single and group split halves
 
 
-if strfind(contrast_list_str,'-')
+if strfind(contrast_list_str,'-') && isfield(split_info,'cond')
     
     ind=find(contrast_list_str==',');
     contrast_list_str(ind) = ' ';
@@ -301,7 +306,26 @@ if strfind(contrast_list_str,'-')
         Contrast(k,:) =[ind1 ind2];
     end
     split_info.Contrast_List = Contrast;
-else
+
+end 
+
+if strfind(contrast_list_str,'-') && ~isfield(split_info,'cond')
+    ind=find(contrast_list_str==',');
+    contrast_list_str(ind) = ' ';
+    
+    if(isempty(strfind(contrast_list_str,' ')))
+        Contrast_name = cellstr(contrast_list_str);
+    else Contrast_name = regexp(contrast_list_str,' ','split');
+    end
+    
+    for k = 1:length(Contrast_name)
+        num = regexp(Contrast_name{k},'-','split');
+        Contrast(k,:) = [str2num(num{1}) str2num(num{2})];
+    end
+    split_info.Contrast_List = Contrast;
+end
+
+if ~strfind(contrast_list_str,'-') && ~isfield(split_info,'cond')
     ind=find(contrast_list_str==',');
     contrast_list_str(ind) = ' ';
     

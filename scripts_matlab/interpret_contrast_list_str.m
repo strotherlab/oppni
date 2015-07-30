@@ -80,6 +80,7 @@ for ksub = 1:numel(InputStruct)
         if isfield(split_info,'onsetlist') % This part is for the compatibility for older version version event_related
             split_info.cond(1).onsetlist = split_info.onsetlist;
             split_info.cond(1).blklength = zeros(size(split_info.onsetlist));
+            split_info.unit = 'msec';
         end
              
         % catch, if nocontrast is mistakenly placed in contrast list

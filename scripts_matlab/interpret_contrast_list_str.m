@@ -141,7 +141,7 @@ for ksub = 1:numel(InputStruct)
             % If baseline condition is not defined those scans which do not
             % belong to a condition will be considered as baseline.
             split_info.baseline_index = 0;
-            for i = 1:num_real_condition
+            for i = 1:length(split_info.cond)
                 if ~isfield(split_info.cond(i),'name') % Name is optional
                     split_info.cond(i).name = num2str(i);
                 else

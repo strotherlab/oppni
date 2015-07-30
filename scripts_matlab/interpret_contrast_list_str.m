@@ -258,7 +258,7 @@ end
 function split_info = extract_contrast_list(split_info,contrast_list_str) % create single and group split halves
 
 
-if strfind(contrast_list_str,'-') && isfield(split_info,'cond')
+if ~isempty(strfind(contrast_list_str,'-')) && isfield(split_info,'cond')
     
     ind=find(contrast_list_str==',');
     contrast_list_str(ind) = ' ';
@@ -309,7 +309,7 @@ if strfind(contrast_list_str,'-') && isfield(split_info,'cond')
 
 end 
 
-if strfind(contrast_list_str,'-') && ~isfield(split_info,'cond')
+if  ~isempty(strfind(contrast_list_str,'-')) && ~isfield(split_info,'cond')
     ind=find(contrast_list_str==',');
     contrast_list_str(ind) = ' ';
     
@@ -325,7 +325,7 @@ if strfind(contrast_list_str,'-') && ~isfield(split_info,'cond')
     split_info.Contrast_List = Contrast;
 end
 
-if ~strfind(contrast_list_str,'-') && ~isfield(split_info,'cond')
+if  isempty(strfind(contrast_list_str,'-')) && ~isfield(split_info,'cond')
     ind=find(contrast_list_str==',');
     contrast_list_str(ind) = ' ';
     

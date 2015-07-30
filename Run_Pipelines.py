@@ -181,6 +181,7 @@ parser.add_option("-q", "--queue", action="store", dest="queue",help="(optional)
 parser.add_option("-k", "--keepmean",action="store", dest="keepmean",help="(optional) determine whether the ouput nifti files contain the mean scan (Default keepmean=0, i.e. remove the mean)")
 parser.add_option("-v", "--voxelsize",action="store", dest="voxelsize",help="(optional) determine the output voxel size of nifti file")
 parser.add_option("-e", "--environment",action="store", dest="environment",help="(optional) determine which software to use to run the code: matlab or octave(default)")
+parser.add_option("--memory",action="store", dest="environment",help="(optional) determine minimum amount RAM needed for the job!")
 
 parser.add_option("--convolve",action="store", dest="convolve",help="VALUE=Binary value, for whether design matrix should be convolved with a standard SPMG1 HRF.  0 = do not convolve and 1 = perform convolution",metavar="VALUE")
 parser.add_option("--decision_model",action="store", dest="decision_model",help="MODEL=string specifying type of decision boundary. Either: linear for a pooled covariance model or nonlinear for class-specific covariances",metavar="MODEL")
@@ -443,6 +444,13 @@ else:
 if TPATTERN==None:
     TPATTERN = "None"
 
+if hasattr(options,'memory'):
+    memory = "-l mem="+options.memory
+else:
+    memory  = ""
+if memory==None:
+    memory  = ""
+
 ###############  Checking the switches
 if (analysis.upper()=="LDA") and (drf=="None"):
     print "WARNING (Deprecated usage): --drf switch not defined for LDA model. PRONTO will check TASK files for parameter(s)"
@@ -504,7 +512,7 @@ if dospnormfirst:
         temp_file = input_files_temp + '/' + "%04d.txt" % job_counter
         # submit into queue
         job_name = "spest%04d" % job_counter
-        cmd = "qsub -q {0} {10} -N {1} -wd {2} -j y -b y 'python {2}/scripts_other/spatial_normalization_wrapper.py  -n {3} -i {4} -r {5} -v \"{6}\" -s 1 -e \"{7}\" --DEOBLIQUE {8}' >{9}".format(queue_name,job_name,codefull_path,numcores,temp_file,reference,voxelsize,environment,DEOBLIQUE,job_id_file,PARALLEL_ENVIRONMENT)
+        cmd = "qsub -q {0} {10} {11} -N {1} -wd {2} -j y -b y 'python {2}/scripts_other/spatial_normalization_wrapper.py  -n {3} -i {4} -r {5} -v \"{6}\" -s 1 -e \"{7}\" --DEOBLIQUE {8}' >{9}".format(queue_name,job_name,codefull_path,numcores,temp_file,reference,voxelsize,environment,DEOBLIQUE,job_id_file,PARALLEL_ENVIRONMENT,memory)
         
     
         if noSGE == True:
@@ -550,7 +558,7 @@ if part==0 or part==1:
         temp_file = input_files_temp + '/' + "%04d.txt" % job_counter
         # submit into queue
         job_name = "pipopt%04d" % job_counter
-        cmd = "qsub {0} -q {1} {15} -N {2} -wd {3} -j y -b y 'python {3}/scripts_other/pipeline_wrapper.py -n {4} -i {5} -c {6} -a {7} --contrast \"{8}\" --dospnormfirst {9} -e \"{10}\" --modelparam \"{11}\" --DEOBLIQUE {12} --TPATTERN {13}' >{14}".format(job_id_str3_0,queue_name,job_name,codefull_path,numcores,temp_file, options.pipeline, options.analysis,contrast,dospnormfirst+0,environment,model_parameter,DEOBLIQUE,TPATTERN,job_id_file,PARALLEL_ENVIRONMENT)
+        cmd = "qsub {0} -q {1} {15} {16} -N {2} -wd {3} -j y -b y 'python {3}/scripts_other/pipeline_wrapper.py -n {4} -i {5} -c {6} -a {7} --contrast \"{8}\" --dospnormfirst {9} -e \"{10}\" --modelparam \"{11}\" --DEOBLIQUE {12} --TPATTERN {13}' >{14}".format(job_id_str3_0,queue_name,job_name,codefull_path,numcores,temp_file, options.pipeline, options.analysis,contrast,dospnormfirst+0,environment,model_parameter,DEOBLIQUE,TPATTERN,job_id_file,PARALLEL_ENVIRONMENT,memory)
         if noSGE == True:
             id_no = "noSGE"
             job_id_file = job_name + ".nosge.txt"
@@ -594,7 +602,7 @@ if ((part==0 or part==2) and analysis.upper()!="NONE"):
         print "(The post-processing optimization jobs will be on hold until the estimation jobs are finished)"
     # declare pipeline step-3;  NB replaced "-q all.q" with "-q bigmem.q" to call all nodes
     
-    cmd = "qsub {0} -q {1} {9} -N pipopt_final -wd {2} -j y -b y 'python {2}/scripts_other/optimization_wrapper.py  -n {3} -i {4} -m {5} -k {6} -e \"{7}\"' >{8}".format(job_id_str,queue_name,codefull_path,numcores,input_file_for_part2, metric,keepmean,environment,job_id_file,PARALLEL_ENVIRONMENT)
+    cmd = "qsub {0} -q {1} {9} {10} -N pipopt_final -wd {2} -j y -b y 'python {2}/scripts_other/optimization_wrapper.py  -n {3} -i {4} -m {5} -k {6} -e \"{7}\"' >{8}".format(job_id_str,queue_name,codefull_path,numcores,input_file_for_part2, metric,keepmean,environment,job_id_file,PARALLEL_ENVIRONMENT,memory)
     if noSGE == True:
         id_no = "noSGE"
         job_id_file = "pipopt_final.nosge.txt"
@@ -632,7 +640,7 @@ if (part==0 or part==3) and not dospnormfirst:
         # submit into queue
         job_name = "spest%04d" % job_counter
         
-        cmd = "qsub {0} -q {1} {11} -N {2} -wd {3} -j y -b y 'python {3}/scripts_other/spatial_normalization_wrapper.py  -n {4} -i {5} -r {6} -v \"{7}\" -s 1 -e \"{8}\" --DEOBLIQUE {9}' >{10}".format(job_id_str,queue_name,job_name,codefull_path,numcores,temp_file,reference,voxelsize,environment,DEOBLIQUE,job_id_file,PARALLEL_ENVIRONMENT)
+        cmd = "qsub {0} -q {1} {11} {12} -N {2} -wd {3} -j y -b y 'python {3}/scripts_other/spatial_normalization_wrapper.py  -n {4} -i {5} -r {6} -v \"{7}\" -s 1 -e \"{8}\" --DEOBLIQUE {9}' >{10}".format(job_id_str,queue_name,job_name,codefull_path,numcores,temp_file,reference,voxelsize,environment,DEOBLIQUE,job_id_file,PARALLEL_ENVIRONMENT,memory)
         if noSGE == True:
             id_no = "noSGE"
             job_id_file = job_name +".nosge.txt"
@@ -669,7 +677,7 @@ if (part==0 or part==3) and not dospnormfirst:
         temp_file = input_files_temp + '/' + "%04d.txt" % job_counter
         # submit into queue
         job_name = "spnorm%04d" % job_counter
-        cmd = "qsub {0} -q {1} {11} -N {2} -wd {3} -j y -b y 'python {3}/scripts_other/spatial_normalization_wrapper.py  -n {4} -i {5} -r {6} -v \"{7}\" -s 2 -e \"{8}\" --DEOBLIQUE {9}' >{10}".format(job_id_str3_1,queue_name,job_name,codefull_path,numcores,temp_file,reference,voxelsize,environment,DEOBLIQUE,job_id_file,PARALLEL_ENVIRONMENT)
+        cmd = "qsub {0} -q {1} {11} {12} -N {2} -wd {3} -j y -b y 'python {3}/scripts_other/spatial_normalization_wrapper.py  -n {4} -i {5} -r {6} -v \"{7}\" -s 2 -e \"{8}\" --DEOBLIQUE {9}' >{10}".format(job_id_str3_1,queue_name,job_name,codefull_path,numcores,temp_file,reference,voxelsize,environment,DEOBLIQUE,job_id_file,PARALLEL_ENVIRONMENT,memory)
         if noSGE == True:
             id_no = "noSGE"
             job_id_file = job_name + ".nosge.txt"
@@ -703,7 +711,7 @@ if (part==0 or part==3) and not dospnormfirst:
         os.remove(job_id_file)   
     
     print "Submitting the group mask generation job:"
-    cmd = "qsub {0} -q {1} {6} -N pipopt_maskgen -wd {2} -j y -b y 'python {2}/scripts_other/mask_tissue_wrapper.py  -n {3} -i {4} -e \"{5}\"' ".format(job_id_str3_2,queue_name,codefull_path,numcores,options.inputdata, environment,PARALLEL_ENVIRONMENT)  
+    cmd = "qsub {0} -q {1} {6} {7} -N pipopt_maskgen -wd {2} -j y -b y 'python {2}/scripts_other/mask_tissue_wrapper.py  -n {3} -i {4} -e \"{5}\"' ".format(job_id_str3_2,queue_name,codefull_path,numcores,options.inputdata, environment,PARALLEL_ENVIRONMENT,memory)  
     if noSGE == True:
         cmd = "python {2}/scripts_other/mask_tissue_wrapper.py  -n {3} -i {4} -e \"{5}\" > pipopt_maskgen.nosge.txt".format(job_id_str3_2,queue_name,codefull_path,numcores,options.inputdata, environment)  
 

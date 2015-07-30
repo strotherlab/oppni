@@ -181,7 +181,7 @@ parser.add_option("-q", "--queue", action="store", dest="queue",help="(optional)
 parser.add_option("-k", "--keepmean",action="store", dest="keepmean",help="(optional) determine whether the ouput nifti files contain the mean scan (Default keepmean=0, i.e. remove the mean)")
 parser.add_option("-v", "--voxelsize",action="store", dest="voxelsize",help="(optional) determine the output voxel size of nifti file")
 parser.add_option("-e", "--environment",action="store", dest="environment",help="(optional) determine which software to use to run the code: matlab or octave(default)")
-parser.add_option("--memory",action="store", dest="memory",help="(optional) determine minimum amount RAM needed for the job!")
+parser.add_option("--memory",action="store", dest="memory",help="(optional) determine the minimum amount RAM needed for the job!")
 
 parser.add_option("--convolve",action="store", dest="convolve",help="VALUE=Binary value, for whether design matrix should be convolved with a standard SPMG1 HRF.  0 = do not convolve and 1 = perform convolution",metavar="VALUE")
 parser.add_option("--decision_model",action="store", dest="decision_model",help="MODEL=string specifying type of decision boundary. Either: linear for a pooled covariance model or nonlinear for class-specific covariances",metavar="MODEL")

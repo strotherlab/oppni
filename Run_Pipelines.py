@@ -445,11 +445,13 @@ if TPATTERN==None:
     TPATTERN = "None"
 
 if hasattr(options,'memory'):
-    memory = "-l h_vmem="+options.memory
+    memory = options.memory
 else:
-    memory  = ""
+    memory  = None
 if memory==None:
     memory  = ""
+else:
+    memory = "-l h_vmem="+memory
 
 ###############  Checking the switches
 if (analysis.upper()=="LDA") and (drf=="None"):

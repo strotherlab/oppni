@@ -1180,10 +1180,19 @@ class Files(Frame):
                             if int(number[0])>1:
                                 print "ERROR"
                     else:
+                        if k[0]==1:
+                            self.ccensor.delete(0,END)
+                            self.ccensor.insert(0,temp[1:-1])
+                        if k[0]==4:
+                            self.csmooth.delete(0,END)
+                            self.csmooth.insert(0,temp[1:-1])
+                        if k[0]==5:
+                            self.cdetrend.delete(0,END)
+                            self.cdetrend.insert(0,temp[1:-1])    
                         s.set(temp[1:-1])   
         for p in pl:
             s = l[p]
-            if p!=4 and p!=5:
+            if p!=4 and p!=5 and p!=1:
                 s["text"] = "OFF"
             else:
                 s.set("0")
@@ -1269,7 +1278,7 @@ class Files(Frame):
                 cs=""
             else:
                 cs = " CUSTOMREG="+self.list_entries.customreg[i]
-            s = "IN="+self.list_entries.sin[i]+" OUT="+self.list_entries.out[i]+" STRUCT="+self.list_entries.structrual[i]+" PHYSIO="+self.list_entries.physio[i]+" TASK="+self.list_entries.taskinfo[i]+" DROP=["+self.list_entries.drop[i]+"]"+cs+"\n"
+            s = "IN="+self.list_entries.sin[i]+" OUT="+os.path.join(self.list_entries.out[i],self.list_entries.prefix[i])+" STRUCT="+self.list_entries.structrual[i]+" PHYSIO="+self.list_entries.physio[i]+" TASK="+self.list_entries.taskinfo[i]+" DROP=["+self.list_entries.drop[i]+"]"+cs+"\n"
             F2.write(s)
             self.save_task_info(i)
         F2.close()
@@ -1583,8 +1592,8 @@ class Files(Frame):
         if not os.path.isdir(dirname):
             os.mkdir(dirname)
         for i in range(0,len(self.list_entries.sin)):
-            if not self.list_entries.taskinfo[i]:
-                self.list_entries.taskinfo[i] = dirname+"%03d.txt" %i
+        #    if not self.list_entries.taskinfo[i]:
+            self.list_entries.taskinfo[i] = dirname+"%03d.txt" %i
             self.save_task_info(i)
         print inputfile_name
         self.save_input_file(inputfile_name)

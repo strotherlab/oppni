@@ -1,5 +1,13 @@
 function QC_wrapper(step,inputfile, newmaskname, Npcs)
 
+
+if strcmpi(newmaskname,'None')
+    newmaskname = [];
+end
+if strcmpi(Npcs,'None')
+    Npcs = 10;
+end
+
 if ischar(step)
     step = str2num(step);
 end

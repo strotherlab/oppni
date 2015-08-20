@@ -1,0 +1,5 @@
+AFNI_PATH=/home/hpc2590/afni/
+FSL_PATH=/home/hpc2590/fsl/bin/
+LD_LIBRARY_PATH=/u1/work/hpc2590/Applications/gcc/lib:/u1/work/hpc2590/Applications/gcc/lib64:/u1/work/hpc2590/Applications/local/acml/gfortran64_mp_int64/lib:/u1/work/hpc2590/Applications/local/SuiteSparse/lib:/u1/work/hpc2590/Applications/local/fftw/lib:/u1/work/hpc2590/Applications/local/fltk-1.3.2/lib:/u1/work/hpc2590/Applications/local/qrupdate-1.1.2/lib:/u1/work/hpc2590/Applications/local/arpack-ng/lib
+LD_PRELOAD=/u1/work/hpc2590/Applications/local/acml/gfortran64_mp_int64/lib/libacml_mp.so
+PATH=/u1/work/hpc2590/Applications/autoconf/bin:/u1/work/hpc2590/Applications/automake/bin:/u1/work/hpc2590/Applications/gperf/bin:/u1/work/hpc2590/Applications/m4/bin:/u1/work/hpc2590/Applications/libtool/bin:/u1/work/hpc2590/Applications/flex/bin:/u1/work/hpc2590/Applications/bison/bin:/u1/work/hpc2590/Applications/anaconda/bin:/u1/work/hpc2590/Applications/gcc/bin:/u1/work/hpc2590/Applications/octave-3.8.2/bin

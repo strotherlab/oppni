@@ -16,7 +16,7 @@ def load_settings():
 
     codepathname  = os.path.dirname(sys.argv[0])
     codefull_path = os.path.abspath(codepathname)
-    setting_name = codefull_path+"/../scripts_matlab/SETTINGS.txt"
+    setting_name = codefull_path+"/../config/SETTINGS.txt"
 
     with open(setting_name) as f:
         lines = f.readlines()
@@ -66,11 +66,18 @@ environment = environment.replace('\\n','\x0A')
 os.environ["PIPELINE_NUMBER_OF_CORES"] = options.numcores
 os.environ["OMP_NUM_THREADS"] = options.numcores
 os.environ["FSLOUTPUTTYPE"] = "NIFTI"
+
 load_settings()
 
 if (environment.find("octave")>=0):
     cmd = "time -p {0} -q -p scripts_matlab --eval \"group_mask_tissue_maps('{1}',[]);\"".format(environment,options.inputdata)
 if (environment.find("matlab")>=0):
     cmd = "time -p {0} -nodesktop -nojvm -nosplash -r \"maxNumCompThreads({1});addpath('./scripts_matlab');try, group_mask_tissue_maps('{2}',[]);catch,display(lasterr);sge_exit(100);end, exit\"".format(environment,numcores, options.inputdata)
-
+if (environment.find("standalone")>=0):
+    mcrpath = os.environ["MCR_PATH"]
+    MCRJRE  =  mcrpath+"/sys/java/jre/glnxa64/jre/lib/amd64"
+    os.environ["LD_LIBRARY_PATH"] = ".:"+mcrpath+"/runtime/glnxa64:"+mcrpath+"/bin/glnxa64:"+mcrpath+"/sys/os/glnxa64:"+mcrpath+"/native_threads:"+mcrpath+"/server:"+mcrpath+"/client:"+mcrpath
+    os.environ["XAPPLRESDIR"]=mcrpath+"/X11/app-defaults";
+    cmd = "time -p ./scripts_matlab/compiled/PRONTO GMASK {0}".format(options.inputdata)
+print cmd
 os.system(cmd)

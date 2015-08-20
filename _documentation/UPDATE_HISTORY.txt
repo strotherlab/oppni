@@ -20,6 +20,11 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 ------------------------------------------------------------------------------------
 Overview Change Log:
 ------------------------------------------------------------------------------------
+[UPDATES 2015/08/20] by Babak
+The compiled version of the code was added. To this the python wrappers are modified, 
+read_setting.m read the AFNI, and FSL path from the environment variables not from SETTING.txt
+This is neccessary for the compiled version.
+
 
 [UPDATES 2015/04/29] by Nathan & Babak
 corrected bug in single-run optimization that does double low-pass filtering of

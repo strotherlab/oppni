@@ -207,6 +207,15 @@ else:
 if noSGE==None:
     noSGE = False
 
+if hasattr(options,'memory'):
+    memory = options.memory
+else:
+    memory  = None
+if memory==None:
+    memory  = ""
+else:
+    memory = "-l h_vmem="+memory
+
 sge_flag  = os.getenv("SGE_ROOT")
 if sge_flag==None and not noSGE==True:
     print "Sun grid engine (SGE) has not been detected!"
@@ -444,14 +453,6 @@ else:
 if TPATTERN==None:
     TPATTERN = "None"
 
-if hasattr(options,'memory'):
-    memory = options.memory
-else:
-    memory  = None
-if memory==None:
-    memory  = ""
-else:
-    memory = "-l h_vmem="+memory
 
 ###############  Checking the switches
 if (analysis.upper()=="LDA") and (drf=="None"):

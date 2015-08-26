@@ -505,7 +505,7 @@ job_id_list_nosge = []
 if dospnormfirst:
     if reference==None:
         print "Switch -r has to be used for part 3"
-    exit(0)
+        exit(0)
     
     job_id_str3_0 = "-hold_jid "
     used_cores = 0

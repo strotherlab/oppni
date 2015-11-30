@@ -100,6 +100,21 @@ switch analysis_model
         if ~isfield(split_info,'spm')
             error('Please specify spm in the split info file: %s',filename);
         end
+    case 'GCONN'
+        if ~isfield(split_info,'conn_metric')
+            error('Please specify conn_metric in the split info file: %s',filename);
+        end
+        if ~isfield(split_info,'spm')
+            error('Please specify spm in the split info file: %s',filename);
+        end      
+    case 'FALFF'
+        if ~isfield(split_info,'spm')
+            error('Please specify spm in the split info file: %s',filename);
+        end        
+    case 'HURST'
+        if ~isfield(split_info,'spm')
+            error('Please specify spm in the split info file: %s',filename);
+        end        
 end
 
 

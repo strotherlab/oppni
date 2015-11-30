@@ -1,4 +1,4 @@
-function [Input_nifti_file_path,Input_nifti_file_prefix,Output_nifti_file_path,Output_nifti_file_prefix,STRUCT_File] = Parse_Input_DOALL(tline)
+function [Input_nifti_file_path,Input_nifti_file_prefix,Output_nifti_file_path,Output_nifti_file_prefix,STRUCT_File] = Parse_Input_ASL(tline)
 
 global CODE_PATH
 if isempty(CODE_PATH)
@@ -17,26 +17,16 @@ ips   = ips(ips>ifile);
 Input_nifti_file_temp = tline(ifile:ips(1));
 Input_nifti_file_temp = strrep(Input_nifti_file_temp,'.nii','');
 [Input_nifti_file_path,Input_nifti_file_prefix,ext] = fileparts(Input_nifti_file_temp);
-% split into runs
-if(isempty(strfind(Input_nifti_file_prefix,',')))
-     Input_nifti_file_prefix = cellstr(Input_nifti_file_prefix);
-else Input_nifti_file_prefix = regexp(Input_nifti_file_prefix,',','split');
-end
+% one run:
+Input_nifti_file_prefix = cellstr(Input_nifti_file_prefix);
 
 % parse output directory
 ifile = strfind( upper(tline), 'OUT=' ); ifile = ifile+4;
 ips   = [strfind( tline, ' ' )-1 length(tline)];
 ips   = ips(ips>ifile);
 [Output_nifti_file_path,Output_nifti_file_prefix,ext] = fileparts(tline(ifile:ips(1)));
-% split into runs
-if(isempty(strfind(Output_nifti_file_prefix,',')))
-     Output_nifti_file_prefix = cellstr(Output_nifti_file_prefix);
-else Output_nifti_file_prefix = regexp(Output_nifti_file_prefix,',','split');
-end
-
-if( length(Output_nifti_file_prefix) ~= length(Input_nifti_file_prefix) )
-    error('number of input prefixes should match number of output prefixes');
-end
+% one run:
+Output_nifti_file_prefix = cellstr(Output_nifti_file_prefix);
 
 % parse structural file
 istruct = strfind(  upper(tline), 'STRUCT=' ); 

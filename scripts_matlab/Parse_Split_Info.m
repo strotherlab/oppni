@@ -51,15 +51,21 @@ else %% if in textfile format...
         if( ~isempty(istart) && ~isempty(iend) )
                
             % check for general options
-            if(~isempty(strfind(upper(tline),'UNIT')))    split_info_struct.unit = tline(istart:iend);
+            if(~isempty(strfind(upper(tline),'UNIT')))        split_info_struct.unit = tline(istart:iend);
             end
-            if(~isempty(strfind(upper(tline),'TR_MSEC'))) split_info_struct.TR_MSEC = str2num( tline(istart:iend) );            
+            if(~isempty(strfind(upper(tline),'TR_MSEC')))     split_info_struct.TR_MSEC = str2num( tline(istart:iend) );            
             end        
-            if(~isempty(strfind(upper(tline),'TYPE')))    split_info_struct.type = lower(tline(istart:iend));            
+            if(~isempty(strfind(upper(tline),'TYPE')))        split_info_struct.type = lower(tline(istart:iend));            
             end     
             % seed for functional connectivity
-            if(~isempty(strfind(upper(tline),'SEED')))    split_info_struct.seed_name = tline(istart:iend);
+            if(~isempty(strfind(upper(tline),'SEED')))        split_info_struct.seed_name = tline(istart:iend);
             end
+            % spm type for non-task analyses
+            if(~isempty(strfind(upper(tline),'SPM')))         split_info_struct.spm = tline(istart:iend);
+            end  
+            % spm type for non-task analyses
+            if(~isempty(strfind(upper(tline),'CONN_METRIC'))) split_info_struct.conn_metric = tline(istart:iend);
+            end  
         
             % check for condition-specific options
             if(~isempty(strfind(upper(tline),'NAME')))

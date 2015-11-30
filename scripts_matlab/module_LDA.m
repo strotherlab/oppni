@@ -45,6 +45,7 @@ DD = sqrt( (1-results.R).^2 + (1-results.P).^2 );
 %
 output.metrics.R    =  results.R(id);
 output.metrics.P    =  results.P(id);
+output.metrics.Acc  =  results.Acc(id); % alt: fractional classif. accuracy
 output.metrics.dPR  = -vd;
 % optimal eigenimage
 output.images  = results.eig(:,id);

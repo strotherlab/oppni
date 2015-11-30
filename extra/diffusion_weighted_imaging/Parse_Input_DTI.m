@@ -1,4 +1,4 @@
-function [Input_nifti_file_path,Input_nifti_file_prefix,Output_nifti_file_path,Output_nifti_file_prefix,STRUCT_File] = Parse_Input_DTI(tline)
+function [Input_nifti_file_path,Input_nifti_file_prefix,Output_nifti_file_path,Output_nifti_file_prefix] = Parse_Input_DTI(tline)
 
 global CODE_PATH
 if isempty(CODE_PATH)
@@ -40,12 +40,3 @@ if(~isempty(strfind(Output_nifti_file_prefix,',')))
     sge_exit(100);
 end
 
-% parse structural file
-istruct = strfind(  upper(tline), 'STRUCT=' ); istruct = istruct+7;
-ips   = [strfind( tline, ' ' )-1 length(tline)];
-ips   = ips(ips>istruct);
-STRUCT_File = tline(istruct:ips(1));
-
-    
-    
-    

@@ -73,23 +73,16 @@ for ksub = 1:numel(InputStruct)
                 contrast_list_str = '00';
             else
                 error('You must specify the field split_info.type (event, block or nocontrast)');
-            end
+            end         
         end
-        
+
         % convert old version to new version (event-related)
         if isfield(split_info,'onsetlist') % This part is for the compatibility for older version version event_related
             split_info.cond(1).onsetlist = split_info.onsetlist;
             split_info.cond(1).blklength = zeros(size(split_info.onsetlist));
             split_info.unit = 'msec';
         end
-             
-        % catch, if nocontrast is mistakenly placed in contrast list
-        if strcmpi(contrast_list_str,'nocontrast')
-            split_info.type = 'nocontrast';
-            contrast_list_str = '00';
-        end
         
-       
         if isfield(split_info,'cond')   % Check whether it is the new version of split info
             num_real_condition = length(split_info.cond);
         end
@@ -121,14 +114,13 @@ for ksub = 1:numel(InputStruct)
             % default do not convolve user provided design_mat
             if ~isfield(split_info,'convolve')
                 split_info.convolve = 0;
+            % otherwise, only convolve if flag turned on
+            elseif split_info.convolve==1
+                split_info.design_mat = design_to_hrf( split_info.design_mat, split_info.TR_MSEC/1000, [5.0 15.0] );
             end
-            % check if the custom design matrix is provided
-            % if not build design matrix
+            % check if the custom design matrix is provided - if not, build it
             if ~isfield(split_info,'design_mat')
                 split_info.design_mat = [];
-            end
-            if split_info.convolve==1
-                split_info.design_mat = design_to_hrf( split_info.design_mat, split_info.TR_MSEC/1000, [5.0 15.0] );
             end
             
             % check if in the design matrix drop_first is considered...
@@ -228,6 +220,10 @@ for ksub = 1:numel(InputStruct)
             if strcmpi(split_info.type,'block')   % if type=block automatically split the data in half/
                 split_info = split_half(split_info,InputStruct(ksub).run(krun).Nt,filename); % create single and group split halves
             end
+            
+        elseif strcmpi(split_info.type,'nocontrast')
+            % if nocontrast, empty design matrix as placeholder
+            split_info.design_mat = [];
         end
         
         % add signle and group field to be used for signle subject or group
@@ -534,6 +530,21 @@ switch analysis_model
         if ~isfield(split_info,'spm')
             error('Please specify spm in the split info file: %s',filename);
         end
+    case 'GCONN'
+        if ~isfield(split_info,'conn_metric')
+            error('Please specify conn_metric in the split info file: %s',filename);
+        end
+        if ~isfield(split_info,'spm')
+            error('Please specify spm in the split info file: %s',filename);
+        end      
+    case 'FALFF'
+        if ~isfield(split_info,'spm')
+            error('Please specify spm in the split info file: %s',filename);
+        end        
+    case 'HURST'
+        if ~isfield(split_info,'spm')
+            error('Please specify spm in the split info file: %s',filename);
+        end                
 end
 
 function [Xsub,idx]=licols(X,tol)

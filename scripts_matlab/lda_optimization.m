@@ -174,6 +174,8 @@ pp1_priors_norm(~isfinite(pp1_priors_norm)) = 0.50;
 pp2_priors_norm(~isfinite(pp2_priors_norm)) = 0.50;
 % probs -- sample x K-size
 sum_prob_sp2on1 = (  sum( pp1_priors_norm(design_sp2<0,:) ) + sum( pp2_priors_norm(design_sp2>0,:) )  )';
+% simple classification accuracy
+sum_correct_sp2on1 = (  sum( pp1_priors_norm(design_sp2<0,:) >0.5 ) + sum( pp2_priors_norm(design_sp2>0,:) >0.5 )  )';
 
 % (I) PREDICTION sp1 on sp2
 % mean CVscores, sp2 --- 1xK-size
@@ -195,20 +197,26 @@ pp1_priors_norm(~isfinite(pp1_priors_norm)) = 0.50;
 pp2_priors_norm(~isfinite(pp2_priors_norm)) = 0.50;
 % probs -- sample x K-size
 sum_prob_sp1on2 = (  sum( pp1_priors_norm(design_sp1<0,:) ) + sum( pp2_priors_norm(design_sp1>0,:) )  )';
+% simple classification accuracy
+sum_correct_sp1on2 = (  sum( pp1_priors_norm(design_sp1<0,:) >0.5 ) + sum( pp2_priors_norm(design_sp1>0,:) >0.5 )  )';
 
 warning on;
 
+% average posterior prob.
 res_p = (sum_prob_sp2on1 + sum_prob_sp1on2)./ (N_sp1 + N_sp2);
-
+% fractional accuracy
+res_acc = (sum_correct_sp2on1 + sum_correct_sp1on2)./ (N_sp1 + N_sp2);
 
 % drop PC#1 for single-subject
 res_r=res_r(2:end);
 res_p=res_p(2:end);
+res_acc=res_acc(2:end);
 res_rSPMZ =res_rSPMZ(:,2:end);
 
 % now record results for output:
 result_set.R    = res_r;
 result_set.P    = res_p;
+result_set.Acc  = res_acc;
 result_set.CV   = res_cv;
 result_set.eig  = res_rSPMZ;
 

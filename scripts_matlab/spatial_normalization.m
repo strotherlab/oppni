@@ -239,9 +239,12 @@ if flag_step==0 || flag_step==2 || flag_step==3
             nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
             save_untouch_nii(nii,mean_file_name);
         end
+        
         % spatial norm - transform mean epi volume to match stripped T1; create transform matrix
+        if ~exist(sprintf('%s/intermediate_processed/spat_norm/Transmat_EPItoT1_%s.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix),'file')
         unix([FSL_PATH sprintf('flirt -in %s -out %s/intermediate_processed/spat_norm/mean_%s_sNorm.nii -ref %s/intermediate_processed/spat_norm/%s_strip.nii -omat %s/intermediate_processed/spat_norm/Transmat_EPItoT1_%s.mat -bins 256 -cost normmi -searchrx -180 180 -searchry -180 180 -searchrz -180 180 -dof 6 -interp sinc -sincwidth 7 -sincwindow hanning', ... 
             mean_file_name,InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix)]);
+        end
         
         if numel(InputStruct(ksub).run)>1
            aligned_suffix= '_aligned';

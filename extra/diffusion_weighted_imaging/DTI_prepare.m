@@ -20,59 +20,76 @@ for ksub = 1:numel(InputStruct)
             inname_64dir = [InputStruct(ksub).run(1).Input_nifti_file_path,'/',InputStruct(ksub).run(1).Input_nifti_file_prefix{2}];
             
             disp('HARDI image analysis.');
-            disp('concatenating data...');
 
-            % concat functional data
-            unix(['fslmerge -t ', outname, '/HARDI_concat.nii ', inname_30dir, '.nii ', inname_64dir,'.nii']);
+            if ~exist([outname, '/HARDI_concat.nii.gz'],'file') || ~exist([outname,'/HARDI_cat.bvec'],'file')        
+            
+                disp('concatenating data...');
 
-            % concat bval
-            fid30  = fopen([inname_30dir, '.bval'],'rt');
-            fid64  = fopen([inname_64dir, '.bval'],'rt');
-            fidOUT = fopen([outname,'/HARDI_ec.bval'],'wt'); % create bval
-            tline30 = fgetl(fid30);
-            tline64 = fgetl(fid64);
-            while ischar(tline30) 
-                tline30_64 = [tline30 tline64];
-                fprintf(fidOUT, '%s\n', tline30_64);
+                % concat functional data
+                unix(['fslmerge -t ', outname, '/HARDI_concat.nii ', inname_30dir, '.nii ', inname_64dir,'.nii']);
+
+                % concat bval
+                fid30  = fopen([inname_30dir, '.bval'],'rt');
+                fid64  = fopen([inname_64dir, '.bval'],'rt');
+                fidOUT = fopen([outname,'/HARDI_ec.bval'],'wt'); % create bval
                 tline30 = fgetl(fid30);
                 tline64 = fgetl(fid64);
-            end
-            fclose(fid30); 
-            fclose(fid64);
-            fclose(fidOUT);
+                while ischar(tline30) 
+                    tline30_64 = [tline30 tline64];
+                    fprintf(fidOUT, '%s\n', tline30_64);
+                    tline30 = fgetl(fid30);
+                    tline64 = fgetl(fid64);
+                end
+                fclose(fid30); 
+                fclose(fid64);
+                fclose(fidOUT);
 
-            % concat bvec
-            fid30  = fopen([inname_30dir, '.bvec'],'rt');
-            fid64  = fopen([inname_64dir, '.bvec'],'rt');
-            fidOUT = fopen([outname,'/HARDI_cat.bvec'],'wt'); % create bvec
-            tline30 = fgetl(fid30);
-            tline64 = fgetl(fid64);
-            while ischar(tline30) 
-                tline30_64 = [tline30 tline64];
-                fprintf(fidOUT, '%s\n', tline30_64);
+                % concat bvec
+                fid30  = fopen([inname_30dir, '.bvec'],'rt');
+                fid64  = fopen([inname_64dir, '.bvec'],'rt');
+                fidOUT = fopen([outname,'/HARDI_cat.bvec'],'wt'); % create bvec
                 tline30 = fgetl(fid30);
                 tline64 = fgetl(fid64);
+                while ischar(tline30) 
+                    tline30_64 = [tline30 tline64];
+                    fprintf(fidOUT, '%s\n', tline30_64);
+                    tline30 = fgetl(fid30);
+                    tline64 = fgetl(fid64);
+                end
+                fclose(fid30); 
+                fclose(fid64);
+                fclose(fidOUT);
+
+                disp('done concatenating.');
+            
             end
-            fclose(fid30); 
-            fclose(fid64);
-            fclose(fidOUT);
+            if ~exist([outname, '/HARDI_ec.nii.gz'],'file') || ~exist([outname,'/HARDI_ec.ecclog'],'file')        
 
-            disp('done concatenating.')
-
-            disp('running motion+eddy correction...');
-            % run eddy corrections
-            unix(['eddy_correct ', outname, '/HARDI_concat.nii.gz ', outname, '/HARDI_ec.nii 0']); % create eddy corrected
-            % rotate bvec directions as well (this overwrites the unrotated bvec)
-            unix(['fdt_rotate_bvecs ', outname,'/HARDI_cat.bvec ',outname,'/HARDI_ec.bvec ',outname,'/HARDI_ec.ecclog']); % update + duplicated
-            disp('done corrections.');
-
-            disp('running DTI fitting...');
+                disp('running motion+eddy correction...');
+                % run eddy corrections
+                unix(['eddy_correct ', outname, '/HARDI_concat.nii.gz ', outname, '/HARDI_ec.nii 0']); % create eddy corrected
+                % rotate bvec directions as well (this overwrites the unrotated bvec)
+                unix(['fdt_rotate_bvecs ', outname,'/HARDI_cat.bvec ',outname,'/HARDI_ec.bvec ',outname,'/HARDI_ec.ecclog']); % update + duplicated
+                disp('done corrections.');
+            end
+            % catch when multiple files
+            if( exist([outname, '/HARDI_ec.nii'],'file') && exist([outname, '/HARDI_ec.nii.gz'],'file') )
+                unix(['rm ',outname, '/HARDI_ec.nii']);
+            end
+            
             % quick brain mask
-            unix(['bet2 ',outname,'/HARDI_ec.nii.gz ',outname,'/HARDI_bet -m']); % create mask
-            % running dti parameter fits
-            unix(['dtifit -k ',outname,'/HARDI_ec.nii.gz -o ',outname,'/HARDI_fit -m ',outname,'/HARDI_bet_mask.nii.gz -r ',outname,'/HARDI_ec.bvec -b ',outname,'/HARDI_ec.bval']); %create output parameters
-
-            disp('done fitting');
+            unix(['bet2 ',outname,'/HARDI_ec.nii.gz ',outname,'/HARDI_bet_Dil -f 0.4 -m']); % create mask
+            unix(['fslmaths ',outname,'/HARDI_bet_Dil_mask.nii.gz -ero ',outname,'/HARDI_bet_mask']); % create mask
+            unix(['rm ',outname,'/HARDI_bet_Dil.nii.gz ',outname,'/HARDI_bet_Dil_mask.nii.gz']); % create mask
+           
+            if ~exist([outname, '/HARDI_fit_V1.nii.gz'],'file') || ~exist([outname, '/HARDI_fit_V2.nii.gz'],'file') || ~exist([outname, '/HARDI_fit_V3.nii.gz'],'file')   
+            
+                disp('running DTI fitting...');
+                % running dti parameter fits
+                unix(['dtifit -k ',outname,'/HARDI_ec.nii.gz -o ',outname,'/HARDI_fit -m ',outname,'/HARDI_bet_mask.nii.gz -r ',outname,'/HARDI_ec.bvec -b ',outname,'/HARDI_ec.bval']); %create output parameters
+                disp('done fitting');
+            end
+            
 
 %%      OPTION 2: single-run DWI acquisition --> perform standard DTI analysis
         else

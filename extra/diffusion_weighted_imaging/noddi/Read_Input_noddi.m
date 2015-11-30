@@ -1,4 +1,4 @@
-function [InputStruct] = Read_Input_DOALL(inputfile)
+function [InputStruct] = Read_Input_noddi(inputfile)
 
 % ------------------------------------------------------------------------%
 % Authors: Nathan Churchill, University of Toronto
@@ -29,12 +29,11 @@ while ischar(tline)
 
     ksub = ksub  +1;
     
-    [Input_nifti_file_path,Input_nifti_file_prefix,Output_nifti_file_path,Output_nifti_file_prefix,STRUCT_File] = Parse_Input_DOALL(tline);
+    [Input_nifti_file_path,Input_nifti_file_prefix,Output_nifti_file_path,Output_nifti_file_prefix] = Parse_Input_noddi(tline);
     InputStruct(ksub).run(1).Input_nifti_file_path             = Input_nifti_file_path;
     InputStruct(ksub).run(1).Input_nifti_file_prefix           = Input_nifti_file_prefix;
     InputStruct(ksub).run(1).Output_nifti_file_path            = Output_nifti_file_path;
     InputStruct(ksub).run(1).Output_nifti_file_prefix          = Output_nifti_file_prefix;
-    InputStruct(ksub).run(1).STRUCT_File                       = STRUCT_File;
  
     tline = fgetl(fid);
     if isempty(tline)

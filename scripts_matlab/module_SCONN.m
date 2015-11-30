@@ -81,7 +81,7 @@ if( ~isfield(split_info,'spm') )
     split_info.spm = 'zscore';
 end
 if    ( strcmp( split_info.spm, 'zscore' ) ) output.images  = rSPMZ;
-elseif( strcmp( split_info.spm, 'corr'   ) ) output.images  =  CORR;
+elseif( strcmp( split_info.spm, 'raw'   ) ) output.images  =  CORR;
 else  error( 'invalid output type for seed correlations (should be zscore or corr).' );
 end
 % seed timeseries, on unit-normed eigenimage

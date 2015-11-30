@@ -5,7 +5,7 @@ DESCRIPTION ='PRONTO with LOWPASS, more de-spiking options, and DEOBLIQUE, TPATT
 % END - The above lines are written in Matlab/Octave format, and they will be evaluated in matlab or octave.
 
 ====================================================================================
-          UPDATE_HISTORY:  FMRI Preprocessing Pipeline scripts (2015/04/29)  
+          UPDATE_HISTORY:  FMRI Preprocessing Pipeline scripts (2015/11/30)  
 ====================================================================================
   Authors: Nathan Churchill, Neuroscience Research Program, St. Michael's Hospital
            Babak Afshin-pour, Rotman research institute, Baycrest
@@ -20,6 +20,84 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 ------------------------------------------------------------------------------------
 Overview Change Log:
 ------------------------------------------------------------------------------------
+
+[UPDATES 2015/11/30] by Nathan
+A few changes to the trunk, mainly additions that shouldn't affect functionality of
+pre-existing pipeline code or results. The main change is the addition of new task analysis modules, 
+dPLS (discriminant partial least squares) and SVM (support vector machines), along with resting-state modules of
+FALFF (fractional amplitude low-frequency fluctuations), GCONN (global connectivity) and HURST (hurst exponent)
+and the addition of software for consistency checking results of different PRONTO versions (PRONTO_version_check.m).
+
+Also added some software for running non-fMRI analyses in /extra folder. These should be used
+with *extreme* caution, as they are in the early prototype phase.
+
+Major update details:
+
+[PRONTO_version_check.m]
+    > added to /extra folder. If you generate results using two different codesets, you can call this
+      function using only the input filenames, and it will create a textfile summarizing similarities/differences
+      see the .m file header for further details
+
+[adding new analysis models]
+    .modifications include new module scripts, and modifications to existing files. Relevant changes as follows
+
+    created:
+        > module_SVM, module_dPLS (support vector machines and discriminant partial least squares, respectively)
+        > module_falff, module_gconn, module_hurst (resting-state analysis methods)
+
+    changed:
+        check_split_info_file_integrity.m
+        > now accepts resting-state analysis models of 'GCONN', 'FALFF', 'HURST' (lines 103-118)
+
+        interpret_contrast_list_str.m
+        > removed lines (86-90), which designate a label for 'nocontrast' analysis - this is redundant
+        > modified order in which checks run for 'convolve' field of split_info, for better robustness (lines 114-124)
+        > if 'nocontrast' is chosen, create empty "placeholder" design matrix to for robustness (lines 224-226)
+        > now check for required of fields resting-state analysis models ('GCONN','FALFF','HURST') (lines 533-547)
+
+        Parse_Split_Info.m
+        > file now parases split_info arguments of 'SPM' and 'CONN_METRIC', used in resting-state analysis modules (module_falff, module_gconn, module_hurst) (lines 54-61)
+
+        run_analyses_wrapper.m:
+        > list of univariate models now includes falff, gconn and hurst (resting-state methods) (lines 214)
+        > now checks for new analysis modules: svm, dpls, falff, gconn, hurst (lines 268-293)
+
+Other minor changes:
+
+[lda_optimization.m]
+> now also measure classification %accuracy metric ('Acc') along with prediction and reproducibility
+  (lines 201,208,213,219)
+
+[module_SCONN.m; module_SCONN_group.m]
+> modified argument options for split_info.spm field, from 'corr' to 'raw' (more general definition) (line 84; 104)
+
+[Pipeline_PART2.m]
+> in cases where only 1 pipeline is chosen (i.e. optimization cannot be run), preprocessed data and SPM placed in "optimization_results" folder, with suffix 'PIPE1' (lines 718-840)
+
+[spatial_normalization.m]
+> now check if EPI to T1 transformation matrix already exists before generating it, to save time (lines 244-247)
+
+[tiedrank.m]
+> now uses updated 2011 version of code
+
+[Analysis_Combine_Multirun.m]
+> added this new script, which allows you to concatenate multiple independently processed runs and do analysis
+  useful in cases where split-half approach does not work for some reason
+
+[non-fMRI modifications] - in /extra folder, all currently WORKS IN PROGRESS!
+
+- extensive revision of /extra/diffusion_weighted_imaging file contents
+  DTI analysis now consistent with FSL's FDT package (fsl.fmrib.ox.ac.uk/fsl/fslwiki/FDT)
+- added /extra/arterial_sping_labelling folder for ASL analysis, based on
+  ASLtbx methods (cfn.upenn.edu/~zewang/ASLtbx.php)
+- added /extra/struct_vbm folder for voxel-based morphometry, based on the 
+  FSLVBM approach (fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSLVBM)
+- "posthoc_testing": scripts to do automated group-level analysis on optimized SPMs
+  not fully functional yet
+* deleted spatial_normalization_doall, as it is now obsolete (originally used for ASL and DTI)
+
+---------------------------------------------------------------------------
+
 [UPDATES 2015/08/20] by Babak
 The compiled version of the code was added. To this the python wrappers are modified, 
 read_setting.m read the AFNI, and FSL path from the environment variables not from SETTING.txt

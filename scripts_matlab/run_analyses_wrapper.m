@@ -132,7 +132,7 @@ function output = run_analyses_wrapper( datamat, split_info, analysis_model )
 %                                         be a 3D binary volume, of same dimensions as input fMRI data.
 %                                               Voxels in ROI=1 / non-ROI voxels = 0
 %                  split_info.spm       = string specifying format of output SPM. Options include: 
-%                                         'corr'  : map of voxelwise seed correlations  
+%                                         'raw'  : map of voxelwise seed correlations  
 %                                         'zscore': Z-scored map of reproducible correlation values 
 %
 %                  split_info.type      = 'nocontrast'  (this needs to be a fixed parameter!)
@@ -148,8 +148,56 @@ function output = run_analyses_wrapper( datamat, split_info, analysis_model )
 %                                         where we retain the first "1 to num_PCs" 
 %                  split_info.type      = 'nocontrast'  (this needs to be a fixed parameter!)
 %                  split_info.TR_MSEC   = integer specifying TR (acquisition rate) in milliseconds
+%
 
 % MODIFIER: performs spatial re-weighting for multivariate models
+
+% "secret" extra function analysis models --> testing in progress
+%
+% =========================================================================
+%      analysis_model: 'FALFF'   (fractional amplitude of low-frequency fluctuations)
+%    * regional activity in bold power band *
+% -------------------------------------------------------------------------
+% 'split_info' fields:
+%
+%                  split_info.spm       = string specifying format of output SPM. Options include: 
+%                                         'raw'  : map of fractional energy
+%                                         'zscore': Z-scored map of reproducible correlation values 
+%
+%                  split_info.type      = 'nocontrast'  (this needs to be a fixed parameter!)
+%                  split_info.TR_MSEC   = integer specifying TR (acquisition rate) in milliseconds
+%
+% =========================================================================
+%      analysis_model: 'GCONN'   (global connectivity analysis)
+%    * average correlation of each voxel with all other brain regions *
+% -------------------------------------------------------------------------
+% 'split_info' fields:
+%
+%                  split_info.conn_metric = string giving type of connectivity metric. Options include: 
+%                                         'cov'  : covariance
+%                                         'corr' : correlation
+%                                         'pcorr': partial correlation
+%
+%                  split_info.spm       = string specifying format of output SPM. Options include: 
+%                                         'raw'  : map of voxelwise seed correlations  
+%                                         'zscore': Z-scored map of reproducible correlation values 
+%
+%                  split_info.type      = 'nocontrast'  (this needs to be a fixed parameter!)
+%                  split_info.TR_MSEC   = integer specifying TR (acquisition rate) in milliseconds
+%
+% =========================================================================
+%      analysis_model: 'HURST'   (regional estimate of Hurst exponent)
+%    * quantifies "long-memory" process in BOLD signal *
+% -------------------------------------------------------------------------
+% 'split_info' fields:
+%
+%                  split_info.spm       = string specifying format of output SPM. Options include: 
+%                                         'raw'  : map of voxelwise seed correlations  
+%                                         'zscore': Z-scored map of reproducible correlation values 
+%
+%                  split_info.type      = 'nocontrast'  (this needs to be a fixed parameter!)
+%                  split_info.TR_MSEC   = integer specifying TR (acquisition rate) in milliseconds
+%
 
 % ------------------------------------------------------------------------%
 % Authors: Nathan Churchill, University of Toronto
@@ -163,7 +211,7 @@ function output = run_analyses_wrapper( datamat, split_info, analysis_model )
 
 
 % list of univariate models to exclude
-univar_list = {'gnb', 'glm', 'erglm', 'ergnb', 'sconn' };
+univar_list = {'gnb', 'glm', 'erglm', 'ergnb', 'sconn', 'falff', 'gconn', 'hurst' };
 
 % check that model is NOT on the exclusion list before reweighting
 if( sum(strcmpi( analysis_model, univar_list ))==0 )
@@ -213,13 +261,36 @@ switch lower( analysis_model )
         output.modeltype = 'multi_component';
         % --
     case 'multi-lda'
-        
         output = module_MultiClassLDA( datamat, split_info );
         % --
         output.modeltype = 'multi_component';
         % --
-        %==========================================================================
-        
+    case 'svm'
+        output = module_SVM( datamat, split_info );
+        % --
+        output.modeltype = 'one_component';
+        % --
+    case 'dpls'
+        output = module_dPLS( datamat, split_info );
+        % --
+        output.modeltype = 'one_component';
+        % --
+    case 'falff'
+        output = module_falff( datamat, split_info );
+        % --
+        output.modeltype = 'one_component';
+        % --        
+    case 'gconn'
+        output = module_gconn( datamat, split_info );
+        % --
+        output.modeltype = 'one_component';
+        % --        
+    case 'hurst'
+        output = module_hurst( datamat, split_info );
+        % --
+        output.modeltype = 'one_component';
+        % --        
+        %==========================================================================        
     otherwise
         error('Model not on the list! Please specify another.');
 end

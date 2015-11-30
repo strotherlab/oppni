@@ -1,4 +1,4 @@
-function [r, tieadj] = tiedrank(x, tieflag, bidirectional)
+function [r, tieadj] = tiedrank(x, tieflag, bidirectional, epsx)
 %TIEDRANK Compute the ranks of a sample, adjusting for ties.
 %   [R, TIEADJ] = TIEDRANK(X) computes the ranks of the values in the
 %   vector X.  If any X values are tied, TIEDRANK computes their average
@@ -16,12 +16,14 @@ function [r, tieadj] = tiedrank(x, tieflag, bidirectional)
 %   and largest get rank 2, etc.  These ranks are used for the
 %   Ansari-Bradley test.
 %
+%   [...] = TIEDRANK(X,0,0,EPSX) considers two X values within EPSX to be
+%   tied. EPSX has the same size as X, and the comparison between X(J) and
+%   X(K) is carried out with absolute tolerance EPSX(J)+EPSX(K).
+%   TIEDRANK uses an absolute tolerance of zero by default.
+%
 %   See also ANSARIBRADLEY, CORR, PARTIALCORR, RANKSUM, SIGNRANK.
 
-%   Copyright 1993-2005 The MathWorks, Inc.
-
-% CODE_VERSION = '$Revision: 158 $';
-% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+%   Copyright 1993-2011 The MathWorks, Inc.
 
 
 if nargin < 2
@@ -30,9 +32,12 @@ end
 if nargin < 3
     bidirectional = 0;
 end
+if nargin<4
+    epsx = zeros(size(x));
+end
 
 if isvector(x)
-   [r,tieadj] = tr(x,tieflag,bidirectional);
+   [r,tieadj] = tr(x,tieflag,bidirectional,epsx);
 else
    if isa(x,'single')
       outclass = 'single';
@@ -50,16 +55,18 @@ else
       tieadj = zeros([1,ncols],outclass);
    end
    for j=1:prod(ncols)
-      [r(:,j),tieadj(:,j)] = tr(x(:,j),tieflag,bidirectional);
+      [r(:,j),tieadj(:,j)] = tr(x(:,j),tieflag,bidirectional,epsx(:,j));
    end
 end
 
 % --------------------------------
-function [r,tieadj] = tr(x,tieflag,bidirectional)
+function [r,tieadj] = tr(x,tieflag,bidirectional,epsx)
 %TR Local tiedrank function to compute results for one column
 
 % Sort, then leave the NaNs (which are sorted to the end) alone
 [sx, rowidx] = sort(x(:));
+epsx = epsx(rowidx);
+epsx = epsx(:);
 numNaNs = sum(isnan(x));
 xLen = numel(x) - numNaNs;
 
@@ -86,7 +93,7 @@ if isa(x,'single')
 end
 
 % Adjust for ties.  Avoid using diff(sx) here in case there are infs.
-ties = (sx(1:xLen-1) == sx(2:xLen));
+ties = sx(1:xLen-1)+epsx(1:xLen-1) >= sx(2:xLen)-epsx(2:xLen);
 tieloc = [find(ties); xLen+2];
 maxTies = numel(tieloc);
 

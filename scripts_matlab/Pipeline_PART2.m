@@ -1,4 +1,4 @@
-function Pipeline_PART2( InputStruct, optimize_metric, mot_gs_control, process_out, keepmean)
+function Pipeline_PART2( InputStruct, optimize_metric, mot_gs_control, process_out, keepmean, whichpipes)
 %
 %==========================================================================
 % PIPELINE_PART2 : this step identifies optimal pipelines, and produces
@@ -120,7 +120,7 @@ end
 
 read_version;
 
-if nargin<6
+if nargin<7
     reference_file = '';
 end
 
@@ -149,6 +149,12 @@ else
     if ischar(keepmean)
         keepmean = str2num(keepmean);
     end
+end
+% choosing optimal pipelines to output
+if  nargin<6 || isempty( whichpipes )
+       whichpipes = 'ALL';
+elseif ~strcmpi(whichpipes,'CON') && ~strcmpi(whichpipes,'FIX') && ~strcmpi(whichpipes,'IND')
+       error('for "whichpipes" argument, needs to be CON,FIX,IND or ALL (MIN or MAX also available)');
 end
 
 output_notes{1} = CODE_PROPERTY.NII_HEADER;
@@ -611,7 +617,20 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
             TEMP_opt{ksub}.fix = TEMP_set{irank      };
             TEMP_opt{ksub}.ind = TEMP_set{iind(ksub) };
 
-            SPMs = [SPM_opt{ksub}.con SPM_opt{ksub}.fix SPM_opt{ksub}.ind];
+            if strcmpi(whichpipes,'ALL') %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PRODUCE ALL SPMS
+                
+                spmnames = 'CON_FIX_IND';                
+                SPMs = [SPM_opt{ksub}.con SPM_opt{ksub}.fix SPM_opt{ksub}.ind];
+            
+            else %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PRODUCE 1 PIPELINE
+                 
+                spmnames = whichpipes;
+                if     strcmpi(whichpipes,'CON') SPMs = SPM_opt{ksub}.con;
+                elseif strcmpi(whichpipes,'FIX') SPMs = SPM_opt{ksub}.fix;
+                elseif strcmpi(whichpipes,'IND') SPMs = SPM_opt{ksub}.ind;                    
+                end                
+            end
+            % now save file
             nii = MM;
             nii.img = zeros([size(MM.img) size(SPMs,2)]);
             Z = zeros(size(MM.img));
@@ -622,8 +641,9 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
             nii.hdr.dime.datatype = 16;
             nii.hdr.dime.dim([1 5]) = [4 nvol];
             nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-            save_untouch_nii(nii,strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/optimization_results/spms/rSPM',InputStruct(ksub).run(1).subjectprefix,'_CON_FIX_IND.nii'));
-
+            save_untouch_nii(nii,strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/optimization_results/spms/rSPM',InputStruct(ksub).run(1).subjectprefix,'_',spmnames,'.nii'));
+            
+                
             %% select additional preprocessing choices (Step2) for current pipeline
             pipe_temp = [pipeline_sets.con;pipeline_sets.fix;pipeline_sets.ind(ksub,:);pipeline_sets.min; pipeline_sets.max;];
 
@@ -650,7 +670,14 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
             save([InputStruct(ksub).run(1).Output_nifti_file_path,'/optimization_results/matfiles/opt_' optimize_metric InputStruct(ksub).run(1).subjectprefix '.mat'],'-struct','SV','-v7');
             save([InputStruct(ksub).run(1).Output_nifti_file_path,'/optimization_results/matfiles/opt_' optimize_metric InputStruct(ksub).run(1).subjectprefix '.mat'],'CODE_PROPERTY','-append');
 
-            for ik = 1:size(pipe_temp,1)-2   % Only con, fix and ind files are generated
+            % what preprocessed datasets to create
+            if     strcmpi(whichpipes,'ALL') iklist = 1:size(pipe_temp,1)-2; %% only con, fix and ind files are generated
+            elseif strcmpi(whichpipes,'CON') iklist = 1; % only con
+            elseif strcmpi(whichpipes,'FIX') iklist = 2; % only fix
+            elseif strcmpi(whichpipes,'IND') iklist = 3; % only ind
+            end                
+            
+            for ik = iklist   % go through pipelines
                 Invol_name = ['m',num2str(pipe_temp(ik,1)),'c',num2str(pipe_temp(ik,2)),'p',num2str(pipe_temp(ik,3)),'t',num2str(pipe_temp(ik,4)),'s',num2str(pipe_temp(ik,5))];
                 nomem = sprintf('m%dc%dp%dt%ds%dd%dr%dx%dg%dl%dy%d',pipe_temp(ik,:));
                 NR = load(sprintf('%s/intermediate_metrics/regressors/reg%s/m%dc%dp%dt%ds%dd%dr%dx%dg%dl%dy%d.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).subjectprefix,pipe_temp(ik,:)));

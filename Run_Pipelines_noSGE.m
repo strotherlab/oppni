@@ -1,4 +1,4 @@
-function Run_Pipelines_noSGE( subject_inputs, pipelines, analysis_model, TR_MSEC, contrast_list, TEMPLATE_VOL, VOXDIMS, DEOBLIQUE, TPATTERN )
+function Run_Pipelines_noSGE( subject_inputs, pipelines, analysis_model, TR_MSEC, contrast_list, TEMPLATE_VOL, VOXDIMS, DEOBLIQUE, TPATTERN, opt_metric )
 %
 % RUN_PIPELINES_NOSGE: script for running pipelines directly in matlab, for
 % instance where SGE system is not available.
@@ -30,6 +30,12 @@ end
 if nargin<9 
     TPATTERN = [];
 end
+if nargin<10
+    def_flag   = 1;
+    opt_metric = 'dPR';
+else
+    def_flag   = 0;
+end
 
 %quick check to see if split_info specified, if not add it
 [subject_inputs make_splitfile] = Read_Inputs(subject_inputs,analysis_model);
@@ -50,8 +56,8 @@ end
 Pipeline_PART1(subject_inputs,pipelines,analysis_model,[],0,contrast_list,false,DEOBLIQUE,TPATTERN);
 % run optimization, if analysis model included
 if( ~strcmp(analysis_model ,'NONE') )
-    disp('WARNING: pipeline optimization uses default metric of dPR');
-    Pipeline_PART2(subject_inputs,'dPR',[1 0],1,0);
+    if(def_flag>0) disp('WARNING: pipeline optimization uses default metric of dPR'); end
+    Pipeline_PART2(subject_inputs,opt_metric,[1 0],1,0);
 end
 
 % run spatial normalization

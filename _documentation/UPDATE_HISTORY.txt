@@ -21,6 +21,19 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 Overview Change Log:
 ------------------------------------------------------------------------------------
 
+[UPDATES 2016/01/22] by Nathan
+Three minor changes for better efficiency when re-processing
+[Pipeline_PART1.m]
+    > now skips regression-based processing for subjects, if results were already created
+      allows you to add new subjects to pipeline testing without re-running everyone (lines 233-238)
+
+[Pipeline_PART2.m]
+    > added an option to only create optimized SPMs/datasets for a single pipeline (CON, FIX or IND)
+      instead of all 3. It is an extra argument when calling Pipeline_PART2, "whichpipes" (lines 1,153-158,620-632,673-678)
+
+[Run_Pipelines_noSGE.m]
+    > now allows users to specify the optimization metric of interest as an argument when calling this function
+      (lines 1,33-38,59-60)
 
 [UPDATES 2015/11/30] by Nathan
 A few changes to the trunk, mainly additions that shouldn't affect functionality of

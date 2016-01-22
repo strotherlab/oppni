@@ -228,366 +228,381 @@ for ksub = 1:numel(InputStruct)
     mkdir_r([Subject_OutputDirIntermed '/regressors/reg' subjectprefix]);
     kcount = 0;
     
-    clear Output_nifti_file_path Output_nifti_file_prefix split_info_file
-    N_run = numel(InputStruct(ksub).run);
+    %%%% Check if output files already exist %%%%
+    suffix='';
+    chk0 = exist( [Subject_OutputDirIntermed,'/res0_params/params' subjectprefix '.mat'], 'file' );
+    chk1 = exist( [Subject_OutputDirIntermed,'/res1_spms/spms', subjectprefix,suffix,'.mat'], 'file' );
+    chk2 = exist( [Subject_OutputDirIntermed,'/res2_temp/temp', subjectprefix,suffix,'.mat'], 'file' );
+    chk3 = exist( [Subject_OutputDirIntermed,'/res3_stats/stats',subjectprefix,suffix,'.mat'], 'file' );
     
-    for krun = 1:numel(InputStruct(ksub).run)
-        kcount = kcount + 1;
-        Output_nifti_file_path{kcount}    = InputStruct(ksub).run(krun).Output_nifti_file_path;
-        Output_nifti_file_prefix{kcount}  = InputStruct(ksub).run(krun).Output_nifti_file_prefix;
-        Noise_ROI{kcount}                 = InputStruct(ksub).run(krun).Noise_ROI;
-    end
-    
-    
-    %% ==== Step 2.2(c): load brain mask, standard fmri data === %%%
-    %
-    % load in brain mask
-    MM   = load_untouch_nii( subjectmask );
-    mask = double(MM.img);
-    
-    %%%%% I. First Iteration through subjects -- load all prep. information,
-    %%%%%    including MPEs, HRF, tissue maps etc
-    
-    krun=0;
-    if N_run==1
-         aligned_suffix = '';
-    else aligned_suffix = '_aligned';
-    end
-    
-    clear FXYZ
-    for krun = 1:N_run
+    if( chk0 && chk1 && chk2 && chk3 ) %% skip processing for this subject
         
-        %% Step 2.2: preparatory steps before pipeline testing
-        
-        %%% ==== 2.2(a) Read in output strings + task strings ==== %%%
-        
-        outdir   = Output_nifti_file_path{krun};
-        
-        % load in "split_info" structure with information about task onset and
-        % analysis model parameters
-        
-        % load file
-        split_info = InputStruct(ksub).run(krun).split_info;
-        split_info_set{krun} = split_info;
-        Contrast_List = InputStruct(ksub).run(krun).split_info.Contrast_List;
-        
-        %% GROUP: load an array of split_info files (one per subject)
-        
-        warning off;
-        %% a. create output directories for metrics
-        mkdir_r(strcat(Subject_OutputDirIntermed,'/res0_params'));
-        if( ~strcmpi(analysis_model,'NONE') )
-        mkdir_r(strcat(Subject_OutputDirIntermed,'/res1_spms'));
-        mkdir_r(strcat(Subject_OutputDirIntermed,'/res2_temp'));
-        mkdir_r(strcat(Subject_OutputDirIntermed,'/res3_stats'));
-        end
-        %% b. create output directories for optimization results
-        mkdir_r(strcat(Subject_OutputDirOptimize,'/processed'));
-        if( ~strcmpi(analysis_model,'NONE') )
-        mkdir_r(strcat(Subject_OutputDirOptimize,'/spms'));
-        mkdir_r(strcat(Subject_OutputDirOptimize,'/matfiles'));
-        end
-        warning on;
-        
-        %%% ==== Step 2.2(b): load and prepare motion MPEs === %%%
-        %
-        % load MPEs and generate PCA subset (>=85% variance),
-        % currently not recorded to output (record=0)
-        mpe_instring  = strcat(outdir,'/intermediate_processed/mpe/',Output_nifti_file_prefix{krun},'_mpe'    );
-        mpe_outstring = strcat(outdir,'/intermediate_processed/mpe/',Output_nifti_file_prefix{krun},'_mpe_PCs');
-        %% GROUP: PCA of head motion parameters -- load into cell array
-        motPCs{krun} = motion_to_pcs( mpe_instring, mpe_outstring, 0.85,0 );
-        
-        %
-        % load "baseproc" (basic preprocessing) dataset for
-        % (a) estimating characteristic head motion patterns
-        % (b) estimating vascular and white-matter maps
-        %
-        xbase_string  = strcat(outdir,'/intermediate_processed/afni_processed/',Output_nifti_file_prefix{krun},'_baseproc',aligned_suffix,'.nii');
-        VX            = load_untouch_nii(  xbase_string );
-        vxmat{krun}   = nifti_to_mat(VX,MM);
-        [Nvox Ntime]  = size(vxmat{krun});
-        
-        %%% ==== Step 2.2(d): simple task modelling === %%%
-       
-        HRFdesign{krun} = split_info.design_mat;
-
-        %%% ==== Step 2.2(e): head motion spatial derivative maps ==== %%%
-        %
-        % used to detect large head motion artifact in brain maps
-        % getting spatial derivative maps of brain, for motion artifact detection
-        avg3d{krun}         =  mask;
-        avg3d{krun}(mask>0) = mean(vxmat{krun},2);
-        [fx fy fz]     = gradient( avg3d{krun} );
-        % get the vector of derivatives on each axis
-        %% GROUP: load into 3d matrix, across subjects
-        FXYZ(:,:,krun) = [fx(mask>0) fy(mask>0) fz(mask>0)];
-        outdir_stack{krun} = outdir;
-    end
-    
-    
-    %%% ==== Step 2.2(f): data-driven tissue segmentation/mapping
-    
-    avg3d_avg = 0;
-    for krun = 1:N_run
-        % INFO: for physiological (vascular) downweighting maps
-        % remove mean/linear signal
-        out   = GLM_model_fmri( vxmat{krun}, 1,[],[], 'econ' ); % just noise
-        % cell formatting
-        vxmat{krun} = out.vol_denoi;
-        avg3d_avg = avg3d_avg + avg3d{krun};
-    end
-    avg3d_avg = avg3d_avg/N_run;
-    
-    dataInfo.TR            = (split_info_set{1}.TR_MSEC./1000);
-    dataInfo.FreqCut       = 0.10;
-    dataInfo.thresh_method = 'noprior';
-    dataInfo.out_format    = 0;
-    
-    % estimate vascular map
-    if N_run==1
-        len2 = ceil(size(vxmat{1},2)/2);
-        volcel{1} = vxmat{1}(:,1:len2);
-        volcel{2} = vxmat{1}(:,len2+1:end);
-        outwt      = PHYCAA_plus_step1( volcel, dataInfo );
-        outwm      = WM_weight( volcel, dataInfo );
+        disp(['skipped regression processing for ',subjectprefix,'.' ]);
+        disp(['--> output files already exist!'])
     else
-        outwt      = PHYCAA_plus_step1( vxmat, dataInfo );
-        outwm      = WM_weight( vxmat, dataInfo );
-    end
-    clear vxmat volcel;
-    
-    % GROUP: get priors into 2d matrices
-    NN_weight_avg = outwt.NN_weight;
-    WM_weight_avg = outwm.WM_weight;
-    NN_mask_avg   = outwt.NN_mask;
-    WM_mask_avg   = outwm.WM_mask;
-    if size(FXYZ,3)>1
-         FXYZ_avg      = mean( FXYZ, 3 );
-    else FXYZ_avg = FXYZ;
-    end
-    Xsignal = HRFdesign;
-    Xnoise  = motPCs;
-    
-    for krun = 1:N_run
-        split_info_set{krun}.spat_weight = NN_weight_avg;
-        split_info_set{krun}.mask_vol    = mask;
-    end
-    
-    save([Subject_OutputDirIntermed '/res0_params/params' subjectprefix '.mat'],'Xsignal','Xnoise','FXYZ_avg','NN_mask_avg','WM_mask_avg','NN_weight_avg','WM_weight_avg','mask','modelparam','CODE_PROPERTY','-v7');
-    
-    % initialize cell array for activation maps, one cell per pipeline
-    IMAGE_set_0  = cell( Nfull, 1 );
-    TEMP_set_0   = cell( Nfull, 1 );
-    METRIC_set_0 = cell( Nfull, 1 );
-    % if phycaa+ is being performed, define additional cell array for resulting images
-    if( sum( phySet ) > 0 )
-        IMAGE_set_y  = cell( Nfull, 1 );
-        TEMP_set_y   = cell( Nfull, 1 );
-        METRIC_set_y = cell( Nfull, 1 );
-    end
-    
-    EmptyCell= cell(N_run,1);
-    for(is=1:N_run) EmptyCell{is}=[]; end
-    
-    %% Step 2.3: performing pipeline testing
-    %% run through pipeline options, generate output
-    %  iterate through already-processed pipelines,
-    %  load, run further processing and analyze...
-    kall = 0;
-    for i=1:Nhalf
-        
-        PipeHalfList = strcat( 'm',num2str( pipeset_half(i,1) ), ...
-            'c',num2str( pipeset_half(i,2) ), ...
-            'p',num2str( pipeset_half(i,3) ), ...
-            't',num2str( pipeset_half(i,4) ), ...
-            's',num2str( pipeset_half(i,5) )      );
-        
-        display([num2str(krun), ' --- ' PipeHalfList, ' doing:', num2str(i),'/',num2str(Nhalf)])
-        
-        %%%%% II. Second iteration level. Load all subjects for a given
-        %%%%%     "pre-made" pipeline -- eg every pipeline made in Step-1
-        
-        for krun = 1:N_run
-            
-            Contrast_List = InputStruct(ksub).run(krun).split_info.Contrast_List;
-            outdir   =  Output_nifti_file_path{krun};
-            
-            %%% ==== Step 2.3(a): load fmri volume
-            %
-            % specify volume and mask file names
-            volname  = strcat( outdir,'/intermediate_processed/afni_processed/',Output_nifti_file_prefix{krun},'_',PipeHalfList,aligned_suffix,'.nii' );
-            % load the nifti files
-            VV = load_untouch_nii(  volname );
-            % convert nifti volume into matfile
-            volmat{krun}  = nifti_to_mat(VV,MM);
-            
-            % ------------------------------------------------------------------------------------------------
-            
-            % load the nifti files
-            if ~isempty(Noise_ROI{krun})
-                [tmp,roi_name,ext] = fileparts(Noise_ROI{krun});
-                roi_full_name = [outdir '/intermediate_processed/noise_roi/' roi_name '.nii'];
-                VV = load_untouch_nii(roi_full_name);
-                noise_roi{krun} = nifti_to_mat(VV,MM);
-            else
-                noise_roi{krun}= [];
-            end
-            % 
+        disp(['regression processing for ',subjectprefix,'.' ]);
+
+        clear Output_nifti_file_path Output_nifti_file_prefix split_info_file
+        N_run = numel(InputStruct(ksub).run);
+
+        for krun = 1:numel(InputStruct(ksub).run)
+            kcount = kcount + 1;
+            Output_nifti_file_path{kcount}    = InputStruct(ksub).run(krun).Output_nifti_file_path;
+            Output_nifti_file_prefix{kcount}  = InputStruct(ksub).run(krun).Output_nifti_file_prefix;
+            Noise_ROI{kcount}                 = InputStruct(ksub).run(krun).Noise_ROI;
         end
-        
-        %%%%% III. Third iteration level. run through each pipeline combination that
-        %%%%%      is performed on pre-loaded data, analyze + save results
-        
-        %% run through additional proccessing choices
-        for DET = detSet
-            for MPR = mprSet
-                for TASK = tskSet
-                    for GS  = gsSet
-                        for LP = lpSet
- 
-                        kall = kall + 1;
-                        % full list of preprocessing choices for this pipeline step
-                        pipeset_full(kall,:) = [pipeset_half(i,:) DET MPR TASK GS LP];
-                        
-                        if N_run>1
-                              [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, NN_weight_avg, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV);
-                        else  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal{1}, Xnoise{1}, noise_roi{1}, NN_weight_avg, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV);
-                        
-                        end
-                        
+
+
+        %% ==== Step 2.2(c): load brain mask, standard fmri data === %%%
+        %
+        % load in brain mask
+        MM   = load_untouch_nii( subjectmask );
+        mask = double(MM.img);
+
+        %%%%% I. First Iteration through subjects -- load all prep. information,
+        %%%%%    including MPEs, HRF, tissue maps etc
+
+        krun=0;
+        if N_run==1
+             aligned_suffix = '';
+        else aligned_suffix = '_aligned';
+        end
+
+        clear FXYZ
+        for krun = 1:N_run
+
+            %% Step 2.2: preparatory steps before pipeline testing
+
+            %%% ==== 2.2(a) Read in output strings + task strings ==== %%%
+
+            outdir   = Output_nifti_file_path{krun};
+
+            % load in "split_info" structure with information about task onset and
+            % analysis model parameters
+
+            % load file
+            split_info = InputStruct(ksub).run(krun).split_info;
+            split_info_set{krun} = split_info;
+            Contrast_List = InputStruct(ksub).run(krun).split_info.Contrast_List;
+
+            %% GROUP: load an array of split_info files (one per subject)
+
+            warning off;
+            %% a. create output directories for metrics
+            mkdir_r(strcat(Subject_OutputDirIntermed,'/res0_params'));
+            if( ~strcmpi(analysis_model,'NONE') )
+            mkdir_r(strcat(Subject_OutputDirIntermed,'/res1_spms'));
+            mkdir_r(strcat(Subject_OutputDirIntermed,'/res2_temp'));
+            mkdir_r(strcat(Subject_OutputDirIntermed,'/res3_stats'));
+            end
+            %% b. create output directories for optimization results
+            mkdir_r(strcat(Subject_OutputDirOptimize,'/processed'));
+            if( ~strcmpi(analysis_model,'NONE') )
+            mkdir_r(strcat(Subject_OutputDirOptimize,'/spms'));
+            mkdir_r(strcat(Subject_OutputDirOptimize,'/matfiles'));
+            end
+            warning on;
+
+            %%% ==== Step 2.2(b): load and prepare motion MPEs === %%%
+            %
+            % load MPEs and generate PCA subset (>=85% variance),
+            % currently not recorded to output (record=0)
+            mpe_instring  = strcat(outdir,'/intermediate_processed/mpe/',Output_nifti_file_prefix{krun},'_mpe'    );
+            mpe_outstring = strcat(outdir,'/intermediate_processed/mpe/',Output_nifti_file_prefix{krun},'_mpe_PCs');
+            %% GROUP: PCA of head motion parameters -- load into cell array
+            motPCs{krun} = motion_to_pcs( mpe_instring, mpe_outstring, 0.85,0 );
+
+            %
+            % load "baseproc" (basic preprocessing) dataset for
+            % (a) estimating characteristic head motion patterns
+            % (b) estimating vascular and white-matter maps
+            %
+            xbase_string  = strcat(outdir,'/intermediate_processed/afni_processed/',Output_nifti_file_prefix{krun},'_baseproc',aligned_suffix,'.nii');
+            VX            = load_untouch_nii(  xbase_string );
+            vxmat{krun}   = nifti_to_mat(VX,MM);
+            [Nvox Ntime]  = size(vxmat{krun});
+
+            %%% ==== Step 2.2(d): simple task modelling === %%%
+
+            HRFdesign{krun} = split_info.design_mat;
+
+            %%% ==== Step 2.2(e): head motion spatial derivative maps ==== %%%
+            %
+            % used to detect large head motion artifact in brain maps
+            % getting spatial derivative maps of brain, for motion artifact detection
+            avg3d{krun}         =  mask;
+            avg3d{krun}(mask>0) = mean(vxmat{krun},2);
+            [fx fy fz]     = gradient( avg3d{krun} );
+            % get the vector of derivatives on each axis
+            %% GROUP: load into 3d matrix, across subjects
+            FXYZ(:,:,krun) = [fx(mask>0) fy(mask>0) fz(mask>0)];
+            outdir_stack{krun} = outdir;
+        end
+
+
+        %%% ==== Step 2.2(f): data-driven tissue segmentation/mapping
+
+        avg3d_avg = 0;
+        for krun = 1:N_run
+            % INFO: for physiological (vascular) downweighting maps
+            % remove mean/linear signal
+            out   = GLM_model_fmri( vxmat{krun}, 1,[],[], 'econ' ); % just noise
+            % cell formatting
+            vxmat{krun} = out.vol_denoi;
+            avg3d_avg = avg3d_avg + avg3d{krun};
+        end
+        avg3d_avg = avg3d_avg/N_run;
+
+        dataInfo.TR            = (split_info_set{1}.TR_MSEC./1000);
+        dataInfo.FreqCut       = 0.10;
+        dataInfo.thresh_method = 'noprior';
+        dataInfo.out_format    = 0;
+
+        % estimate vascular map
+        if N_run==1
+            len2 = ceil(size(vxmat{1},2)/2);
+            volcel{1} = vxmat{1}(:,1:len2);
+            volcel{2} = vxmat{1}(:,len2+1:end);
+            outwt      = PHYCAA_plus_step1( volcel, dataInfo );
+            outwm      = WM_weight( volcel, dataInfo );
+        else
+            outwt      = PHYCAA_plus_step1( vxmat, dataInfo );
+            outwm      = WM_weight( vxmat, dataInfo );
+        end
+        clear vxmat volcel;
+
+        % GROUP: get priors into 2d matrices
+        NN_weight_avg = outwt.NN_weight;
+        WM_weight_avg = outwm.WM_weight;
+        NN_mask_avg   = outwt.NN_mask;
+        WM_mask_avg   = outwm.WM_mask;
+        if size(FXYZ,3)>1
+             FXYZ_avg      = mean( FXYZ, 3 );
+        else FXYZ_avg = FXYZ;
+        end
+        Xsignal = HRFdesign;
+        Xnoise  = motPCs;
+
+        for krun = 1:N_run
+            split_info_set{krun}.spat_weight = NN_weight_avg;
+            split_info_set{krun}.mask_vol    = mask;
+        end
+
+        save([Subject_OutputDirIntermed '/res0_params/params' subjectprefix '.mat'],'Xsignal','Xnoise','FXYZ_avg','NN_mask_avg','WM_mask_avg','NN_weight_avg','WM_weight_avg','mask','modelparam','CODE_PROPERTY','-v7');
+
+        % initialize cell array for activation maps, one cell per pipeline
+        IMAGE_set_0  = cell( Nfull, 1 );
+        TEMP_set_0   = cell( Nfull, 1 );
+        METRIC_set_0 = cell( Nfull, 1 );
+        % if phycaa+ is being performed, define additional cell array for resulting images
+        if( sum( phySet ) > 0 )
+            IMAGE_set_y  = cell( Nfull, 1 );
+            TEMP_set_y   = cell( Nfull, 1 );
+            METRIC_set_y = cell( Nfull, 1 );
+        end
+
+        EmptyCell= cell(N_run,1);
+        for(is=1:N_run) EmptyCell{is}=[]; end
+
+        %% Step 2.3: performing pipeline testing
+        %% run through pipeline options, generate output
+        %  iterate through already-processed pipelines,
+        %  load, run further processing and analyze...
+        kall = 0;
+        for i=1:Nhalf
+
+            PipeHalfList = strcat( 'm',num2str( pipeset_half(i,1) ), ...
+                'c',num2str( pipeset_half(i,2) ), ...
+                'p',num2str( pipeset_half(i,3) ), ...
+                't',num2str( pipeset_half(i,4) ), ...
+                's',num2str( pipeset_half(i,5) )      );
+
+            display([num2str(krun), ' --- ' PipeHalfList, ' doing:', num2str(i),'/',num2str(Nhalf)])
+
+            %%%%% II. Second iteration level. Load all subjects for a given
+            %%%%%     "pre-made" pipeline -- eg every pipeline made in Step-1
+
+            for krun = 1:N_run
+
+                Contrast_List = InputStruct(ksub).run(krun).split_info.Contrast_List;
+                outdir   =  Output_nifti_file_path{krun};
+
+                %%% ==== Step 2.3(a): load fmri volume
+                %
+                % specify volume and mask file names
+                volname  = strcat( outdir,'/intermediate_processed/afni_processed/',Output_nifti_file_prefix{krun},'_',PipeHalfList,aligned_suffix,'.nii' );
+                % load the nifti files
+                VV = load_untouch_nii(  volname );
+                % convert nifti volume into matfile
+                volmat{krun}  = nifti_to_mat(VV,MM);
+
+                % ------------------------------------------------------------------------------------------------
+
+                % load the nifti files
+                if ~isempty(Noise_ROI{krun})
+                    [tmp,roi_name,ext] = fileparts(Noise_ROI{krun});
+                    roi_full_name = [outdir '/intermediate_processed/noise_roi/' roi_name '.nii'];
+                    VV = load_untouch_nii(roi_full_name);
+                    noise_roi{krun} = nifti_to_mat(VV,MM);
+                else
+                    noise_roi{krun}= [];
+                end
+                % 
+            end
+
+            %%%%% III. Third iteration level. run through each pipeline combination that
+            %%%%%      is performed on pre-loaded data, analyze + save results
+
+            %% run through additional proccessing choices
+            for DET = detSet
+                for MPR = mprSet
+                    for TASK = tskSet
+                        for GS  = gsSet
+                            for LP = lpSet
+
+                            kall = kall + 1;
+                            % full list of preprocessing choices for this pipeline step
+                            pipeset_full(kall,:) = [pipeset_half(i,:) DET MPR TASK GS LP];
+
+                            if N_run>1
+                                  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, NN_weight_avg, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV);
+                            else  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal{1}, Xnoise{1}, noise_roi{1}, NN_weight_avg, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV);
+
+                            end
+
+                            end
                         end
                     end
                 end
             end
         end
-    end
-    
 
-    % pipeline information
-    pipechars = ['m' 'c' 'p' 't' 's' 'd' 'r' 'x' 'g' 'l' 'y'];
-    pipenames = {'MOTCOR', 'CENSOR', 'RETROICOR', 'TIMECOR', 'SMOOTH', 'DETREND', 'MOTREG', 'TASK', 'GSPC1', 'LOWPASS', 'PHYPLUS'};    
-    % matrix of pipeline designations
-    if( length(phySet) > 1 ) pipeset = [ pipeset_full zeros(Nfull,1); pipeset_full ones(Nfull,1) ];
-    elseif( phySet == 0 )    pipeset = [ pipeset_full zeros(Nfull,1) ];
-    elseif( phySet == 1 )    pipeset = [ pipeset_full ones(Nfull,1) ];
-    end
-    
-    if( ~strcmpi(analysis_model,'NONE') )
 
-        %% Step 2.4: consolidate results for output
-
-        % combine images/metrics for results with or without PHYCAA+
-        if( length(phySet) > 1 )
-            IMAGE_set  = [IMAGE_set_0; IMAGE_set_y];
-            TEMP_set   = [TEMP_set_0; TEMP_set_y];
-            METRIC_set = [METRIC_set_0; METRIC_set_y];
-
-        elseif( phySet == 0 )
-
-            IMAGE_set  = [IMAGE_set_0];
-            TEMP_set   = [TEMP_set_0];
-            METRIC_set = [METRIC_set_0];
-
-        elseif( phySet == 1 )
-
-            IMAGE_set  = [IMAGE_set_y];
-            TEMP_set   = [TEMP_set_y];
-            METRIC_set = [METRIC_set_y];
+        % pipeline information
+        pipechars = ['m' 'c' 'p' 't' 's' 'd' 'r' 'x' 'g' 'l' 'y'];
+        pipenames = {'MOTCOR', 'CENSOR', 'RETROICOR', 'TIMECOR', 'SMOOTH', 'DETREND', 'MOTREG', 'TASK', 'GSPC1', 'LOWPASS', 'PHYPLUS'};    
+        % matrix of pipeline designations
+        if( length(phySet) > 1 ) pipeset = [ pipeset_full zeros(Nfull,1); pipeset_full ones(Nfull,1) ];
+        elseif( phySet == 0 )    pipeset = [ pipeset_full zeros(Nfull,1) ];
+        elseif( phySet == 1 )    pipeset = [ pipeset_full ones(Nfull,1) ];
         end
 
-        % initializing cell arrays:
-        rho_IMAGE    = cell(Nfull, 1);
-        wmfrac_IMAGE = cell(Nfull, 1);
-        % testing for spatial motion artifact and white matter bias
-        %
-        for(n=1:(Nfull*length(phySet)))   % for each pipeline entry...
+        if( ~strcmpi(analysis_model,'NONE') )
 
-            %initialize:
-            rho = zeros( size(IMAGE_set{n},2), 1 );
+            %% Step 2.4: consolidate results for output
+
+            % combine images/metrics for results with or without PHYCAA+
+            if( length(phySet) > 1 )
+                IMAGE_set  = [IMAGE_set_0; IMAGE_set_y];
+                TEMP_set   = [TEMP_set_0; TEMP_set_y];
+                METRIC_set = [METRIC_set_0; METRIC_set_y];
+
+            elseif( phySet == 0 )
+
+                IMAGE_set  = [IMAGE_set_0];
+                TEMP_set   = [TEMP_set_0];
+                METRIC_set = [METRIC_set_0];
+
+            elseif( phySet == 1 )
+
+                IMAGE_set  = [IMAGE_set_y];
+                TEMP_set   = [TEMP_set_y];
+                METRIC_set = [METRIC_set_y];
+            end
+
+            % initializing cell arrays:
+            rho_IMAGE    = cell(Nfull, 1);
+            wmfrac_IMAGE = cell(Nfull, 1);
+            % testing for spatial motion artifact and white matter bias
             %
-            for(p=1:size(IMAGE_set{n},2)) % and each image from set...
-                % ------ test for motion (correlation with spatial derivatives
-                [Ao,Bo,rho(p,1)] = canoncorr( IMAGE_set{n}(:,p), FXYZ_avg );
+            for(n=1:(Nfull*length(phySet)))   % for each pipeline entry...
+
+                %initialize:
+                rho = zeros( size(IMAGE_set{n},2), 1 );
                 %
-            end
-
-            % correlation with spatial derivatives (motion effects)
-            METRIC_set{n}.artifact_prior.MOT_corr = rho;
-            if N_run==1
-                % average white matter z-score
-                METRIC_set{n}.artifact_prior.WM_zscor = mean( IMAGE_set{n}(outwm.WM_mask > 0, : ) );
-            else
-                % GROUP: take mask as >50% subjects with declared white matter tissue
-                METRIC_set{n}.artifact_prior.WM_zscor = sum( IMAGE_set{n}( WM_mask_avg > 0.5, : ) > 0 )./ sum( WM_mask_avg > 0.5 )';
-            end
-            % fraction of voxels >0 (global signal effects)
-            METRIC_set{n}.artifact_prior.GS_fract = sum( IMAGE_set{n}>0 )./Nvox;
-        end
-
-        % save output matfiles
-        %
-        suffix = '';
-        if  ~exist('OCTAVE_VERSION','builtin')
-            save(strcat(Subject_OutputDirIntermed,'/res1_spms/spms', subjectprefix,suffix,'.mat'),'IMAGE_set','modelparam','CODE_PROPERTY');
-            save(strcat(Subject_OutputDirIntermed,'/res2_temp/temp', subjectprefix,suffix,'.mat'),'TEMP_set','modelparam','CODE_PROPERTY');
-            save(strcat(Subject_OutputDirIntermed,'/res3_stats/stats',subjectprefix,suffix,'.mat'),'METRIC_set', 'pipechars', 'pipenames', 'pipeset','modeltype','analysis_model','CODE_PROPERTY','modelparam','CODE_PROPERTY');
-        else
-            save(strcat(Subject_OutputDirIntermed,'/res1_spms/spms', subjectprefix,suffix,'.mat'),'IMAGE_set','modelparam','CODE_PROPERTY','-mat7-binary');
-            save(strcat(Subject_OutputDirIntermed,'/res2_temp/temp', subjectprefix,suffix,'.mat'),'TEMP_set','modelparam','CODE_PROPERTY', '-mat7-binary');
-            save(strcat(Subject_OutputDirIntermed,'/res3_stats/stats',subjectprefix,suffix,'.mat'),'METRIC_set', 'pipechars', 'pipenames', 'pipeset','modeltype','analysis_model','CODE_PROPERTY','modelparam','CODE_PROPERTY', '-mat7-binary');
-        end
-
-        % ------------------------------------------------------------------------------------------------
-        % ------------------------------------------------------------------------------------------------
-
-        if    (niiout>0)
-
-            %---------- now, brain maps
-
-            if( strcmp( modeltype, 'one_component') )
-
-                disp('Only 1 image per pipeline. Concatenating all NIFTIS into single 4D matrix');
-
-                TMPVOL = zeros( [size(mask), Nfull] );
-
-                for(n=1:Nfull )
-                    tmp=mask;tmp(tmp>0)=IMAGE_set{n};
-                    TMPVOL(:,:,:,n) = tmp;
+                for(p=1:size(IMAGE_set{n},2)) % and each image from set...
+                    % ------ test for motion (correlation with spatial derivatives
+                    [Ao,Bo,rho(p,1)] = canoncorr( IMAGE_set{n}(:,p), FXYZ_avg );
+                    %
                 end
 
-                nii=VV;
-                nii.img = TMPVOL;
-                nii.hdr.dime.datatype = 16;
-                nii.hdr.hist = VV.hdr.hist;
-                nii.hdr.dime.dim(5) = Nfull;
-                nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-                save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/spms/rSPM_',subjectprefix,suffix,'_pipelines_all.nii'));
+                % correlation with spatial derivatives (motion effects)
+                METRIC_set{n}.artifact_prior.MOT_corr = rho;
+                if N_run==1
+                    % average white matter z-score
+                    METRIC_set{n}.artifact_prior.WM_zscor = mean( IMAGE_set{n}(outwm.WM_mask > 0, : ) );
+                else
+                    % GROUP: take mask as >50% subjects with declared white matter tissue
+                    METRIC_set{n}.artifact_prior.WM_zscor = sum( IMAGE_set{n}( WM_mask_avg > 0.5, : ) > 0 )./ sum( WM_mask_avg > 0.5 )';
+                end
+                % fraction of voxels >0 (global signal effects)
+                METRIC_set{n}.artifact_prior.GS_fract = sum( IMAGE_set{n}>0 )./Nvox;
+            end
+
+            % save output matfiles
+            %
+            suffix = '';
+            if  ~exist('OCTAVE_VERSION','builtin')
+                save(strcat(Subject_OutputDirIntermed,'/res1_spms/spms', subjectprefix,suffix,'.mat'),'IMAGE_set','modelparam','CODE_PROPERTY');
+                save(strcat(Subject_OutputDirIntermed,'/res2_temp/temp', subjectprefix,suffix,'.mat'),'TEMP_set','modelparam','CODE_PROPERTY');
+                save(strcat(Subject_OutputDirIntermed,'/res3_stats/stats',subjectprefix,suffix,'.mat'),'METRIC_set', 'pipechars', 'pipenames', 'pipeset','modeltype','analysis_model','CODE_PROPERTY','modelparam','CODE_PROPERTY');
             else
+                save(strcat(Subject_OutputDirIntermed,'/res1_spms/spms', subjectprefix,suffix,'.mat'),'IMAGE_set','modelparam','CODE_PROPERTY','-mat7-binary');
+                save(strcat(Subject_OutputDirIntermed,'/res2_temp/temp', subjectprefix,suffix,'.mat'),'TEMP_set','modelparam','CODE_PROPERTY', '-mat7-binary');
+                save(strcat(Subject_OutputDirIntermed,'/res3_stats/stats',subjectprefix,suffix,'.mat'),'METRIC_set', 'pipechars', 'pipenames', 'pipeset','modeltype','analysis_model','CODE_PROPERTY','modelparam','CODE_PROPERTY', '-mat7-binary');
+            end
 
-                disp('Multiple images per pipeline. Producing 4D volume for each pipeline');
+            % ------------------------------------------------------------------------------------------------
+            % ------------------------------------------------------------------------------------------------
 
-                for(n=1:Nfull )
+            if    (niiout>0)
 
-                    TMPVOL = zeros( [size(mask), size(IMAGE_set{n},2)] );
+                %---------- now, brain maps
 
-                    for(p=1:size(IMAGE_set{n},2) )
-                        tmp=mask;tmp(tmp>0)=IMAGE_set{n}(:,p);
-                        TMPVOL(:,:,:,p) = tmp;
+                if( strcmp( modeltype, 'one_component') )
+
+                    disp('Only 1 image per pipeline. Concatenating all NIFTIS into single 4D matrix');
+
+                    TMPVOL = zeros( [size(mask), Nfull] );
+
+                    for(n=1:Nfull )
+                        tmp=mask;tmp(tmp>0)=IMAGE_set{n};
+                        TMPVOL(:,:,:,n) = tmp;
                     end
 
                     nii=VV;
                     nii.img = TMPVOL;
                     nii.hdr.dime.datatype = 16;
                     nii.hdr.hist = VV.hdr.hist;
-                    nii.hdr.dime.dim(5) = size(IMAGE_set{n},2);
-                    pipeline_name = generate_pipeline_name(pipechars,pipeset(n,:));
+                    nii.hdr.dime.dim(5) = Nfull;
                     nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-                    save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/spms/rSPM_',subjectprefix,'_pipeline_',num2str(n),'_',num2str(p),'vols.nii'));
+                    save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/spms/rSPM_',subjectprefix,suffix,'_pipelines_all.nii'));
+                else
+
+                    disp('Multiple images per pipeline. Producing 4D volume for each pipeline');
+
+                    for(n=1:Nfull )
+
+                        TMPVOL = zeros( [size(mask), size(IMAGE_set{n},2)] );
+
+                        for(p=1:size(IMAGE_set{n},2) )
+                            tmp=mask;tmp(tmp>0)=IMAGE_set{n}(:,p);
+                            TMPVOL(:,:,:,p) = tmp;
+                        end
+
+                        nii=VV;
+                        nii.img = TMPVOL;
+                        nii.hdr.dime.datatype = 16;
+                        nii.hdr.hist = VV.hdr.hist;
+                        nii.hdr.dime.dim(5) = size(IMAGE_set{n},2);
+                        pipeline_name = generate_pipeline_name(pipechars,pipeset(n,:));
+                        nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
+                        save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/spms/rSPM_',subjectprefix,'_pipeline_',num2str(n),'_',num2str(p),'vols.nii'));
+                    end
                 end
             end
+
         end
-    
     end
 end
 

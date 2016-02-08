@@ -21,6 +21,25 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 Overview Change Log:
 ------------------------------------------------------------------------------------
 
+[UPDATES 2016/02/08] by Nathan
+
+some minor edits to optional add-on modules
+that are currently not used in standard PRONTO package
+
+[GLM_model_fmir]: 
+    > added additional flag to allow users to re-add mean after regressing nuisance covariates
+      (lines: 16-17, 37-44)
+
+[Analysis_Combine_Multirun.m]: 
+    > can now run script in different path from data (lines: 7, 82, 139, 144)
+    > and correctly skips censoring, if no censor files provided (lines: 72-73, 122)
+
+/extra/posthoc_testing directory:
+    > added [module_ANOVA1rep] (repeated measures ANOVA)
+    > added [module_FRIEDMAN] (nonparametric repeated measures)
+    > and fixed [module_bootstrap] to correctly take in analysis "type" (line 1)
+
+
 [UPDATES 2016/01/22] by Nathan
 Three minor changes for better efficiency when re-processing
 [Pipeline_PART1.m]

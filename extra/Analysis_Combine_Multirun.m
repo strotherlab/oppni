@@ -1,10 +1,15 @@
-function output = Analysis_Combine_Multirun( out, contrast, runlist, maskname, onsetlist, durationlist, onsetcens, durationcens, TR, DROP, wmspat )
+function output = Analysis_Combine_Multirun( out, runlist, maskname, onsetlist, durationlist, onsetcens, durationcens, TR, DROP, contrast, wmspat )
 %
 % Script to run analysis that combines multiple runs, in cases where
 % they cannot be easily analyzed independently
 %
 
-mkdir('multirun_intermed');
+[opath,oname,oext] = fileparts(out);
+
+mkdir([opath, '/analysis_multirun_intermed']);
+
+if(nargin<10) contrast=[]; end
+if(nargin<11) wmspat  =[]; end
 
 nruns = length(runlist);
 ncond = length(onsetlist);
@@ -14,6 +19,8 @@ VAL_ONSET=cell(nruns,ncond);
 VAL_DURAT=cell(nruns,ncond);
 
 for(c=1:ncond) % per condition:
+    
+    disp(['checking file...', onsetlist{c}]);
     
     % list of onsets
     fid    = fopen(onsetlist{c});
@@ -62,14 +69,17 @@ if( ~isempty(onsetcens) )
        tline=fgetl(fid);
     end
     fclose(fid);
+else
+    VAL_ONSET_C=[];
+    VAL_DURAT_C=[];
 end
 
 %% NOW LOAD FMRI DATA
 
-M=load_nii(maskname);
+M=load_untouch_nii(maskname);
 mask=double(M.img);
 
-if( exist(['multirun_intermed/',out,'_dat.mat'],'file') ==0 )
+if( exist([opath, '/analysis_multirun_intermed/',oname,'_dat.mat'],'file') ==0 )
 
     disp('concatenating...');
     
@@ -86,7 +96,7 @@ if( exist(['multirun_intermed/',out,'_dat.mat'],'file') ==0 )
         disp(strcat(['run ',num2str(n),' of ', num2str(nruns)]));
 
         % into 2d volumes
-        V=load_nii(runlist{n});
+        V=load_untouch_nii(runlist{n});
         voltmp     = nifti_to_mat( V,M );
         epicat     = [epicat voltmp];
         ntime(n,1) = size(voltmp,2);
@@ -109,7 +119,7 @@ if( exist(['multirun_intermed/',out,'_dat.mat'],'file') ==0 )
             DURAT_1LIST{c} = [DURAT_1LIST{c} tmp2];
         end    
         end
-        if(~isempty(VAL_ONSET_C{n})) 
+        if(~isempty(VAL_ONSET_C) && ~isempty(VAL_ONSET_C{n})) 
 
             tmp1 = VAL_ONSET_C{n} - DROP(1)*TR;               % adjust time to first un-dropped scan 
             % keep negative onsets to subtract from duration
@@ -126,12 +136,12 @@ if( exist(['multirun_intermed/',out,'_dat.mat'],'file') ==0 )
         end        
     end
 
-    save(['multirun_intermed/',out,'_dat.mat'],'epicat','ONSET_1LIST','DURAT_1LIST','ONSETc1LIST','DURATc1LIST');
+    save([opath, '/analysis_multirun_intermed/',oname,'_dat.mat'],'epicat','ONSET_1LIST','DURAT_1LIST','ONSETc1LIST','DURATc1LIST');
 end
 
 %% RELOAD CONCATENATED DATA
 
-load(['multirun_intermed/',out,'_dat.mat']);
+load([opath, '/analysis_multirun_intermed/',oname,'_dat.mat']);
 
 % design matrix (time x condition+cens)
 design=zeros( size(epicat,2), ncond );
@@ -152,11 +162,19 @@ if(~isempty(ONSETc1LIST))
 else
     censor=[];
 end
+
+% truncate
+design = design( 1:size(epicat,2), :);
+if( ~isempty(censor) )
+censor = censor( 1:size(epicat,2) );
+end
+
 figure,imagesc([design censor]);
 
 %% CHOOSING ANALYSIS METHOD
 
 if( isempty(contrast) ) % analyze all contrasts in GLM
+    
     ntot = size(epicat,2);
     Xsignl = design_to_hrf( design,TR,[5 15]);
     
@@ -168,7 +186,7 @@ if( isempty(contrast) ) % analyze all contrasts in GLM
 %     end
 
     %% WM regression
-    epicat = detrend_matrix( epicat, 0, mean(epicat(wmspat>0.5,:))',[]);
+    %epicat = detrend_matrix( epicat, 0, mean(epicat(wmspat>0.5,:))',[]);
 
     if( ~isempty(censor))
     oo = GLM_model_fmri( epicat, 0, censor, Xsignl(1:size(epicat,2),:), [] );
@@ -177,6 +195,19 @@ if( isempty(contrast) ) % analyze all contrasts in GLM
     end
     output.beta = oo.Beta_signl;
     output.tmap = oo.Tmap_signl;
+
+    % now save files
+    nii = M;
+    nii.img = zeros([size(M.img) size(output.tmap,2)]);
+    Z = zeros(size(M.img));
+    for nvol = 1:size(output.tmap,2)
+        Z(M.img~=0) = output.tmap(:,nvol);
+        nii.img(:,:,:,nvol) = Z;
+    end
+    nii.hdr.dime.datatype = 16;
+    nii.hdr.dime.dim([1 5]) = [4 nvol];
+    save_untouch_nii(nii,[opath,'/',oname,'.nii']);
+
     
 end
 

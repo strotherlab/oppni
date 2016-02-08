@@ -1,4 +1,4 @@
-function [ output ] = GLM_model_fmri( dataVol, detrend_order, Xnoise, Xsignl, econflag )
+function [ output ] = GLM_model_fmri( dataVol, detrend_order, Xnoise, Xsignl, econflag, keepmean )
 
 
 % ------------------------------------------------------------------------%
@@ -10,6 +10,11 @@ function [ output ] = GLM_model_fmri( dataVol, detrend_order, Xnoise, Xsignl, ec
 % CODE_VERSION = '$Revision: 158 $';
 % CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
 % ------------------------------------------------------------------------%
+
+% option to exclude analysis results -- defaut off
+if( nargin < 5 ) econflag = []; end
+% option to re-add mean during signal reconstruction -- default off
+if( nargin < 6 ) keepmean =  0; end
 
 [Nmeas Nsamp] = size(dataVol);
 
@@ -26,13 +31,17 @@ idxSignl = Nnoise+1:Nnoise+Nsignl;
 
 % now perform regression, and get the matrix
 BetaWeights = dataVol * Xall * inv( Xall'*Xall );
-%
 vol_estim   = BetaWeights * Xall';
 noi_estim   = BetaWeights(:,idxNoise) * Xall(:,idxNoise)';
 %
 % filtered data matrices
-output.vol_resid   = dataVol - vol_estim;
-output.vol_denoi   = dataVol - noi_estim;
+if( keepmean == 0 )
+    output.vol_resid   = dataVol - vol_estim;
+    output.vol_denoi   = dataVol - noi_estim;
+elseif( keepmean == 1 ) %% re-add mean (zero-order legendre poly.)
+    output.vol_resid   = dataVol - vol_estim + ( BetaWeights(:,idxNoise(1))* Xall(:,idxNoise(1))' );
+    output.vol_denoi   = dataVol - noi_estim + ( BetaWeights(:,idxNoise(1))* Xall(:,idxNoise(1))' );
+end    
 
 % for computational efficiency:
 % check for 'econ' flag before doing Beta/Tstat estimation
@@ -57,6 +66,7 @@ if( ~strcmp(econflag,'econ') )
     output.Tmap_signl  = TmapWeights(:,idxSignl);
     %
     output.Beta_noise  = BetaWeights(:,idxNoise);
+    output.Tmap_noise  = TmapWeights(:,idxNoise);    
 end
 
 %%

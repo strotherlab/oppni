@@ -1,4 +1,4 @@
-function out = module_bootstrap( datamat )
+function out = module_bootstrap( datamat, type )
 
 if    ( strcmpi(type,'1sample') )
     if(length(datamat)~=1) error('1-sample bootstrap can only be done on a single group'); end

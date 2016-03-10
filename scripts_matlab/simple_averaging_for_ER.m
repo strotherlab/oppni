@@ -78,25 +78,50 @@ else
     onList    = 1:Nonsets;
     Ntrunc    = floor( Ntime / Nblock );
     windowAvg = zeros( Nvox, WIND, Nblock );
-    % for each split, now get windowed averaging
-    for( kk=1:Nblock )
-
+    % check to make sure there is enough for each block
+    for(kk=1:Nblock )
         CutLo = (kk-1)*Ntrunc + 1;
         CutHi = ( kk )*Ntrunc;
         % assign scans to a split, based on whether >50% of time-window is within the split:
-        select = onList(  (midOn > CutLo) & (midOn < CutHi)  );
-        % catch in case no stim in this block
-        if( isempty( select ) ) 
-            % take cut-off stimuli
-            select = onList( midOn<CutLo ); 
-            % if nothing found, terminate. Otherwise take last one in list
-            if( isempty( select ) )
-                error('No stimulus onsets found in one of the splits. Terminating.');
-            else
-                select = select(end); 
+        ncount(kk,1) = sum(  (midOn > CutLo) & (midOn < CutHi)  );
+    end
+    
+    if(sum(ncount==0)==0 ) %% if onsets in all blocks, proceed on equal-size splits
+        
+        % for each split, now get windowed averaging
+        for( kk=1:Nblock )
+
+            CutLo = (kk-1)*Ntrunc + 1;
+            CutHi = ( kk )*Ntrunc;
+            % assign scans to a split, based on whether >50% of time-window is within the split:
+            select = onList(  (midOn > CutLo) & (midOn < CutHi)  );
+            % catch in case no stim in this block
+            if( isempty( select ) ) 
+                error('somehow found no onsets within a block, despite checks. Check your onsets!');
             end
+            % modified averaging for compatibility with octave
+            windowAvg(:,:,kk) = sum( fullAvgSet(:,:,select), 3) ./ length(select);
         end
-        % modified averaging for compatibility with octave
-        windowAvg(:,:,kk) = sum( fullAvgSet(:,:,select), 3) ./ length(select);
+    else %% otherwise, divvy up onsets into contiguous onsets (variable block length) 
+        
+        disp('warning: event-related onsets not evenly distributed through run!');
+        disp('adjusting (there is a higher risk of bias');
+        
+        Nqart = floor(Nonsets/Nblock);
+        if(Nqart<1) error(['not enough onsets for Nblock=',num2str(Nblock)]); end
+        
+        % for each split, now get windowed averaging
+        for( kk=1:Nblock )
+
+            % assign windows per block
+            if(kk<Nblock)
+            select = onList( (1+(kk-1)*Nqart):(kk*Nqart) );
+            % for last run, take and "extras" too
+            else
+            select = onList( (1+(kk-1)*Nqart):end        );                
+            end
+            % modified averaging for compatibility with octave
+            windowAvg(:,:,kk) = sum( fullAvgSet(:,:,select), 3) ./ length(select);
+        end        
     end
 end

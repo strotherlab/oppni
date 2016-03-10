@@ -57,24 +57,25 @@ for( K=1:Nk )
     r = sum( pvect./indxd <= qval/(Ntest2*c_V) );
 
     if( r > 0 )
-        
         % limiting p-value
         pcrit = pvect(r);
-        % threshold matrix values
-        if    ( datType == 'p' )
-            threshMat(:,K) = double(dataMat(:,K)  <= pcrit);
-        elseif( datType == 't' )
-            vcrit = tinv(1-pcrit,dof);
-            threshMat(:,K) = double(abs(dataMat(:,K)) >= vcrit);
-        elseif( datType == 'z' )
-            vcrit = norminv(1-pcrit);
-            threshMat(:,K) = double(abs(dataMat(:,K)) >= vcrit);
-        end
-        
-        pcritSet(K,1) = pcrit;
+        % threshold matrix values based on prob.        
+        threshMat(:,K) = double(probMat(:,K)  <= pcrit);
+        % critical p-values        
+        pcritSet(K,1)  = pcrit;
     else
         threshMat(:,K) = zeros(Ntest,1);
         pcritSet(K,1)  = NaN;
-    end
-    
+    end    
 end
+
+%         % threshold matrix values
+%         if    ( datType == 'p' )
+%             threshMat(:,K) = double(dataMat(:,K)  <= pcrit);
+%         elseif( datType == 't' )
+%             vcrit = tinv(1-pcrit,dof);
+%             threshMat(:,K) = double(abs(dataMat(:,K)) >= vcrit);
+%         elseif( datType == 'z' )
+%             vcrit = norminv(1-pcrit);
+%             threshMat(:,K) = double(abs(dataMat(:,K)) >= vcrit);
+%         end

@@ -1,12 +1,14 @@
 function out = module_bootstrap( datamat, type )
 
+NBOOT = 1000;
+
 if    ( strcmpi(type,'1sample') )
     if(length(datamat)~=1) error('1-sample bootstrap can only be done on a single group'); end
     %
     n    = size(datamat{1},2);
     disp('running bootstrap resampling...');
-    bsrmat = zeros( size(datamat{1},1), 500 );
-    for(bsr=1:500)
+    bsrmat = zeros( size(datamat{1},1), NBOOT );
+    for(bsr=1:NBOOT)
         list = ceil(n*rand(n,1));
         bsrmat(:,bsr) = mean(datamat{1}(:,list),2);
     end
@@ -19,8 +21,8 @@ elseif( strcmpi(type,'2sample') )
     n1 = size(datamat{1},2);
     n2 = size(datamat{2},2);
     disp('running bootstrap resampling...');
-    bsrmat = zeros( size(datamat{1},1), 500 );
-    for(bsr=1:500)
+    bsrmat = zeros( size(datamat{1},1), NBOOT );
+    for(bsr=1:NBOOT)
         list1 = ceil(n1*rand(n1,1));
         list2 = ceil(n2*rand(n2,1));        
         bsrmat(:,bsr) = mean(datamat{2}(:,list2),2) - mean(datamat{1}(:,list1),2);
@@ -35,8 +37,8 @@ elseif( strcmpi(type,'paired') )
     n    = size(datamat{1},2);
     dif  = datamat{2} - datamat{1};
     disp('running bootstrap resampling...');
-    bsrmat = zeros( size(dif,1), 500 );
-    for(bsr=1:500)
+    bsrmat = zeros( size(dif,1), NBOOT );
+    for(bsr=1:NBOOT)
         list = ceil(n*rand(n,1));
         bsrmat(:,bsr) = mean(dif(:,list),2);
     end

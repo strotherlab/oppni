@@ -5,7 +5,7 @@ DESCRIPTION ='PRONTO with LOWPASS, more de-spiking options, and DEOBLIQUE, TPATT
 % END - The above lines are written in Matlab/Octave format, and they will be evaluated in matlab or octave.
 
 ====================================================================================
-          UPDATE_HISTORY:  FMRI Preprocessing Pipeline scripts (2015/11/30)  
+          UPDATE_HISTORY:  FMRI Preprocessing Pipeline scripts (2016/03/11)  
 ====================================================================================
   Authors: Nathan Churchill, Neuroscience Research Program, St. Michael's Hospital
            Babak Afshin-pour, Rotman research institute, Baycrest
@@ -20,6 +20,26 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 ------------------------------------------------------------------------------------
 Overview Change Log:
 ------------------------------------------------------------------------------------
+
+[UPDATES 2016/03/10] by Nathan
+
+added a minor fix for event-related analysis (erCVA, erGNB). Only relevant in cases
+where you have too few onsets (<1 per block) or a higly unbalanced design (most
+onsets concentrated in a small segment of the run). Code used to throw NaNs and crash;
+Now adjusts the splitting framework to accommodate, at the risk of higher bias.
+
+[simple_averaging_for_ER.m]
+    > added check to determine if there are onsets in all run splits (lines 82-87)
+    > added catch (line 89) and alternate way of computing averaged splits (lines 105-126).
+
+Also added minor fix to FDR for stability - code originally tried to base threshold on
+z-stat, derived from critical p-value. In cases of *very* low p-value (i.e. LOTS of significant voxels)
+sometimes this gives z = Inf, and throws an error. Issue now bypassed
+
+[fdr.m]: modified thresholding method (lines 60-65)
+[rSVD_splithalf.m]: modified for embedded fdr function (lines 309-314)
+
+*Also fixed error in module_bootstrap, and added Run_2way_ANOVA script (WIPs)
 
 [UPDATES 2016/02/08] by Nathan
 

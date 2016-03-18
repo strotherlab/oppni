@@ -1,4 +1,4 @@
-function Pipeline_PART1_afni_steps(InputStruct,input_pipeset_half,dospnormfirst,DEOBLIQUE,TPATTERN)
+function Pipeline_PART1_afni_steps(InputStruct,input_pipeset_half,dospnormfirst,DEOBLIQUE,TPATTERN,TOFWHM)
 
 % ------------------------------------------------------------------------%
 % Authors: Nathan Churchill, University of Toronto
@@ -56,6 +56,9 @@ if nargin<4
 end
 if nargin<5
     TPATTERN = [];
+end
+if nargin<6
+    TOFWHM   =  0;
 end
 setenv('FSLOUTPUTTYPE','NIFTI')
 read_version;
@@ -333,7 +336,40 @@ for subject_counter = 1:N_Subject
                 if smoset(nn)==0
                     copyfile([pplList3{mm} '.nii'],[stringval '.nii']);
                 else
-                    unix([AFNI_PATH '3dmerge -prefix ' stringval '.nii -doall -1blur_fwhm ' num2str(smoset(nn)) ' ' pplList3{mm} '.nii']);
+                    
+                    if( TOFWHM== 0 )
+                    
+                        unix([AFNI_PATH '3dmerge -prefix ' stringval '.nii -doall -1blur_fwhm ' num2str(smoset(nn)) ' ' pplList3{mm} '.nii']);
+                    
+                    elseif( TOFWHM== 1 )
+                    
+                        VV = load_untouch_nii([pplList3{mm} '.nii']);
+                        VV.img = double(VV.img); %% format as double, for compatibility
+
+                        Time_series = reshape(VV.img,size(VV.img,1)*size(VV.img,2)*size(VV.img,3), size(VV.img,4));
+                        split_info = InputStruct(subject_counter).run(run_counter).split_info;
+                        Design_matrix = split_info.HRFdesign;
+                        trends = get_legendre(1+floor( (split_info.TR_MSEC/1000) * (size(VV.img,4)/2) ./ 150 ),size(VV.img,4));
+                        Null_space  = [Design_matrix trends];Pn = eye(size(VV.img,4))-Null_space*inv(Null_space'*Null_space)*Null_space';
+                        Time_series = Time_series*Pn;
+                        Time_series = reshape(Time_series,size(VV.img,1),size(VV.img,2),size(VV.img,3), size(VV.img,4));
+                        VV.img = Time_series;
+                        VV.hdr.dime.datatype = 16;
+                        VV.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
+                        save_untouch_nii(VV,[pplList3{mm} '_blurmaster.nii']);
+                        if isempty(strfind(pplList3{mm},'_m0'))
+
+                            mmmask_name = [OUTstr_sub1 '/masks/' OUTstr_sub2 '_mask.nii'];
+                        else
+                            mmmask_name = [OUTstr_sub1 '/masks/' OUTstr_sub2 '_mask_nomc.nii'];
+                        end
+
+                        unix([AFNI_PATH '3dBlurToFWHM -blurmaster ' [pplList3{mm} '_blurmaster.nii'] ' -mask ' mmmask_name ' -input ' pplList3{mm} '.nii -prefix ' stringval '.nii -FWHM ' num2str(smoset(nn))]);
+                        %unix([AFNI_PATH '3dmerge -prefix ' stringval '.nii -doall -1blur_fwhm ' num2str(smoset(nn)) ' ' pplList3{mm} '.nii']);
+                        delete([pplList3{mm} '_blurmaster.nii']);                    
+                    else
+                        error('unrecognized smoothing TOFWHM option');
+                    end
                 end
                 kk = kk + 1;
                 pplList4{kk} = stringval;

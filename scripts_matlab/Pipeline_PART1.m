@@ -1,4 +1,4 @@
-function Pipeline_PART1(InputStruct, input_pipeset, analysis_model, modelparam, niiout, contrast_list_str, dospnormfirst, DEOBLIQUE, TPATTERN)
+function Pipeline_PART1(InputStruct, input_pipeset, analysis_model, modelparam, niiout, contrast_list_str, dospnormfirst, DEOBLIQUE, TPATTERN, TOFWHM)
 %
 %==========================================================================
 % PIPELINE_PART1 : main script used for running pipelines and obtaining
@@ -99,7 +99,6 @@ function Pipeline_PART1(InputStruct, input_pipeset, analysis_model, modelparam, 
 % CODE_DATE    = '$Date: 2014-12-04 18:33:31 -0500 (Thu, 04 Dec 2014) $';
 % ------------------------------------------------------------------------%
 
-
 % Check Parameters
 %%
 global NUMBER_OF_CORES
@@ -175,12 +174,22 @@ else
         TPATTERN = [];
     end
 end
+if nargin<10 || isempty(TOFWHM)
+    TOFWHM = 0;
+end
+
+% %%========== TEMPORARY: uncomment this option to turn on BlurToFWHM
+% 
+% TOFWHM=1; %% --> this option force on BlurToFWHM smoothing
+% 
+% %%========== TEMPORARY: uncomment this option to turn on BlurToFWHM
 
 %% Read Inputfiles
 if ~isstruct(InputStruct)
     [InputStruct,MULTI_RUN_INPUTFILE] = Read_Input_File(InputStruct);
 end
 
+%% acquire a list of all pipeline choices
 [pipeset_half, detSet, mprSet, tskSet, phySet, gsSet, lpSet, Nhalf, Nfull] = get_pipe_list(input_pipeset);
 pipeset_full = zeros( Nfull, 10 );
 
@@ -190,24 +199,19 @@ if numel(InputStruct(1).run)>1
 else
     aligned_suffix = '';
 end
-
-%% Interpret the contrast, and build the split-half data if neccessary
     
-check_input_file_integrity(InputStruct,max(pipeset_half(:,3)),max(tskSet)); % check whether the analysis model and split info are matched.
+%% check whether all specified files exist (func, struct, physio, split_info)
+check_input_file_integrity(InputStruct,max(pipeset_half(:,3)),max(tskSet)); 
 
-%%
+%% run all AFNI-based preprocessing steps
+Pipeline_PART1_afni_steps(InputStruct, pipeset_half, dospnormfirst,DEOBLIQUE,TPATTERN,TOFWHM );
 
-Pipeline_PART1_afni_steps(InputStruct, pipeset_half, dospnormfirst,DEOBLIQUE,TPATTERN );
-
-%%
-
+%% now, defining contrasts for analysis
 InputStruct = interpret_contrast_list_str(InputStruct,modelparam,analysis_model,contrast_list_str);             % generate contrast list for each subject and run
 
 spatial_normalization_noise_roi(InputStruct); % Transform user defined 
 
-%%
-% save generate split_info files
-
+%% save generated split_info files
 for ksub = 1:numel(InputStruct)
     for krun = 1:numel(InputStruct(ksub).run)
         mkdir_r([InputStruct(ksub).run(krun).Output_nifti_file_path '/intermediate_processed/split_info']);

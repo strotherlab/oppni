@@ -1,4 +1,4 @@
-function Run_Pipelines_noSGE( subject_inputs, pipelines, analysis_model, TR_MSEC, contrast_list, TEMPLATE_VOL, VOXDIMS, DEOBLIQUE, TPATTERN, opt_metric )
+function Run_Pipelines_noSGE( subject_inputs, pipelines, analysis_model, TR_MSEC, contrast_list, TEMPLATE_VOL, VOXDIMS, DEOBLIQUE, TPATTERN, TOFWHM, opt_metric )
 %
 % RUN_PIPELINES_NOSGE: script for running pipelines directly in matlab, for
 % instance where SGE system is not available.
@@ -31,6 +31,9 @@ if nargin<9
     TPATTERN = [];
 end
 if nargin<10
+    TOFWHM = 0; 
+end
+if nargin<11
     def_flag   = 1;
     opt_metric = 'dPR';
 else

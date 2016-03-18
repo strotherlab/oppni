@@ -5,7 +5,7 @@ DESCRIPTION ='PRONTO with LOWPASS, more de-spiking options, and DEOBLIQUE, TPATT
 % END - The above lines are written in Matlab/Octave format, and they will be evaluated in matlab or octave.
 
 ====================================================================================
-          UPDATE_HISTORY:  FMRI Preprocessing Pipeline scripts (2016/03/11)  
+          UPDATE_HISTORY:  FMRI Preprocessing Pipeline scripts (2016/03/18)  
 ====================================================================================
   Authors: Nathan Churchill, Neuroscience Research Program, St. Michael's Hospital
            Babak Afshin-pour, Rotman research institute, Baycrest
@@ -20,6 +20,25 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 ------------------------------------------------------------------------------------
 Overview Change Log:
 ------------------------------------------------------------------------------------
+
+[UPDATES 2016/03/18] by Nathan
+
+added argument allowing user to switch between standard 3D Gaussian smoothing kernel,
+and AFNI's BlurToFWHM, which adaptively adjusts spatial autocorrelation. 
+Important for multi-site studies!
+
+[Run_Pipelines_noSGE.m]
+    > added argument (line 1) and catch, to use default 3D kernel if not specified (lines 33-35)
+[Pipeline_PART1.m]
+    > added argument (line 1) and catch, to use default 3D kernel if not specified (lines 178-180)
+[Pipeline_PART1_afni_steps.m]
+    > added argument (line 1) and catch, to use default 3D kernel if not specified (lines 60-62)
+    > if/else statement performing the chosen smoothing step (lines 340-372)
+
+Also added an early catch in case a split_info file cannot be located
+
+[check_input_file_integrity.m]
+    > check if TASK=... file exists for each subject, throws error if not found
 
 [UPDATES 2016/03/10] by Nathan
 

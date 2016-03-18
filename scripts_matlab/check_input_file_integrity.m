@@ -22,6 +22,7 @@ for ksub = 1:numel(InputStruct)
         str_nii = InputStruct(ksub).run(krun).STRUCT_File;
         phystr1 = [InputStruct(ksub).run(krun).PHYstr '.resp.1D'];
         phystr2 = [InputStruct(ksub).run(krun).PHYstr '.puls.1D'];
+        taskstr = InputStruct(ksub).run(krun).split_info_file;
         
         TaskType=  InputStruct(ksub).run(krun).TaskType;
         
@@ -41,6 +42,10 @@ for ksub = 1:numel(InputStruct)
                 display(sprintf('ERROR: The physiological input file %s does not exist, RETROICOR can not be run!',phystr2));
                 sge_exit(100);
             end
+        end
+        if ~exist(taskstr,'file')
+            display(sprintf('ERROR: The split_info file %s does not exist',taskstr));
+            sge_exit(100);            
         end
 
         if (task_flag~=0) && strcmp(TaskType,'nocontrast')

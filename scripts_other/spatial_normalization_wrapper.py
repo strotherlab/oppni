@@ -1,4 +1,4 @@
-#!/usr/bin/python
+
 #$ -S /usr/bin/python
 
 # OPTIMIZATION_WRAPPER: this script submits pipeline optimization jobs onto

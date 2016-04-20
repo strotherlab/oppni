@@ -28,10 +28,6 @@ function imed_out = min_displace_brick( volname, maskname, outname )
 % CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
 % ------------------------------------------------------------------------%
 
-% add the path to use code for converting NIFTI files into MatLab
-addpath scripts_matlab;
-addpath scripts_matlab/NIFTI_tools;
-
 % load fMRI data volumes (in NIFTI format)
 VV     = load_untouch_nii(volname);
 MM     = load_untouch_nii(maskname);

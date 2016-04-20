@@ -111,8 +111,11 @@ if isempty(CODE_PATH)
         CODE_PATH = [CODE_PATH '/'];
     end
 end
-addpath(CODE_PATH);
-addpath([CODE_PATH 'NIFTI_tools']);
+if ~isdeployed
+    addpath(CODE_PATH);
+    addpath([CODE_PATH 'NIFTI_tools']);
+    addpath([CODE_PATH 'toolbox'])
+end
 
 if isempty(AFNI_PATH) || isempty(FSL_PATH)
     read_settings;

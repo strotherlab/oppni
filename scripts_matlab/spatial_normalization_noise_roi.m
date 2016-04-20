@@ -31,8 +31,10 @@ end
 if isempty(AFNI_PATH) || isempty(FSL_PATH)
     read_settings;
 end
-addpath(CODE_PATH)
-addpath([CODE_PATH '/NIFTI_tools'])
+if ~isdeployed
+    addpath(CODE_PATH)
+    addpath([CODE_PATH '/NIFTI_tools'])
+end
 read_version;
 
 if ~isstruct(InputStruct)

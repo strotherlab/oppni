@@ -156,7 +156,7 @@ for k = 1:N_run
     if ~isempty(noise_roi_path_temp)
         NOISE_ROI{k} = [noise_roi_path_temp '/' noise_roi_file_prefix{k} '.nii'];
     else
-        NOISE_ROI{k} = [];
+        NOISE_ROI{k} = noise_roi_file_prefix{k};
     end
 end
     

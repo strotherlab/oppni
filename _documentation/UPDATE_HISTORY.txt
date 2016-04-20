@@ -5,7 +5,7 @@ DESCRIPTION ='PRONTO with LOWPASS, more de-spiking options, and DEOBLIQUE, TPATT
 % END - The above lines are written in Matlab/Octave format, and they will be evaluated in matlab or octave.
 
 ====================================================================================
-          UPDATE_HISTORY:  FMRI Preprocessing Pipeline scripts (2016/03/18)  
+          UPDATE_HISTORY:  FMRI Preprocessing Pipeline scripts (2016/04/01)  
 ====================================================================================
   Authors: Nathan Churchill, Neuroscience Research Program, St. Michael's Hospital
            Babak Afshin-pour, Rotman research institute, Baycrest
@@ -20,6 +20,47 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 ------------------------------------------------------------------------------------
 Overview Change Log:
 ------------------------------------------------------------------------------------
+
+[UPDATES 2016/04/20] by Nathan
+
+> created "version_check_notes.txt" describing outputs of "PRONTO_version_check.m" script
+
+[UPDATES 2016/04/01] by Nathan
+
+(v.3)
+Additional line change for compatibility to BlurToFWHM option
+> Pipeline_PART1_afni_steps: define Design_matrix = split_info.design_mat instead of redundant HRFdesign (line 351)
+(v.2)
+Additional line change for compatibility to BlurToFWHM option
+> interpret_contrast_list_str: removed dependency on "baseproc" file (lines 38-39)
+(v.1)
+Line change for compatibility to BlurToFWHM option
+> Pipeline_PART1: moved "interpret_contrast_list_str" call to precede "Pipeline_PART1_afni_steps" (line 214)
+
+[UPDATES 2016/03/30] by Nathan
+
+Minor edits for compatibility with current SGE python wrapper
+
+> Pipeline_PART1: added catches for non-numeric "dospnormfirst" and "DEOBLIQUE" arguments (lines 162, 168)
+> spatial_normalization: added catch to get structural transforms if "dospnormfirst" turned on (line 97)
+
+[UPDATES 2016/03/29] by Nathan
+
+Made a number of small changes to allow current PRONTO to run as compiled
+Matlab code. Mainly requires that it does not use "addpath" if deployed.
+
+> Pipeline_PART1.m: added isdeployed check (lines 119-130)
+> Pipeline_PART2.m: added isdeployed check (lines 114-119)
+> group_mask_tissue_maps.m: added isdeployed check (lines 48-59)
+> min_displace_brick.m: removed addpath commands (orig. line 31)
+> spatial_normalization.m: added isdeployed check (lines 45-49)
+> spatial_normalization_noise_roi.m: added isdeployed check (lines 34-37)
+
+Notes:
+* Pipeline_PART1.m deviates from Babak's compiled branch based on
+  (a) subject_no argument, which does processing of only 1 subject
+  (b) automated generation of WM mask as "noise_roi" method
+
 
 [UPDATES 2016/03/18] by Nathan
 

@@ -119,8 +119,12 @@ if isempty(CODE_PATH)
     CODE_PATH = fileparts(which('Pipeline_PART1.m'));
     if CODE_PATH(end)~='/'
         CODE_PATH = [CODE_PATH '/'];
-        addpath(CODE_PATH);
-        addpath([CODE_PATH '/NIFTI_tools'])
+        if ~isdeployed
+            addpath(CODE_PATH);
+            addpath([CODE_PATH '/toolbox'])
+            addpath([CODE_PATH '/NIFTI_tools'])
+        end
+        
     end
 end
 if isempty(AFNI_PATH) || isempty(FSL_PATH)
@@ -155,9 +159,13 @@ end
 % check if spatial normalization is done first
 if nargin<7 || isempty(dospnormfirst)
     dospnormfirst = false;
+elseif( ischar(dospnormfirst) )
+    dospnormfirst = str2double(dospnormfirst);   
 end
 % check if data needs to be "de-obliqued" (default = off)
 if nargin<8 || isempty(DEOBLIQUE)
+    DEOBLIQUE = 0;
+elseif strcmpi(DEOBLIQUE,'None')
     DEOBLIQUE = 0;
 end
 % check if slice-timing pattern needs to be created (default = off, reads from header)
@@ -202,12 +210,11 @@ end
     
 %% check whether all specified files exist (func, struct, physio, split_info)
 check_input_file_integrity(InputStruct,max(pipeset_half(:,3)),max(tskSet)); 
+%% now, defining contrasts for analysis
+InputStruct = interpret_contrast_list_str(InputStruct,modelparam,analysis_model,contrast_list_str);             % generate contrast list for each subject and run
 
 %% run all AFNI-based preprocessing steps
 Pipeline_PART1_afni_steps(InputStruct, pipeset_half, dospnormfirst,DEOBLIQUE,TPATTERN,TOFWHM );
-
-%% now, defining contrasts for analysis
-InputStruct = interpret_contrast_list_str(InputStruct,modelparam,analysis_model,contrast_list_str);             % generate contrast list for each subject and run
 
 spatial_normalization_noise_roi(InputStruct); % Transform user defined 
 

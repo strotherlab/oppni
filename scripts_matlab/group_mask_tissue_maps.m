@@ -44,9 +44,19 @@ if( exist('OCTAVE_VERSION','builtin') )
     pkg load statistics;
     pkg load optim; 
 end
- 
-addpath scripts_matlab;
-addpath scripts_matlab/NIFTI_tools;
+  
+global CODE_PATH AFNI_PATH FSL_PATH
+if isempty(CODE_PATH)
+    CODE_PATH = fileparts(which('group_mask_tissue_maps.m'));
+    if CODE_PATH(end)~='/'
+        CODE_PATH = [CODE_PATH '/'];
+    end
+end
+if ~isdeployed
+    addpath(CODE_PATH);
+    addpath([CODE_PATH 'NIFTI_tools']);
+    addpath([CODE_PATH 'toolbox'])
+end
 
 %% Load individual masks
 

@@ -348,7 +348,7 @@ for subject_counter = 1:N_Subject
 
                         Time_series = reshape(VV.img,size(VV.img,1)*size(VV.img,2)*size(VV.img,3), size(VV.img,4));
                         split_info = InputStruct(subject_counter).run(run_counter).split_info;
-                        Design_matrix = split_info.HRFdesign;
+                        Design_matrix = split_info.design_mat; %% replaces BA's HRFdesign
                         trends = get_legendre(1+floor( (split_info.TR_MSEC/1000) * (size(VV.img,4)/2) ./ 150 ),size(VV.img,4));
                         Null_space  = [Design_matrix trends];Pn = eye(size(VV.img,4))-Null_space*inv(Null_space'*Null_space)*Null_space';
                         Time_series = Time_series*Pn;

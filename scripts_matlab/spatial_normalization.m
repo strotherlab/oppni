@@ -42,8 +42,11 @@ end
 if isempty(AFNI_PATH) || isempty(FSL_PATH)
     read_settings;
 end
-addpath(CODE_PATH)
-addpath([CODE_PATH '/NIFTI_tools'])
+if ~isdeployed
+    addpath(CODE_PATH);
+    addpath([CODE_PATH 'NIFTI_tools']);
+    addpath([CODE_PATH 'toolbox'])
+end
 read_version;
 
 if ~isstruct(InputStruct)
@@ -91,7 +94,7 @@ for ksub = 1:Nsubject
 end
 
 % Find the transforms
-if flag_step==0 || flag_step==1
+if flag_step==0 || flag_step==1 || flag_step==3
     
     % check whether voxel size is provided
     % the voxel size is used in the final normalized nifti images

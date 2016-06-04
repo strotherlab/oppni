@@ -718,7 +718,7 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
 
                     volmat  = bsxfun(@times,volmat,NN_weight_avg);
 
-                    nii = MM;
+                    nii = VV; %% copy initial NIFTI file, then replace elements
                     if keepmean
                         volmat  = bsxfun(@plus,volmat,mean_volmat);
                         nii.hdr.hist.descrip = [CODE_PROPERTY.NII_HEADER  ' PREPROCESSING: KEEPMEAN-' optType{ik} '-'   nomem   ];

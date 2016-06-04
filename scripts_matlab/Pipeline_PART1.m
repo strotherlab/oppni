@@ -168,19 +168,25 @@ if nargin<8 || isempty(DEOBLIQUE)
 elseif strcmpi(DEOBLIQUE,'None')
     DEOBLIQUE = 0;
 end
-% check if slice-timing pattern needs to be created (default = off, reads from header)
+% check if slice-timing pattern is defined
 if nargin<9 
     TPATTERN = [];
+    fprintf('ERROR: User must specify the slice-timing pattern for fMRI data (TPATTERN) as part of inputs.\n');
+    fprintf('TPATTERN options include:\n\t alt+z (or altplus)  = alternating in the plus direction\n\t alt+z2              = alternating, starting at slice #1 instead of #0\n\t alt-z (or altminus) = alternating in the minus direction\n\t alt-z2              = alternating, starting at slice #nz-2 instead of #nz-1\n\t seq+z (or seqplus)  = sequential in the plus direction\n\t seq-z (or seqminus) = sequential in the minus direction\n\n');
+    error('Terminating PRONTO');
 else
-    % if numeric, convert to string
-    if( isnumeric(TPATTERN) )
-        if( TPATTERN>0 ) TPATTERN = 'altplus';
-        else             TPATTERN = [];
-        end
+    tpatlist={'alt+z','altplus','alt+z2','alt-z','altminus','alt-z2','seq+z','seqplus','seq-z','seqminus'};
+    compar=0; 
+    if( ischar(TPATTERN) )
+    for(i=1:numel(tpatlist)) 
+        if(strcmp(TPATTERN,tpatlist{i})) compar=1; end; 
     end
-    if strcmpi(TPATTERN,'None')
-        TPATTERN = [];
     end
+    if( compar == 0 )
+        fprintf('ERROR: Invalid slice-timing pattern (TPATTERN).\n');
+        fprintf('TPATTERN options include:\n\t alt+z (or altplus)  = alternating in the plus direction\n\t alt+z2              = alternating, starting at slice #1 instead of #0\n\t alt-z (or altminus) = alternating in the minus direction\n\t alt-z2              = alternating, starting at slice #nz-2 instead of #nz-1\n\t seq+z (or seqplus)  = sequential in the plus direction\n\t seq-z (or seqminus) = sequential in the minus direction\n\n');
+        error('Terminating PRONTO');
+    end        
 end
 if nargin<10 || isempty(TOFWHM)
     TOFWHM = 0;

@@ -21,6 +21,13 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 Overview Change Log:
 ------------------------------------------------------------------------------------
 
+[UPDATES 2016/06/04] by Nathan
+
+[Pipeline_PART1.m]
+    > code now forces users to select a (valid) slice-timing pattern TPATTERN (ln. 171-190)
+[Pipeline_PART2.m]
+    > fixed error where optimally processed EPI data don't include TRs in header (ln. 721)
+
 [UPDATES 2016/04/20] by Nathan
 
 > created "version_check_notes.txt" describing outputs of "PRONTO_version_check.m" script

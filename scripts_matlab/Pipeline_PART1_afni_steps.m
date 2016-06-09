@@ -321,7 +321,7 @@ for subject_counter = 1:N_Subject
             for nn=1:length(pplList2)
                 stringval = [pplList2{nn} 't1'];
                 
-                if( isempty(TPATTERN) ) % allow users to input slice-timing pattern if not available
+                if( isempty(TPATTERN) || strcmpi(TPATTERN,'auto_hdr') ) % allow users to input slice-timing pattern if not available
                         unix([AFNI_PATH '3dTshift -prefix ' stringval '.nii '  pplList2{nn} '.nii']);
                 else    unix([AFNI_PATH '3dTshift -prefix ' stringval '.nii -tpattern ',TPATTERN,' ', pplList2{nn} '.nii']);                    
                 end

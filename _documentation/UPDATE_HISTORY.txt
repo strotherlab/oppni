@@ -21,6 +21,14 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 Overview Change Log:
 ------------------------------------------------------------------------------------
 
+[UPDATES 2016/06/08] by Nathan
+
+.expert-user option allowing 3dTshift to read from header, with 'auto_hdr' argument
+[Pipeline_PART1.m]
+    > recognizes 'auto_hdr' during initial check (ln.178)
+[Pipeline_PART1_afni_steps.m]
+    > in case of 'auto_hdr' does not supply tpattern argument (ln.324)
+
 [UPDATES 2016/06/04] by Nathan
 
 [Pipeline_PART1.m]

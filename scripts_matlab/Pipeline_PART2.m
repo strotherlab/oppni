@@ -156,9 +156,12 @@ end
 % choosing optimal pipelines to output
 if  nargin<6 || isempty( whichpipes )
        whichpipes = 'ALL';
-elseif ~strcmpi(whichpipes,'CON') && ~strcmpi(whichpipes,'FIX') && ~strcmpi(whichpipes,'IND')
+elseif ~ismember(upper(whichpipes),{'CON','FIX', 'IND', 'ALL'})
+    % ~strcmpi(whichpipes,'CON') && ~strcmpi(whichpipes,'FIX') && ~strcmpi(whichpipes,'IND')
        error('for "whichpipes" argument, needs to be CON,FIX,IND or ALL (MIN or MAX also available)');
 end
+
+whichpipes = upper(whichpipes);
 
 output_notes{1} = CODE_PROPERTY.NII_HEADER;
 output_notes{2} = ['optimization metric: ' optimize_metric];
@@ -194,7 +197,7 @@ for ksub = 1:Nsubject
 end
 
 %% check for multiple pipelines - load first subject
-load(strcat(InputStruct(1).run(1).Output_nifti_file_path, '/intermediate_metrics/res3_stats/stats',InputStruct(ksub).run(1).subjectprefix,'.mat'));
+load(strcat(InputStruct(1).run(1).Output_nifti_file_path, '/intermediate_metrics/res3_stats/stats',InputStruct(1).run(1).subjectprefix,'.mat'));
 metric_names = fieldnames( METRIC_set{1} );
 
 if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization...

@@ -66,16 +66,16 @@ function Pipeline_QC2( inputfile, newmaskname, Npcs )
 % ------------------------------------------------------------------------%
 
 % % add paths
-% addpath MatFiles;
-% addpath MatFiles/NIFTI_tools;
+% addpath_pronto MatFiles;
+% addpath_pronto MatFiles/NIFTI_tools;
 % mkdir QC2_results;
-%%%%%%%%%%%%%%%%%%%%%%%%%addpath MatFiles/NIFTI_tools;
+%%%%%%%%%%%%%%%%%%%%%%%%%addpath_pronto MatFiles/NIFTI_tools;
 
 [pathstr] = which('Pipeline_QC2.m');
 pathstr = fileparts(pathstr);
 pathstr = fileparts(pathstr);
-addpath([pathstr '/scripts_matlab']);
-addpath([pathstr '/scripts_matlab/NIFTI_tools']);
+addpath_pronto([pathstr '/scripts_matlab']);
+addpath_pronto([pathstr '/scripts_matlab/NIFTI_tools']);
 
 % quick open of input file to get directory
 fid = fopen(inputfile);
@@ -155,10 +155,11 @@ subplot(1,2,2); imagesc( pipeline_sets.ind',bnd ); colorbar;
     set(gca,'FontSize',11)
     set(findall(gcf,'type','text'),'FontSize',11)    
 
-savestring = [QC2_folder,'/FIG1_optimized_pipeline_steps.png'];
-img = getframe(gcf);
-imwrite(img.cdata, [savestring]);
-        
+% savestring = [QC2_folder,'/FIG1_optimized_pipeline_steps.png'];
+% img = getframe(gcf);
+% imwrite(img.cdata, [savestring]);
+print_to_file(gcf, QC2_folder,'FIG1_optimized_pipeline_steps');
+
 %% 2: optimization metrics
     
 % get list of metrics + number thereof
@@ -186,9 +187,10 @@ for(im=1:N_metric) % iterate through metrics
     if( strcmp(metric_names{im},'R') || strcmp(metric_names{im},'P'))  ylim([0.0 1.0]);    end
 end
 
-savestring = [QC2_folder,'/FIG2_optimized_performance_metrics.png'];
-img = getframe(gcf);
-imwrite(img.cdata, [savestring]);
+% savestring = [QC2_folder,'/FIG2_optimized_performance_metrics.png'];
+% img = getframe(gcf);
+% imwrite(img.cdata, [savestring]);
+print_to_file(gcf, QC2_folder,'FIG2_optimized_performance_metrics');
 
 load([newmaskname,'_spat_norm_qc.mat']);
 
@@ -229,9 +231,10 @@ subplot(2,2,4); plot( volume_stats.WM_distance, 'o-k', 'linewidth',2,'markerface
     xlim( [0.5 length(volume_stats.WM_distance)+0.5] ); ylim([min(volume_stats.WM_distance)-0.05 max(volume_stats.WM_distance)+0.05]);
     text(1.0,volume_stats.WM_outlier_thresh+0.01,'p=.05 outlier threshold','color','r');
 
-savestring = [QC2_folder,'/FIG3_spatial_norm_statistics.png'];
-img = getframe(gcf);
-imwrite(img.cdata, [savestring]);
+% savestring = [QC2_folder,'/FIG3_spatial_norm_statistics.png'];
+% img = getframe(gcf);
+% imwrite(img.cdata, [savestring]);
+print_to_file(gcf, QC2_folder,'FIG3_spatial_norm_statistics');
 
 % 3:
 % load mask; tissue stats
@@ -326,9 +329,10 @@ mask = double(MM.img);
         set(gca,'FontSize',11)
         set(findall(gcf,'type','text'),'FontSize',11) 
         
-savestring = [QC2_folder,'/FIG4_inter_subject_SPM_similarity.png'];
-img = getframe(gcf);
-imwrite(img.cdata, [savestring]);
+% savestring = [QC2_folder,'/FIG4_inter_subject_SPM_similarity.png'];
+% img = getframe(gcf);
+% imwrite(img.cdata, [savestring]);
+print_to_file(gcf, QC2_folder,'FIG4_inter_subject_SPM_similarity');
 
 %%---------------- CON
 
@@ -367,9 +371,11 @@ imwrite(img.cdata, [savestring]);
                     set(findall(gcf,'type','text'),'FontSize',11) 
             end
         end
-        savestring = [QC2_folder,'/FIG5_group_pca_CON_PCs',num2str(ns_pc(1)),'-',num2str(ns_pc(2)),'.png'];
-        img = getframe(gcf);
-        imwrite(img.cdata, [savestring]);
+        %savestring = [QC2_folder,'/FIG5_group_pca_CON_PCs',num2str(ns_pc(1)),'-',num2str(ns_pc(2)),'.png'];
+        %img = getframe(gcf);
+        %imwrite(img.cdata, [savestring]);
+        out_fig_name = [ 'FIG5_group_pca_CON_PCs',num2str(ns_pc(1)),'-',num2str(ns_pc(2)) ];
+        print_to_file(gcf, QC2_folder,out_fig_name);
     end
     %% -------- making plots -------- %%
     
@@ -416,9 +422,11 @@ imwrite(img.cdata, [savestring]);
                     set(findall(gcf,'type','text'),'FontSize',11) 
             end
         end
-        savestring = [QC2_folder,'/FIG6_group_pca_FIX_PCs',num2str(ns_pc(1)),'-',num2str(ns_pc(2)),'.png'];
-        img = getframe(gcf);
-        imwrite(img.cdata, [savestring]);
+        %         savestring = [QC2_folder,'/FIG6_group_pca_FIX_PCs',num2str(ns_pc(1)),'-',num2str(ns_pc(2)),'.png'];
+        %         img = getframe(gcf);
+        %         imwrite(img.cdata, [savestring]);
+        out_fig_name = [ 'FIG6_group_pca_FIX_PCs',num2str(ns_pc(1)),'-',num2str(ns_pc(2)) ];
+        print_to_file(gcf, QC2_folder,out_fig_name);
     end
     %% -------- making plots -------- %%
     
@@ -465,9 +473,12 @@ imwrite(img.cdata, [savestring]);
                     set(findall(gcf,'type','text'),'FontSize',11) 
             end
         end
-        savestring = [QC2_folder,'/FIG7_group_pca_IND_PCs',num2str(ns_pc(1)),'-',num2str(ns_pc(2)),'.png'];
-        img = getframe(gcf);
-        imwrite(img.cdata, [savestring]);
+        %savestring = [QC2_folder,'/FIG7_group_pca_IND_PCs',num2str(ns_pc(1)),'-',num2str(ns_pc(2)),'.png'];
+        %img = getframe(gcf);
+        %imwrite(img.cdata, [savestring]);
+        out_fig_name = [ 'FIG7_group_pca_IND_PCs',num2str(ns_pc(1)),'-',num2str(ns_pc(2)) ];
+        print_to_file(gcf, QC2_folder, out_fig_name);
+        
     end
     %% -------- making plots -------- %%
     

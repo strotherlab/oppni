@@ -53,9 +53,13 @@ if isempty(CODE_PATH)
     end
 end
 if ~isdeployed
-    addpath(CODE_PATH);
-    addpath([CODE_PATH 'NIFTI_tools']);
-    addpath([CODE_PATH 'toolbox'])
+    addpath_pronto(CODE_PATH);
+    addpath_pronto([CODE_PATH 'NIFTI_tools']);
+    addpath_pronto([CODE_PATH 'toolbox'])
+end
+
+if nargin < 2
+     newmaskname = [];
 end
 
 %% Load individual masks

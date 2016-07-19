@@ -176,19 +176,33 @@ if nargin<9
     error('Terminating PRONTO');
 else
     tpatlist={'alt+z','altplus','alt+z2','alt-z','altminus','alt-z2','seq+z','seqplus','seq-z','seqminus','auto_hdr'};
-    compar=0; 
-    if( ischar(TPATTERN) )
-    for(i=1:numel(tpatlist)) 
-        if(strcmp(TPATTERN,tpatlist{i})) compar=1; end; 
-    end
-    end
-    if( compar == 0 )
+%     compar=0; 
+%     if( ischar(TPATTERN) )
+%     for(i=1:numel(tpatlist)) 
+%         if(strcmp(TPATTERN,tpatlist{i})) compar=1; end; 
+%     end
+%     end
+%     if( compar == 0 )
+%         fprintf('ERROR: Invalid slice-timing pattern (TPATTERN).\n');
+%         fprintf('TPATTERN options include:\n\t alt+z (or altplus)  = alternating in the plus direction\n\t alt+z2              = alternating, starting at slice #1 instead of #0\n\t alt-z (or altminus) = alternating in the minus direction\n\t alt-z2              = alternating, starting at slice #nz-2 instead of #nz-1\n\t seq+z (or seqplus)  = sequential in the plus direction\n\t seq-z (or seqminus) = sequential in the minus direction\n\n');
+%         error('Terminating PRONTO');
+%     end        
+
+    if ~ischar(TPATTERN) || ~ismember(TPATTERN, tpatlist)
         fprintf('ERROR: Invalid slice-timing pattern (TPATTERN).\n');
         fprintf('TPATTERN options include:\n\t alt+z (or altplus)  = alternating in the plus direction\n\t alt+z2              = alternating, starting at slice #1 instead of #0\n\t alt-z (or altminus) = alternating in the minus direction\n\t alt-z2              = alternating, starting at slice #nz-2 instead of #nz-1\n\t seq+z (or seqplus)  = sequential in the plus direction\n\t seq-z (or seqminus) = sequential in the minus direction\n\n');
         error('Terminating PRONTO');
-    end        
+    end
 end
-if nargin<10 || isempty(TOFWHM)
+if nargin<10 || isempty(TOFWHM) || ~exist('TOFWHM','var')
+    TOFWHM = 0;
+end
+
+if ischar(TOFWHM)
+    TOFWHM = str2double(TOFWHM);
+end
+
+if ~ismember(TOFWHM,[0 1])
     TOFWHM = 0;
 end
 

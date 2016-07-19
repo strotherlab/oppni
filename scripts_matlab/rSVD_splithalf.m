@@ -66,7 +66,9 @@ function [ output ] = rSVD_splithalf( X, Npc, Niters, threshold )
  
 for( i=1:Niters )
 
-   disp(i);
+   if mod(i,10)==0
+       disp(i);
+   end
     
    % randomize subject-list & split in half
    prmlist = randperm(Nsubj);
@@ -140,7 +142,13 @@ if( ~isempty( threshold ) )
     R_distr        = R_distr( :, signif_comps );
     R_signif       = R_signif( signif_comps );
     
-    disp(strcat('found_',num2str( sum(signif_comps) ),'_significant PCs.'));
+    numSignifPCs = sum(signif_comps);
+    outMesg = strcat('found_',num2str(numSignifPCs),'_significant PCs.');
+    if numSignifPCs > 0
+        disp(outMesg);
+    else
+        warning(outMesg);
+    end
 else
     disp('no thresholding...');
 end

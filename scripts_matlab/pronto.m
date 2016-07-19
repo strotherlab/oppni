@@ -40,8 +40,8 @@ elseif strcmpi(proc,'QC1') || strcmpi(proc,'QC2')
     % first argument coming from compiled code is an integer indicating step
     QC_wrapper(varargin{1}, varargin{2},varargin{3}, varargin{4});
 
-elseif strcmpi(proc,'QC0')
-    QC_wrapper(0, varargin{1},varargin{2},varargin{3});
+% elseif strcmpi(proc,'QC0')
+%     QC_wrapper(0, varargin{1},varargin{2},varargin{3}); 
 
 else
     error('Unrecognized part name: must be one of PART1, PART2, SPNORM, GMASK, QC1 and QC2.');

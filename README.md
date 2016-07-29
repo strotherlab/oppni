@@ -1,4 +1,4 @@
-# OPNI (Optimization of Preprocessing pipelines for NeuroImaging) for fMRI analysis by Stephen Strother Laboratory
+# OPNI (Optimization of Preprocessing pipelines for NeuroImaging) for fMRI analysis by the Strother Laboratory
 
 This repository provides OPNI (Optimization of Preprocessing pipelines for NeuroImaging), which does fast optimization of preprocessing pipelines for BOLD fMRI (Blood Oxygenation Level Dependent functional MRI). This software package identifies the set of preprocessing steps (“pipeline”) specific to each dataset, which optimizes quality metrics of Prediction and Reproducibility for post-processing analysis results (Strother et al., 2002;.This procedure has been shown to significantly improve signal detection, reliability of brain activations, and sensitivity to brain-behaviour correlations (Churchill et al., 2012a, 2012b). The pipeline software can also be used for simple automated batch-processing of fMRI datasets, if no appropriate analysis model is currently available to do optimization (e.g. some resting-state connectivity studies).
 

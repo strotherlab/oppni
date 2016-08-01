@@ -5,7 +5,7 @@ This repository provides OPPNI (Optimization of Preprocessing Pipelines for Neur
 ## What can OPPNI do for you?
 
 ### Clean up your data: 
-it will automatically output data that has been optimally processed to control for noise and artifact (e.g. due to motion, physiology, scanner noise), which you can then use for further analysis. Automated de-noising is done based on replicable, statistical criteria; no more tedious batch scripting, or hand-selection of ICA components!
+It will automatically output data that has been optimally processed to control for noise and artifact (e.g. due to motion, physiology, scanner noise), which you can then use for further analysis. Automated de-noising is done based on replicable, statistical criteria; no more tedious batch scripting, or hand-selection of ICA components!
 
 ### Analyze your data: 
 as part of optimization, OPPNI creates Z-scored maps of brain activity for each dataset. You can directly report these results, or take individual activation maps and do standard group-level analysis. OPPNI can perform univariate or multivariate analysis of brain activity.  This can be done for a variety of different task designs, including event-related and block-design tasks. Recent additions also include seed-based connectivity and component modelling, i.e., selecting an optimal PCA subspace.

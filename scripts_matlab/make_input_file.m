@@ -1,4 +1,4 @@
-function make_input_file( filename, argcell )
+function make_input_file( filename, argcell, TASK )
 
 % 1 IN path
 % 2 OUT path
@@ -13,9 +13,10 @@ for(i=1:4)
     if(strcmpi(fieldcell{i},'PHYSIO') && strcmpi(argcell{i},'None'))
     disp('skipping physio.');  
     else
-    fprintf(['%s=%s '],fieldcell{i},argcell{i});
+    fprintf(fin,'%s=%s ',fieldcell{i},argcell{i});
     end
 end
 
-fprintf(['DROP=[%u %u]'],argcell{5},argcell{6}) 
+fprintf(fin,'DROP=[%u,%u] TASK=%s\n',argcell{5},argcell{6},TASK); 
+
 fclose(fin);

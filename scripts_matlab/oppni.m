@@ -12,6 +12,40 @@ function oppni(proc,varargin)
 % 8 EVENTS TSV
 % 9 ATLAS PATH
 
+%% some early value checks
+if( nargin < 9 )
+    error('too few input arguments (1=IN,2=OUT,3=STRUCT,4=PHYSIO,5=DROP1,6=DROP2,7=TASK,8=EVENTS,9=ATLAS)');
+end
+if( isempty(varargin{1}) || ~exist(varargin{1},'file') ) error(strcat('input file: ',varargin{1},' does not exist')); end
+if( isempty(varargin{3}) || ~exist(varargin{3},'file') ) error(strcat('structural file: ',varargin{3},' does not exist')); end
+if( isempty(varargin{4}) )
+    warning(strcat('physio file not specified for: ',varargin{1},'. Cannot do RETROICOR'));
+    varargin{4}='None';
+elseif(~exist(varargin{4},'file') ) 
+    warning(strcat('physio file: ',varargin{4},' does not exist. Cannot do RETROICOR'));
+    varargin{4}='None';
+end
+if( isempty(varargin{5}) || (isnumeric(varargin{5}) && varargin{5}==0) ) 
+    varargin{5}=0;
+    warning(strcat('No scans dropped from start of: ',varargin{1},'.Is this OK?'));
+elseif( all(ismember(varargin{5},'0123456789 ')) )
+    varargin{5} = str2num(varargin{5});
+elseif( ~isnumeric(varargin{5}))
+    error(strcat('Invalid DROP(1) value: ',varargin{5}))
+end
+if( isempty(varargin{6}) || (isnumeric(varargin{6}) && varargin{6}==0) ) 
+    varargin{6}=0;
+    warning(strcat('No scans dropped from end of: ',varargin{1},'.Is this OK?'));
+elseif( all(ismember(varargin{6},'0123456789 ')) )
+    varargin{6} = str2num(varargin{6});
+elseif( ~isnumeric(varargin{6}))
+    error(strcat('Invalid DROP(2) value: ',varargin{6}))
+end
+if( isempty(varargin{7}) || ~exist(varargin{7},'file') ) error(strcat('Task .json file: ',varargin{7},' does not exist')); end
+if( isempty(varargin{8}) || ~exist(varargin{8},'file') ) error(strcat('Event .tsv file: ',varargin{8},' does not exist')); end
+
+%% now setting parameter defaults
+
 % setting defaults, part1
 task_type         = 'BLOCK';
 analysis_model    = 'LDA';
@@ -40,17 +74,20 @@ end
 
 [outpath,prefix,~] = fileparts( varargin{2} );
 mkdir_r(outpath);
+mkdir( fullfile( outpath, 'task_files') );
+mkdir( fullfile( outpath, 'input_files') );
+
 % populate pipeline file
-newpipefile = fullfile( outpath, '/pipeline_file.txt');
+newpipefile = fullfile( outpath, 'pipeline_file.txt');
 if ~exist(newpipefile,'file')
     make_pipeline_file( newpipefile );
 end
 % create task file
-newtaskfile = fullfile( outpath, strcat(prefix,'_task_file.txt'));
+newtaskfile = fullfile( outpath, 'task_files', strcat(prefix,'.txt') );
 bids_to_oppni_task(varargin{7}, varargin{8}, task_type, newtaskfile);
 % create input file
-newinputfile = fullfile( outpath, strcat(prefix,'_input_file.txt') );
-make_input_file( newinputfile, varargin(1:6) );
+newinputfile = fullfile( outpath, 'input_files', strcat(prefix,'.txt') );
+make_input_file( newinputfile, varargin(1:6), newtaskfile );
 
 if strcmpi(proc,'PART1')
 

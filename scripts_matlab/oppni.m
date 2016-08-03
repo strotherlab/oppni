@@ -1,5 +1,7 @@
 function oppni(proc,varargin)
 
+% varargins:
+%
 % 1 IN path
 % 2 OUT path
 % 3 STRUCT path
@@ -8,34 +10,46 @@ function oppni(proc,varargin)
 % 6 DROP value2
 % 7 TASK JSON (BIDS)
 % 8 EVENTS TSV
+% 9 ATLAS PATH
 
-% setting defaults
-task_type = 'BLOCK';
-analysis_model = 'LDA';
-modelparam=[];
-contrast_list_str=[];
-dospnormfirst=0;
-DEOBLIQUE=0;
-TPATTERN='auto_hdr';
-TOFWHM=0;
-niiout=0;
-optimize_metric='dPR';
-mot_gs_control=[1 0];
-process_out=1;
-keepmean=0;
-whichpipes='ALL';
-input_voxelsize=[];
-flag_step=0;
-reference_file=[];
+% setting defaults, part1
+task_type         = 'BLOCK';
+analysis_model    = 'LDA';
+modelparam        =[];
+contrast_list_str =[];
+dospnormfirst     =0;
+DEOBLIQUE         =0;
+TPATTERN          ='auto_hdr';
+TOFWHM            =0;
+niiout            =0;
+% setting defaults, part2
+optimize_metric   ='dPR';
+mot_gs_control    =[1 0];
+process_out       =1;
+keepmean          =0;
+whichpipes        ='ALL';
+% setting defaults, spatnorm
+input_voxelsize   =[];
+flag_step         =0;
 
+if( nargin >9 )
+    reference_file=varargin{9};
+else
+    reference_file=[];
+end
+
+[outpath,prefix,~] = fileparts( varargin{2} );
+mkdir_r(outpath);
 % populate pipeline file
-newpipefile = [varargin{2},'_pipeline_file.txt'];
-make_pipeline_file( newpipefile );
+newpipefile = fullfile( outpath, '/pipeline_file.txt');
+if ~exist(newpipefile,'file')
+    make_pipeline_file( newpipefile );
+end
 % create task file
-newtaskfile = [varargin{2},'_task_file.txt'];
+newtaskfile = fullfile( outpath, strcat(prefix,'_task_file.txt'));
 bids_to_oppni_task(varargin{7}, varargin{8}, task_type, newtaskfile);
 % create input file
-newinputfile = [varargin{2},'_input_file.txt'];
+newinputfile = fullfile( outpath, strcat(prefix,'_input_file.txt') );
 make_input_file( newinputfile, varargin(1:6) );
 
 if strcmpi(proc,'PART1')
@@ -56,8 +70,8 @@ elseif strcmpi(proc,'GMASK')
     
 elseif strcmpi(proc,'QC1') || strcmpi(proc,'QC2')
 
+    group_mask_tissue_maps(newinputfile,'');
     QC_wrapper(flag_step,newinputfile, [], 2);
-
 else
     error('Unrecognized part name: must be one of PART1, PART2, SPNORM, GMASK, QC1 and QC2.');
 end

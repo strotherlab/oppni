@@ -20,7 +20,7 @@
 %
 %  voxel_size (optional)  - size of a voxel in millimeter along x y z
 %		direction for resliced NIfTI file. 'voxel_size' will use
-%		the rounded minimum voxel_size in original NIfTI header,
+%		the minimum voxel_size in original NIfTI header,
 %		if it is default or empty.
 %
 %  verbose (optional) - 1, 0
@@ -55,7 +55,7 @@
 %
 %  NIFTI data format can be found on: http://nifti.nimh.nih.gov
 %  
-%  - Jimmy Shen (jimmy@rotman-baycrest.on.ca)
+%  - Jimmy Shen (jshen@research.baycrest.org)
 %
 function reslice_nii(old_fn, new_fn, voxel_size, verbose, bg, method, img_idx, preferredForm)
 
@@ -86,9 +86,9 @@ function reslice_nii(old_fn, new_fn, voxel_size, verbose, bg, method, img_idx, p
    end
 
    if ~exist('voxel_size','var') | isempty(voxel_size)
-      voxel_size = round(min(nii.hdr.dime.pixdim(2:4)))*ones(1,3);
+      voxel_size = abs(min(nii.hdr.dime.pixdim(2:4)))*ones(1,3);
    elseif length(voxel_size) < 3
-      voxel_size = voxel_size(1)*ones(1,3);
+      voxel_size = abs(voxel_size(1))*ones(1,3);
    end
 
    if ~exist('bg','var') | isempty(bg)
@@ -140,7 +140,57 @@ function [nii] = load_nii_no_xform(filename, img_idx, old_RGB, preferredForm)
    if ~exist('img_idx','var'), img_idx = []; end
    if ~exist('old_RGB','var'), old_RGB = 0; end
    if ~exist('preferredForm','var'), preferredForm= 's'; end     % Jeff
-   
+
+   v = version;
+
+   %  Check file extension. If .gz, unpack it into temp folder
+   %
+   if length(filename) > 2 & strcmp(filename(end-2:end), '.gz')
+
+      if ~strcmp(filename(end-6:end), '.img.gz') & ...
+	 ~strcmp(filename(end-6:end), '.hdr.gz') & ...
+	 ~strcmp(filename(end-6:end), '.nii.gz')
+
+         error('Please check filename.');
+      end
+
+      if str2num(v(1:3)) < 7.1 | ~usejava('jvm')
+         error('Please use MATLAB 7.1 (with java) and above, or run gunzip outside MATLAB.');
+      elseif strcmp(filename(end-6:end), '.img.gz')
+         filename1 = filename;
+         filename2 = filename;
+         filename2(end-6:end) = '';
+         filename2 = [filename2, '.hdr.gz'];
+
+         tmpDir = tempname;
+         mkdir(tmpDir);
+         gzFileName = filename;
+
+         filename1 = gunzip(filename1, tmpDir);
+         filename2 = gunzip(filename2, tmpDir);
+         filename = char(filename1);	% convert from cell to string
+      elseif strcmp(filename(end-6:end), '.hdr.gz')
+         filename1 = filename;
+         filename2 = filename;
+         filename2(end-6:end) = '';
+         filename2 = [filename2, '.img.gz'];
+
+         tmpDir = tempname;
+         mkdir(tmpDir);
+         gzFileName = filename;
+
+         filename1 = gunzip(filename1, tmpDir);
+         filename2 = gunzip(filename2, tmpDir);
+         filename = char(filename1);	% convert from cell to string
+      elseif strcmp(filename(end-6:end), '.nii.gz')
+         tmpDir = tempname;
+         mkdir(tmpDir);
+         gzFileName = filename;
+         filename = gunzip(filename, tmpDir);
+         filename = char(filename);	% convert from cell to string
+      end
+   end
+
    %  Read the dataset header
    %
    [nii.hdr,nii.filetype,nii.fileprefix,nii.machine] = load_nii_hdr(filename);
@@ -157,6 +207,16 @@ function [nii] = load_nii_no_xform(filename, img_idx, old_RGB, preferredForm)
    %  Perform some of sform/qform transform
    %
 %   nii = xform_nii(nii, preferredForm);
+
+   %  Clean up after gunzip
+   %
+   if exist('gzFileName', 'var')
+
+      %  fix fileprefix so it doesn't point to temp location
+      %
+      nii.fileprefix = gzFileName(1:end-7);
+      rmdir(tmpDir,'s');
+   end
 
 
    hdr = nii.hdr;

@@ -2,9 +2,8 @@
 
 %  - Jimmy Shen (jimmy@rotman-baycrest.on.ca)
 
-function save_untouch_nii_hdr(hdr, fid)
+function save_nii_hdr(hdr, fid)
 
-   %warning('off', 'Octave:possible-matlab-short-circuit-operator' );
    if ~isequal(hdr.hk.sizeof_hdr,348),
       error('hdr.hk.sizeof_hdr must be 348.');
    end
@@ -126,7 +125,7 @@ function image_dimension(fid, dime)
    fwrite(fid, dime.intent_p3(1),  'float32');
    fwrite(fid, dime.intent_code(1),  'int16');
    fwrite(fid, dime.datatype(1),     'int16');
-   fwrite(fid, double(dime.bitpix(1)),       'int16');
+   fwrite(fid, dime.bitpix(1),       'int16');
    fwrite(fid, dime.slice_start(1),  'int16');
    fwrite(fid, dime.pixdim(1:8),   'float32');
    fwrite(fid, dime.vox_offset(1), 'float32');

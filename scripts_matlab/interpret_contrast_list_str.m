@@ -35,7 +35,10 @@ for ksub = 1:numel(InputStruct)
             continue;
         end
         clear split_info
-        hdr = load_nii_hdr([InputStruct(ksub).run(krun).Input_nifti_file_path '/' InputStruct(ksub).run(krun).Input_nifti_file_prefix]);
+        %hdr = load_nii_hdr([InputStruct(ksub).run(krun).Input_nifti_file_path '/' InputStruct(ksub).run(krun).Input_nifti_file_prefix]);
+        v = load_nii([InputStruct(ksub).run(krun).Input_nifti_file_path '/' InputStruct(ksub).run(krun).Input_nifti_file_prefix]);
+        hdr=v.hdr; clear v; 
+        
         InputStruct(ksub).run(krun).Nt = hdr.dime.dim(5) - InputStruct(ksub).run(krun).DROP_first - InputStruct(ksub).run(krun).DROP_last;
         
         % loading in the split-info filename

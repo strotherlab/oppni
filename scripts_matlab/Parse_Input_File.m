@@ -17,8 +17,8 @@ ifile = ifile+3;
 ips   = [strfind( tline, ' ' )-1 length(tline)];
 ips   = ips(ips>ifile);
 Input_nifti_file_temp = tline(ifile:ips(1));
-Input_nifti_file_temp = strrep(Input_nifti_file_temp,'.nii','');
-[Input_nifti_file_path_temp,Input_nifti_file_prefix,ext] = fileparts(Input_nifti_file_temp);
+%%Input_nifti_file_temp = strrep(Input_nifti_file_temp,'.nii','');
+[Input_nifti_file_path_temp,Input_nifti_file_prefix,infile_ext] = fileparts(Input_nifti_file_temp);
 
 if(isempty(strfind(Input_nifti_file_prefix,',')))
      Input_nifti_file_prefix = cellstr(Input_nifti_file_prefix);
@@ -133,7 +133,7 @@ else
 end
 
 for k = 1:N_run
-    Input_nifti_file_prefix{k} = [Input_nifti_file_prefix{k} '.nii'];
+    Input_nifti_file_prefix{k} = [Input_nifti_file_prefix{k}, infile_ext]; %% add in ext
     Input_nifti_file_path{k} = Input_nifti_file_path_temp;
     Output_nifti_file_path{k} = Output_nifti_file_path_temp;
     STRUCT_File{k} = STRUCT_File_temp;

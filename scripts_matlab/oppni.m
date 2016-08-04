@@ -21,7 +21,7 @@ if( isempty(varargin{3}) || ~exist(varargin{3},'file') ) error(strcat('structura
 if( isempty(varargin{4}) )
     warning(strcat('physio file not specified for: ',varargin{1},'. Cannot do RETROICOR'));
     varargin{4}='None';
-elseif(~exist(varargin{4},'file') ) 
+elseif(~exist(varargin{4},'file') && (~exist([varargin{4},'.resp.1D'],'file') && ~exist([varargin{4},'.card.1D'],'file'))  ) 
     warning(strcat('physio file: ',varargin{4},' does not exist. Cannot do RETROICOR'));
     varargin{4}='None';
 end
@@ -78,7 +78,7 @@ mkdir( fullfile( outpath, 'task_files') );
 mkdir( fullfile( outpath, 'input_files') );
 
 % populate pipeline file
-newpipefile = fullfile( outpath, 'pipeline_file.txt');
+newpipefile = fullfile( outpath, 'pipeline_combinations.txt');
 if ~exist(newpipefile,'file')
     make_pipeline_file( newpipefile );
 end

@@ -874,5 +874,8 @@ end
     
 function x = get_numvols(file)
 
-hdr = load_nii_hdr(file);
+%hdr = load_nii_hdr(file);
+v = load_nii(file);
+hdr=v.hdr; clear v;
+
 x = hdr.dime.dim(5);

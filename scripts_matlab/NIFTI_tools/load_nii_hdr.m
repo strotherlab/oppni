@@ -11,17 +11,17 @@ function [hdr, filetype, fileprefix, machine] = load_nii_hdr(fileprefix)
    machine = 'ieee-le';
    new_ext = 0;
 
-   if findstr('.nii',fileprefix)
+   if findstr('.nii',fileprefix) & strcmp(fileprefix(end-3:end), '.nii')
       new_ext = 1;
-      fileprefix = strrep(fileprefix,'.nii','');
+      fileprefix(end-3:end)='';
    end
 
-   if findstr('.hdr',fileprefix)
-      fileprefix = strrep(fileprefix,'.hdr','');
+   if findstr('.hdr',fileprefix) & strcmp(fileprefix(end-3:end), '.hdr')
+      fileprefix(end-3:end)='';
    end
 
-   if findstr('.img',fileprefix)
-      fileprefix = strrep(fileprefix,'.img','');
+   if findstr('.img',fileprefix) & strcmp(fileprefix(end-3:end), '.img')
+      fileprefix(end-3:end)='';
    end
 
    if new_ext

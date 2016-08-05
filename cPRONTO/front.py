@@ -317,9 +317,12 @@ def parse_args_check():
                         help="Performs a basic validation of an input file (existence of files and consistency!).")
 
     parser.add_argument("-p", "--part", action="store", dest="part", type=int,
-                        default=0, choices=[0, 1, 2, 3],
-                        help="select pipeline optimization step, 1: Estimation step, 2: Optimization step, "
-                             "3: Spatial normalization, 0: All three steps (default 0)")
+                        default=0, choices=[0, 1, 2, 3, 4], # #  "one", "two", "preproc", "optim", "spnorm", "all", "qc1", "qc2", "qc"]
+                        help="select pipeline optimization step, \n\t0: All steps [default]"
+                             "\n\t1: Preprocessing ans statistics estimation step, "
+                             "\n\t2: Optimization step, "
+                             "\n\t3: Spatial normalization,"
+                             "\n\t4: quality control, ")
     parser.add_argument("-i", "--input_data", action="store", dest="input_data_orig",
                         help="FILE.txt contains the input and output data paths", metavar="input spec file")
     parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file", metavar="pipeline combination file",
@@ -1327,18 +1330,29 @@ def submit_jobs():
     if options.part is 0:
         run_part_one = True
         run_part_two = True
+        run_qc1 = True
+        run_qc2 = True
+        if options.reference_specified:
+            run_sp_norm = True
+        else:
+            print 'A reference atlas is not specified - skipping spatial normalization..'
+            run_sp_norm = False
     elif options.part is 1:
         run_part_one = True
         run_part_two = False
     elif options.part is 2:
         run_part_one = False
         run_part_two = True
-
-    # run spatial norm only when the reference is specified and exists
-    if options.reference_specified:
-        run_sp_norm = True
-    else:
-        run_sp_norm = False
+    elif options.part is 3:
+        # run spatial norm only when the reference is specified and exists
+        if options.reference_specified:
+            run_sp_norm = True
+        else:
+            print 'A reference atlas is not specified - skipping spatial normalization..'
+            run_sp_norm = False
+    elif options.part is 4:
+        run_qc1 = True
+        run_qc2 = True
 
     spnorm_completed = False
     spnorm_step1_completed = False
@@ -1359,13 +1373,6 @@ def submit_jobs():
         if options.run_locally is True and (status_p1 is False or status_p1 is None):
             raise Exception('Preprocessing step failed.')
 
-    # generating QC1 if not done already
-    if is_done.QC1 is False:
-        print('QC 1 :')
-        status_qc1, job_ids_qc1 = run_qc_part_one(unique_subjects, options, input_file, cur_garage)
-        if options.run_locally is True and (status_qc1 is False or status_qc1 is None):
-            raise Exception('QC part 1 failed.')
-
     # submitting jobs for optimization
     if run_part_two and options.analysis != "None" and is_done.optimization is False:
         # optimization is done for ALL the subjects in the input file,
@@ -1374,13 +1381,6 @@ def submit_jobs():
         status_p2, job_ids_pTwo = run_optimization(unique_subjects, options, input_file, cur_garage)
         if options.run_locally is True and (status_p2 is False or status_p2 is None):
             raise Exception('Optimization failed.')
-
-    # generating QC2 if not done already
-    if is_done.QC2 is False:
-        print('QC 2 :')
-        status_qc2, job_ids_qc2 = run_qc_part_two(unique_subjects, options, input_file, cur_garage)
-        if options.run_locally is True and (status_qc1 is False or status_qc1 is None):
-            raise Exception('QC part 1 failed.')
 
     # finishing up the spatial normalization
     if run_sp_norm:
@@ -1398,6 +1398,20 @@ def submit_jobs():
         status_gm = process_group_mask_generation(unique_subjects, options, input_file, cur_garage)
         if options.run_locally is True and (status_gm is False or status_gm is None):
             raise Exception('Group mask generation failed.')
+
+    # generating QC1 if not done already
+    if is_done.QC1 is False and run_qc1 is True:
+        print('QC 1 :')
+        status_qc1, job_ids_qc1 = run_qc_part_one(unique_subjects, options, input_file, cur_garage)
+        if options.run_locally is True and (status_qc1 is False or status_qc1 is None):
+            raise Exception('QC part 1 failed.')
+
+    # generating QC2 if not done already
+    if is_done.QC2 is False and run_qc2 is True:
+        print('QC 2 :')
+        status_qc2, job_ids_qc2 = run_qc_part_two(unique_subjects, options, input_file, cur_garage)
+        if options.run_locally is True and (status_qc1 is False or status_qc1 is None):
+            raise Exception('QC part 1 failed.')
 
     # saving the job ids and hpc cfg to facilitate a status update in future
     save_hpc_cfg_and_jod_ids(cur_garage)

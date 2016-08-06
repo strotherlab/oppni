@@ -67,6 +67,8 @@ def run_part_one(bids_dir, subject_label, task_name, output_dir):
     func_pattern = "sub-{}_*task-{}*_bold.nii*".format(subject_label, task_name)
     epi_list = glob(os.path.join(epi_dir, func_pattern))
 
+    physio_pattern = "sub-{}_*task-{}*_physio*".format(subject_label, task_name)
+
     anat_dir = os.path.join(bids_dir, "sub-%s" % subject_label, "anat")
     anat_pattern = "sub-{}_T1w.nii*".format(subject_label)
     anat_file_list = glob(os.path.join(anat_dir, anat_pattern))
@@ -103,7 +105,7 @@ def run_oppni():
 
     validate_user_env()
 
-    task_group = 'rhymejudgment'
+    task_group = 'linebisection'
 
     # status_check_dir = os.path.join(args.output_dir, 'status_checks')
     # if not os.path.exists(status_check_dir):

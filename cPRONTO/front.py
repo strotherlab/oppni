@@ -308,7 +308,7 @@ def validate_input_line(ip_line, suffix=''):
 
 def parse_args_check():
     # parse different input flags
-    parser = argparse.ArgumentParser(prog="pronto")
+    parser = argparse.ArgumentParser(prog="oppni")
 
     parser.add_argument("-s", "--status", action="store", dest="status_update_in",
                         default=None,
@@ -325,7 +325,7 @@ def parse_args_check():
                              "\n\t1: Preprocessing ans statistics estimation step, "
                              "\n\t2: Optimization step, "
                              "\n\t3: Spatial normalization,"
-                             "\n\t4: quality control, ")
+                             "\n\t4: quality control. ")
     parser.add_argument("-i", "--input_data", action="store", dest="input_data_orig",
                         help="FILE.txt contains the input and output data paths", metavar="input spec file")
     parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file", metavar="pipeline combination file",

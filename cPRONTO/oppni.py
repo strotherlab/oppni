@@ -17,7 +17,7 @@ import shutil
 import pickle
 import tempfile
 
-# PRONTO related
+# OPPNI related
 import cfg_front as cfg_pronto
 import proc_status_front as check_proc_status
 import sgeparse
@@ -130,9 +130,12 @@ def validate_user_env(opt):
 
 
 def validate_input_file(input_file, options=None, new_input_file=None):
-    if new_input_file is None or options is None:
+    """Key function to ensure input file is valid. Also handles the reorganization of output files depending on options chosen."""
+
+    if ( new_input_file is None) or (options is None) or (options.use_prev_processing_for_QC):
+        # in case of resubmission, or when applying QC on an existing processing from older versions of PRONTO,
+        # this should not append additional layer
         new_file = tempfile.TemporaryFile()
-        # in case of resubmission, this should not append additional layer
         cur_suffix = None
     else:
         new_file = open(new_input_file, 'w')
@@ -157,7 +160,7 @@ def validate_input_file(input_file, options=None, new_input_file=None):
                 unique_subjects[subject['prefix']] = subject
                 new_file.write(new_line)
 
-            # options = None is when this helper script is called from outside of fRONT
+            # options = None is when this helper script is called from outside of OPPNI
             if options is not None and options.contrast_specified:
                 assert subject['task'] is not None, \
                     'Contrast specified, but not a task file in line number {}.'.format(line_count)
@@ -305,7 +308,7 @@ def validate_input_line(ip_line, suffix=''):
 
 def parse_args_check():
     # parse different input flags
-    parser = argparse.ArgumentParser(prog="pronto")
+    parser = argparse.ArgumentParser(prog="oppni")
 
     parser.add_argument("-s", "--status", action="store", dest="status_update_in",
                         default=None,
@@ -322,7 +325,7 @@ def parse_args_check():
                              "\n\t1: Preprocessing ans statistics estimation step, "
                              "\n\t2: Optimization step, "
                              "\n\t3: Spatial normalization,"
-                             "\n\t4: quality control, ")
+                             "\n\t4: quality control. ")
     parser.add_argument("-i", "--input_data", action="store", dest="input_data_orig",
                         help="FILE.txt contains the input and output data paths", metavar="input spec file")
     parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file", metavar="pipeline combination file",
@@ -470,6 +473,11 @@ def parse_args_check():
                         default=False,
                         help="Generates job files only, but not run/sbumit them. Helps in debugging the queue/HPC options.")
 
+    parser.add_argument("--use_prev_processing_for_QC", action="store_true", dest="use_prev_processing_for_QC",
+                        default=False,
+                        help="This option enables you to run QC jobs on existing processing generated with older versions of OPPNI.")
+
+
     if len(sys.argv) < 2:
         print('Too few arguments!')
         parser.print_help()
@@ -509,7 +517,7 @@ def parse_args_check():
     if hpc['type'] in (None, 'LOCAL'):
         if options.run_locally == False:
             print "Sun grid engine (SGE) has not been detected!"
-            print "Use --run_locally switch if you want to run PRONTO without HPC cluster on your computer locally."
+            print "Use --run_locally switch if you want to run OPPNI without HPC cluster on your computer locally."
             exit(1)
         else:
             print "Running jobs to the current node"
@@ -565,7 +573,7 @@ def parse_args_check():
 
     if options.analysis is None or options.analysis == "None":
         print "WARNING: without an analysis model (specified by switch -a), no optimization will be performed"
-        print "  PRONTO will only generate the preprocessed data"
+        print "  OPPNI will only generate the preprocessed data"
         options.contrast_list_str = "None"
 
     if hasattr(options, 'DEOBLIQUE') and options.DEOBLIQUE:
@@ -576,31 +584,31 @@ def parse_args_check():
     ## --------------  Checking the switches --------------
     analysis = options.analysis
     if (analysis.upper() == "LDA") and (options.drf == "None"):
-        print "WARNING (Deprecated usage): --drf switch not defined for LDA model. PRONTO will check TASK files for parameter(s)"
+        print "WARNING (Deprecated usage): --drf switch not defined for LDA model. OPPNI will check TASK files for parameter(s)"
 
     if (analysis.upper() == "ERCVA") and (options.drf == "None"):
-        print "WARNING (Deprecated usage): --drf switch not defined for erCVA model. PRONTO will check TASK files for parameter(s)"
+        print "WARNING (Deprecated usage): --drf switch not defined for erCVA model. OPPNI will check TASK files for parameter(s)"
     if (analysis.upper() == "ERCVA") and (options.Nblock == "None"):
-        print "WARNING (Deprecated usage): --Nblock switch not defined for erCVA model. PRONTO will check TASK files for parameter(s)"
+        print "WARNING (Deprecated usage): --Nblock switch not defined for erCVA model. OPPNI will check TASK files for parameter(s)"
     if (analysis.upper() == "ERCVA") and (options.WIND == "None"):
-        print "WARNING (Deprecated usage): --WIND switch not defined for erCVA model. PRONTO will check TASK files for parameter(s)"
+        print "WARNING (Deprecated usage): --WIND switch not defined for erCVA model. OPPNI will check TASK files for parameter(s)"
     if (analysis.upper() == "ERCVA") and (options.subspace == "None"):
-        print "WARNING (Deprecated usage): --subspace switch not defined for erCVA model. PRONTO will check TASK files for parameter(s)"
+        print "WARNING (Deprecated usage): --subspace switch not defined for erCVA model. OPPNI will check TASK files for parameter(s)"
 
     if (analysis.upper() == "GNB") and (options.decision_model == "None"):
-        print "WARNING (Deprecated usage): --decision_model switch not defined for GNB model. PRONTO will check TASK files for parameter(s)"
+        print "WARNING (Deprecated usage): --decision_model switch not defined for GNB model. OPPNI will check TASK files for parameter(s)"
     if (analysis.upper() == "ERGNB") and (options.Nblock == "None"):
-        print "WARNING (Deprecated usage): --Nblock switch not defined for erGNB model. PRONTO will check TASK files for parameter(s)"
+        print "WARNING (Deprecated usage): --Nblock switch not defined for erGNB model. OPPNI will check TASK files for parameter(s)"
     if (analysis.upper() == "ERGNB") and (options.WIND == "None"):
-        print "WARNING (Deprecated usage): --WIND switch not defined for erGNB model. PRONTO will check TASK files for parameter(s)"
+        print "WARNING (Deprecated usage): --WIND switch not defined for erGNB model. OPPNI will check TASK files for parameter(s)"
 
     if (analysis.upper() == "SCONN") and (options.spm == "None"):
-        print "WARNING (Deprecated usage): --spm switch has to be used with the SCONN model. PRONTO will check TASK files for parameter(s)"
+        print "WARNING (Deprecated usage): --spm switch has to be used with the SCONN model. OPPNI will check TASK files for parameter(s)"
 
     if (analysis.upper() == "GLM") and (options.convolve == "None"):
-        print "WARNING (Old style usage): --convolve switch has to be used with the GLM model. PRONTO will check TASK files for parameter(s)"
+        print "WARNING (Old style usage): --convolve switch has to be used with the GLM model. OPPNI will check TASK files for parameter(s)"
     if (analysis.upper() == "GPCA") and (options.num_PCs == "None"):
-        print "WARNING (Deprecated usage): --num_PCs switch not defined for gPCA model. PRONTO will check TASK files for parameter(s)"
+        print "WARNING (Deprecated usage): --num_PCs switch not defined for gPCA model. OPPNI will check TASK files for parameter(s)"
 
     if not (options.convolve in ["1", "0", "None"]):
         print "WARNING (Deprecated usage): --convolve has to be 0 or 1"
@@ -1099,7 +1107,7 @@ def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix =
         # strong_quoted = lambda s: r""" "'{}'" """.format(s)
         strong_quoted = lambda s: r""" '{}' """.format(s)
 
-        # compiled_exe_path = find_executable('PRONTO')
+        # compiled_exe_path = find_executable('OPPNI')
         compiled_exe_path = 'run_cPRONTO.sh ' + os.getenv('MCR_PATH')
 
         cmd = 'time -p {0} {1} '.format(compiled_exe_path, step_id)
@@ -1284,7 +1292,7 @@ def submit_queue(job, depends_on_step):
 
 def submit_jobs():
     """
-    Gateway to PRONTO preprocessing and optimization tool.
+    Gateway to OPPNI preprocessing and optimization tool.
         Coordinates the status checks and runs/reruns what is required to perform the requested processing.
     """
 
@@ -1332,11 +1340,6 @@ def submit_jobs():
         run_part_two = True
         run_qc1 = True
         run_qc2 = True
-        if options.reference_specified:
-            run_sp_norm = True
-        else:
-            print 'A reference atlas is not specified - skipping spatial normalization..'
-            run_sp_norm = False
     elif options.part is 1:
         run_part_one = True
         run_part_two = False
@@ -1344,6 +1347,8 @@ def submit_jobs():
         run_part_one = False
         run_part_two = True
     elif options.part is 3:
+        run_part_one = False
+        run_part_two = False
         # run spatial norm only when the reference is specified and exists
         if options.reference_specified:
             run_sp_norm = True
@@ -1351,8 +1356,15 @@ def submit_jobs():
             print 'A reference atlas is not specified - skipping spatial normalization..'
             run_sp_norm = False
     elif options.part is 4:
+        run_part_one = False
+        run_part_two = False
         run_qc1 = True
         run_qc2 = True
+
+    if ( options.part in [0, 1, 2, 4] ):
+        run_sp_norm = False
+        if options.reference_specified:
+            print 'A reference atlas is specified although SPNORM is not requested - skipping spatial normalization..'
 
     spnorm_completed = False
     spnorm_step1_completed = False

@@ -52,10 +52,10 @@ def parse_args_check():
             raise ValueError('Some of the the required paths are not specified.')
     else:
         print 'Preconfigured setup for Rotman is chosen. Ignoring the other paths provided, if any.'
-        options.oppni_path  = '/home/praamana/oppni/cPRONTO' # '/opt/oppni'
+        options.oppni_path  = '/opt/oppni'
         options.afni_path   = '/opt/afni'
         options.fsl_path    = '/opt/fsl'
-        options.mcr_path    = '/data1/strother_lab/praamana/software/mcr_install/v80'
+        options.mcr_path    = '/opt/mcr/v80'
 
     if not os.path.isdir(options.oppni_path):
         raise ValueError("Specified OPPNI path {} doesn't exist!".format(options.oppni_path))
@@ -66,7 +66,7 @@ def parse_args_check():
     if not os.path.isdir(options.fsl_path):
         raise ValueError("Specified FSL path {} doesn't exist!".format(options.fsl_path))
 
-    if options.mcr_path.upper() == identifier_matlab_native_mode:
+    if options.assume_rotman_env is False and options.mcr_path.upper() == identifier_matlab_native_mode:
         print 'Ignoring the MCR setting according to user request'
     else:
         if not os.path.isdir(options.mcr_path):

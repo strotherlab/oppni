@@ -1,26 +1,24 @@
 #!/usr/bin/env python
 
-import logging, pwd, time
-import os, sys, subprocess, stat, re, random, argparse
-from multiprocessing.dummy import Pool as ThreadPool
-from multiprocessing import Pool
-from collections import namedtuple, OrderedDict
-from recordclass import recordclass
-from distutils.spawn import find_executable
-from time import localtime, strftime
-from time import sleep
-from os import listdir
-from copy import copy
-from os.path import isdir, join
-from shutil import rmtree
-import shutil
+import argparse
+import os
 import pickle
+import random
+import re
+import stat
+import subprocess
+import sys
 import tempfile
+from collections import OrderedDict
+from copy import copy
+from distutils.spawn import find_executable
+from multiprocessing import Pool
+from shutil import rmtree
+from time import localtime, strftime
 
 # OPPNI related
 import cfg_front as cfg_pronto
 import proc_status_front as check_proc_status
-import sgeparse
 
 file_name_hpc_config = 'hpc_config.pkl'
 file_name_job_ids_by_group = 'pronto_job_ids_by_step_prefix.pkl'
@@ -855,12 +853,6 @@ def q_status(scheduler, job_ids):
         else:
             print "error quering the job status"
             raise
-
-        # job = sgeparse.job_status(job_id)
-        # if 'state' in job:
-        #     job_state = job['state'].lower()
-        # else:
-        #     job_state = 'running or unknown'
 
         print('\t {}: {} '.format(prefix, job_state))
 

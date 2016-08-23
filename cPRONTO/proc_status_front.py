@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 
-import os, sys, re, glob, fnmatch
+import fnmatch
+import glob
+import os
+import re
+import sys
 from argparse import ArgumentParser
-from collections import namedtuple
 from cStringIO import StringIO
 
+from oppni import validate_input_file, validate_pipeline_file
 import cfg_front as cfg_pronto
 
 tick_mark = u'\u2713'.encode('utf-8')
@@ -190,13 +194,16 @@ def parse_args_check(input_args):
         parser.print_help()
         sys.exit(0)
 
-    inputFile = os.path.abspath(args.InputFile)
-    assert os.path.exists(inputFile), "Input file doesn't exist!"
+    input_file = os.path.abspath(args.InputFile)
+    pip_comb_file = os.path.abspath(args.PipelineFile)
 
-    pipFile = os.path.abspath(args.PipelineFile)
-    assert os.path.exists(pipFile), "Pipeline file doesn't exist!"
+    assert os.path.exists(input_file), "Input file doesn't exist!"
+    assert os.path.exists(pip_comb_file), "Pipeline file doesn't exist!"
+    if not args.skip_validation:
+        validate_input_file(input_file)
+        validate_pipeline_file(pip_comb_file)
 
-    return inputFile, pipFile, args.not_verbose
+    return input_file, pip_comb_file, args.not_verbose
 
 
 def run(input_args):
@@ -210,7 +217,7 @@ def run(input_args):
     old_stdout = sys.stdout
     sys.stdout = my_stdout = StringIO()
 
-    inputFile, pipFile, not_verbose = parse_args_check(input_args)
+    input_file, pip_comb_file, not_verbose = parse_args_check(input_args)
 
     proc_status = cfg_pronto.initialize_proc_status()
 
@@ -219,9 +226,9 @@ def run(input_args):
     # "MOTCOR", "CENSOR", "RETROICOR", "TIMECOR", "SMOOTH"
     # only the combinations for the first 5 steps need to be multiplied
     for step in cfg_pronto.CODES_PREPROCESSING_STEPS[0:5]:
-        numPipelineSteps *= count_variations_pipeline_step(pipFile, step)
+        numPipelineSteps *= count_variations_pipeline_step(pip_comb_file, step)
 
-    outFolderStatus = os.path.dirname(inputFile)
+    outFolderStatus = os.path.dirname(input_file)
     resubmitListPart1File = os.path.join(outFolderStatus, 'InputFile-Resubmit-Part1.prontoStatusCheck')
     resubmitListPart1 = open(resubmitListPart1File, 'w')
 
@@ -235,8 +242,9 @@ def run(input_args):
     reOut = re.compile("OUT=([\w\./_-]+)\s")
 
     # TODO reimplement this using front.validate_input_file to parse and iterative over subjects in input file
+
     commonOutFolder = ' '
-    with open(inputFile, 'r') as fID:
+    with open(input_file, 'r') as fID:
         for inputLine in fID.readlines():
             totalNumSubjects += 1
             # inImages  = reIn.search(inputLine).group(1)

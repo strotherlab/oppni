@@ -40,14 +40,14 @@ hpc = {'type': 'SGE',
 
 # defining regexes that may be useful in various functions
 # regex to extract the relevant parts of the input file
-reIn = re.compile(r"IN=([\w\./_-]+)[\s]*")
-reOut = re.compile(r"OUT=([\w\./_-]+)[\s]*")
+reIn = re.compile(r"IN=([\w\./+_-]+)[\s]*")
+reOut = re.compile(r"OUT=([\w\./+_-]+)[\s]*")
 reDrop = re.compile(r"DROP=\[(\d+),(\d+)\][\s]*")
-reTask = re.compile(r"TASK=([\w\./_-]+)[\s]*")
+reTask = re.compile(r"TASK=([\w\./+_-]+)[\s]*")
 
-rePhysio = re.compile(r"PHYSIO=([\w\./_-]+)[\s]*")
-reStruct = re.compile(r"STRUCT=([\w\./_-]+)[\s]*")
-reCustReg = re.compile(r"CUSTOMREG=([\w\./_-]+)[\s]*")
+rePhysio = re.compile(r"PHYSIO=([\w\./+_-]+)[\s]*")
+reStruct = re.compile(r"STRUCT=([\w\./+_-]+)[\s]*")
+reCustReg = re.compile(r"CUSTOMREG=([\w\./+_-]+)[\s]*")
 
 # for the pipeline file
 rePip = re.compile('([0-9A-Z\s]+)=.+', re.IGNORECASE)

@@ -8,7 +8,7 @@ import sys
 from argparse import ArgumentParser
 from cStringIO import StringIO
 
-from oppni import validate_input_file, validate_pipeline_file
+import oppni
 import cfg_front as cfg_pronto
 
 tick_mark = u'\u2713'.encode('utf-8')
@@ -182,7 +182,7 @@ def parse_args_check(input_args):
     parser.add_argument("PipelineFile", help="Pipeline file specifying choices for various preprocessing steps.")
 
     parser.add_argument("-s", "--skip_validation", dest="skip_validation",
-                        action="store_true",
+                        action="store_true", default=False,
                         help="skips validation of input and pipeline files.")
     parser.add_argument("-q", "--not_verbose", dest="not_verbose",
                         action="store_true", default=False,
@@ -200,8 +200,8 @@ def parse_args_check(input_args):
     assert os.path.exists(input_file), "Input file doesn't exist!"
     assert os.path.exists(pip_comb_file), "Pipeline file doesn't exist!"
     if not args.skip_validation:
-        validate_input_file(input_file)
-        validate_pipeline_file(pip_comb_file)
+        oppni.validate_input_file(input_file)
+        oppni.validate_pipeline_file(pip_comb_file)
 
     return input_file, pip_comb_file, args.not_verbose
 
@@ -237,9 +237,7 @@ def run(input_args):
     failed_count_stats = 0
 
     # # regex to extract the relevant parts of the input file
-    # reIn = re.compile("IN=([\w\./_-]+)\s")
-    # reTask = re.compile("TASK=([\w\./_-]+)\s")
-    reOut = re.compile("OUT=([\w\./_-]+)\s")
+    reOut = re.compile(r"OUT=([\w\./+_-]+)[\s]*")
 
     # TODO reimplement this using front.validate_input_file to parse and iterative over subjects in input file
 

@@ -40,14 +40,14 @@ hpc = {'type': 'SGE',
 
 # defining regexes that may be useful in various functions
 # regex to extract the relevant parts of the input file
-reIn = re.compile(r"IN=([\w\./_-]+)[\s]*")
-reOut = re.compile(r"OUT=([\w\./_-]+)[\s]*")
+reIn = re.compile(r"IN=([\w\./+_-]+)[\s]*")
+reOut = re.compile(r"OUT=([\w\./+_-]+)[\s]*")
 reDrop = re.compile(r"DROP=\[(\d+),(\d+)\][\s]*")
-reTask = re.compile(r"TASK=([\w\./_-]+)[\s]*")
+reTask = re.compile(r"TASK=([\w\./+_-]+)[\s]*")
 
-rePhysio = re.compile(r"PHYSIO=([\w\./_-]+)[\s]*")
-reStruct = re.compile(r"STRUCT=([\w\./_-]+)[\s]*")
-reCustReg = re.compile(r"CUSTOMREG=([\w\./_-]+)[\s]*")
+rePhysio = re.compile(r"PHYSIO=([\w\./+_-]+)[\s]*")
+reStruct = re.compile(r"STRUCT=([\w\./+_-]+)[\s]*")
+reCustReg = re.compile(r"CUSTOMREG=([\w\./+_-]+)[\s]*")
 
 # for the pipeline file
 rePip = re.compile('([0-9A-Z\s]+)=.+', re.IGNORECASE)
@@ -128,7 +128,8 @@ def validate_user_env(opt):
 
 
 def validate_input_file(input_file, options=None, new_input_file=None):
-    """Key function to ensure input file is valid. Also handles the reorganization of output files depending on options chosen."""
+    """Key function to ensure input file is valid, and creates a copy of the input file in the output folders.
+        Also handles the reorganization of output files depending on options chosen."""
 
     if ( new_input_file is None) or (options is None) or (options.use_prev_processing_for_QC):
         # in case of resubmission, or when applying QC on an existing processing from older versions of PRONTO,
@@ -179,12 +180,12 @@ def validate_input_file(input_file, options=None, new_input_file=None):
     # if the optional fields are specified, making sure they are specified for all the subjects
     optional_fields = ['task', 'struct', 'physio']
     for optf in optional_fields:
-        bool_all_subjects = [sub['task'] is not None for ix, sub in unique_subjects.items()]
-        num_true = sum([1 for ii in bool_all_subjects if ii is True])
-        if not (num_true == 0 or num_true == len(bool_all_subjects)):
+        bool_all_subjects = [sub[optf] is not None for ix, sub in unique_subjects.items()]
+        num_runs_specified = sum([1 for ii in bool_all_subjects if ii is True])
+        if not (num_runs_specified == 0 or num_runs_specified == len(bool_all_subjects)):
             print('Optional fields can either be specified for ALL the subjects, or NONE at all. ')
             raise ValueError(
-                ' ---> {0} specified only for {1} out of {2} subjects'.format(optf, num_true, len(bool_all_subjects)))
+                ' ---> {0} specified only for {1} out of {2} subjects'.format(optf, num_runs_specified, len(bool_all_subjects)))
 
     print('Parsed {0} lines without error.'.format(line_count))
     if dupl_count > 0:
@@ -193,6 +194,8 @@ def validate_input_file(input_file, options=None, new_input_file=None):
 
 
 def validate_input_line(ip_line, suffix=''):
+    "Method where the real validation of the input line happens!"
+
     line = ip_line.strip()
     LINE = line.upper()
 
@@ -325,7 +328,7 @@ def parse_args_check():
                              "\n\t3: Spatial normalization,"
                              "\n\t4: quality control. ")
     parser.add_argument("-i", "--input_data", action="store", dest="input_data_orig",
-                        help="FILE.txt contains the input and output data paths", metavar="input spec file")
+                        help="File containing the input and output data paths", metavar="input spec file")
     parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file", metavar="pipeline combination file",
                         help="select the preprocessing steps")
 
@@ -451,8 +454,8 @@ def parse_args_check():
                         help="(optional) SGE queue name, default is bigmem_16.q")
 
     parser.add_argument("--cluster", action="store", dest="hpc_type",
-                        default='LOCAL', choices=('LOCAL', 'SGE', 'SUNGRID', 'TORQUE', 'PBS'),
-                        help="Please specify the type of cluster you're running the code on. SGE/SUNGRID mean the same as TORQUE/PBS.")
+                        default='SGE', choices=('SGE', 'SUNGRID', 'TORQUE', 'PBS', 'LOCAL'),
+                        help="Please specify the type of cluster you're running the code on. SGE/SUNGRID mean the same as TORQUE/PBS. LOCAL has not been fully tested yet.")
     parser.add_argument("--run_locally", action="store_true", dest="run_locally",
                         default=False,
                         help="Run the pipeline on this computer without using SGE. "
@@ -554,7 +557,10 @@ def parse_args_check():
     # ensuring the validity of input file, given the options and pipeline file
     # and compiling a list of unique subjects into a new file with output folder modified
     new_input_file = os.path.join(cur_garage, 'input_file.txt')
+    # validation also will create the new input file in the output folder
     unique_subjects = validate_input_file(options.input_data_orig, options, new_input_file)
+    if options.use_prev_processing_for_QC:
+        new_input_file = options.input_data_orig
 
     # making sure user environment is properly setup before even submitting jobs
     validate_user_env(options)
@@ -649,6 +655,8 @@ def parse_args_check():
 
 
 def organize_output_folders(options):
+    "Organization of the folders and cleanup if needed."
+
     parent_dir_wrapper = os.path.dirname(os.path.abspath(sys.argv[0]))
 
     proc_out_dir = get_out_dir_first_line(options.input_data_orig)

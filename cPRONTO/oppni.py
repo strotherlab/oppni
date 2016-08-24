@@ -450,8 +450,8 @@ def parse_args_check():
                         default=1,
                         help="(optional) number of threads used for the process (not allowed for some SGE systems)")
     parser.add_argument("-q", "--queue", action="store", dest="queue",
-                        default="abaqus.q",
-                        help="(optional) SGE queue name, default is bigmem_16.q")
+                        default="bigmem_16.q",
+                        help="(optional) SGE queue name. Default is bigmem_16.q, but it is recommended to specify this explicitly.")
 
     parser.add_argument("--cluster", action="store", dest="hpc_type",
                         default='SGE', choices=('SGE', 'SUNGRID', 'TORQUE', 'PBS', 'LOCAL'),
@@ -663,31 +663,37 @@ def organize_output_folders(options):
     if not os.path.exists(proc_out_dir):
         os.makedirs(proc_out_dir)
 
-    # TODO need a way to pass the suffix to matlab core so it can reuse preprocessing for multiple analysis models and contrasts.
-    suffix = os.path.splitext(os.path.basename(options.input_data_orig))[0]
-    if options.analysis is not "None":
-        suffix = suffix + '_' + options.analysis
-
-    if options.contrast_specified:
-        # task1-fixation,task2-task1 will be changed to task1-fixation_task2-task1
-        suffix = suffix + '_' + options.contrast_list_str.replace(',', '_')
-
     time_stamp = make_time_stamp()
-    # suffix = "garage_{0}_{1}".format(time_stamp,suffix)
-    suffix = "processing_{0}".format(suffix)
 
-    cur_garage = os.path.join(proc_out_dir, suffix)
-    if os.path.exists(cur_garage):
-        if options.force_rerun:
-            user_confirmation = raw_input("Are you sure you want to delete previous results? (y/[N])")
-            if user_confirmation.lower() in ['y', 'yes', 'ye']:
-                print('Removing any existing preprocessing, as requested!')
-                rmtree(cur_garage)
-                os.mkdir(cur_garage)
-            else:
-                print('Leaving the existing preprocessing as is!')
+    if options.use_prev_processing_for_QC:
+        print 'Using the existing processing...'
+        cur_garage = proc_out_dir
+        suffix = ''
     else:
-        os.mkdir(cur_garage)
+        # TODO need a way to pass the suffix to matlab core so it can reuse preprocessing for multiple analysis models and contrasts.
+        suffix = os.path.splitext(os.path.basename(options.input_data_orig))[0]
+        if options.analysis is not "None":
+            suffix = suffix + '_' + options.analysis
+
+        if options.contrast_specified:
+            # task1-fixation,task2-task1 will be changed to task1-fixation_task2-task1
+            suffix = suffix + '_' + options.contrast_list_str.replace(',', '_')
+
+        # suffix = "garage_{0}_{1}".format(time_stamp,suffix)
+        suffix = "processing_{0}".format(suffix)
+
+        cur_garage = os.path.join(proc_out_dir, suffix)
+        if os.path.exists(cur_garage):
+            if options.force_rerun:
+                user_confirmation = raw_input("Are you sure you want to delete previous results? (y/[N])")
+                if user_confirmation.lower() in ['y', 'yes', 'ye']:
+                    print('Removing any existing preprocessing, as requested!')
+                    rmtree(cur_garage)
+                    os.mkdir(cur_garage)
+                else:
+                    print('Leaving the existing preprocessing as is!')
+        else:
+            os.mkdir(cur_garage)
 
     print "Output processing folder: " + cur_garage
 

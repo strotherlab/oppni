@@ -455,7 +455,9 @@ def parse_args_check():
                         help="(optional) determine the minimum amount RAM needed for the job, e.g. --memory 8 (in gigabytes)!")
     parser.add_argument("-n", "--numcores", action="store", dest="numcores",
                         default=1,
-                        help="(optional) number of threads used for the process (not allowed for some SGE systems)")
+                        help=argparse.SUPPRESS)
+                        # help="DEPRECATED. number of threads used for the processing of a single run. (restricted to 1 now)")
+
     parser.add_argument("-q", "--queue", action="store", dest="queue",
                         default=None,
                         help="(optional) SGE queue name. Default is bigmem_16.q, but it is recommended to specify this explicitly.")
@@ -470,7 +472,8 @@ def parse_args_check():
                              "Specify the number of cores using -n (or --numcores) to allow the program to run in pararallel")
     parser.add_argument("--noSGE", action="store_true", dest="run_locally",
                         default=False,
-                        help="Same as --run_locally. Retained for backward compatibility.")
+                        help=argparse.SUPPRESS)
+                        # help="Same as --run_locally. Retained for backward compatibility.")
     parser.add_argument("--numprocess", action="store", dest="numprocess",
                         default=1,
                         help="When running the pipeline wihout using SGE, this switch specifies the number of simultaneous processes")
@@ -518,8 +521,8 @@ def parse_args_check():
     if options.run_locally is False:
 
         if int(options.numcores) > 1:
-            raise ValueError('Currently only single-core jobs are supported. Rerun with --numcores 1.')
-            sys.exit(1)
+            setattr(options, 'numcores', int(1))
+            warnings.warn('--numcores is specified. This flag is deprecated, and is restricted to 1 in favor of single-core jobs.')
 
         hpc['type'] = find_hpc_type(options.hpc_type, options.run_locally)
         hpc['spec'], hpc['header'], hpc['prefix'] = get_hpc_spec(hpc['type'], options)
@@ -1403,14 +1406,21 @@ def submit_jobs():
     if options.part is 0:
         run_part_one = True
         run_part_two = True
+        run_sp_norm = True
         run_qc1 = True
         run_qc2 = True
     elif options.part is 1:
         run_part_one = True
         run_part_two = False
+        run_sp_norm = False
+        run_qc1 = False
+        run_qc2 = False
     elif options.part is 2:
         run_part_one = False
         run_part_two = True
+        run_sp_norm = False
+        run_qc1 = False
+        run_qc2 = False
     elif options.part is 3:
         run_part_one = False
         run_part_two = False
@@ -1420,9 +1430,12 @@ def submit_jobs():
         else:
             print 'A reference atlas is not specified - skipping spatial normalization..'
             run_sp_norm = False
+        run_qc1 = False
+        run_qc2 = False
     elif options.part is 4:
         run_part_one = False
         run_part_two = False
+        run_sp_norm = False
         run_qc1 = True
         run_qc2 = True
 

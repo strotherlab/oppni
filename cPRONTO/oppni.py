@@ -323,11 +323,12 @@ def parse_args_check():
 
     parser.add_argument("-p", "--part", action="store", dest="part", type=int,
                         default=0, choices=[0, 1, 2, 3, 4], # #  "one", "two", "preproc", "optim", "spnorm", "all", "qc1", "qc2", "qc"]
-                        help="select pipeline optimization step, \n\t0: All steps [default]"
-                             "\n\t1: Preprocessing ans statistics estimation step, "
-                             "\n\t2: Optimization step, "
-                             "\n\t3: Spatial normalization,"
-                             "\n\t4: quality control. ")
+                        help="select pipeline optimization step,"
+                             "\n\t 0: All steps [default]"
+                             "\n\t 1: Preprocessing ans statistics estimation step, "
+                             "\n\t 2: Optimization step, "
+                             "\n\t 3: Spatial normalization,"
+                             "\n\t 4: quality control. ")
     parser.add_argument("-i", "--input_data", action="store", dest="input_data_orig",
                         help="File containing the input and output data paths", metavar="input spec file")
     parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file", metavar="pipeline combination file",
@@ -1425,7 +1426,7 @@ def submit_jobs():
         run_qc1 = True
         run_qc2 = True
 
-    if ( options.part in [0, 1, 2, 4] ):
+    if ( options.part in [1, 2, 4] ):
         run_sp_norm = False
         if options.reference_specified:
             print 'A reference atlas is specified although SPNORM is not requested - skipping spatial normalization..'

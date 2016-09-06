@@ -1,7 +1,7 @@
 function [split_info_struct] = Parse_Split_Info(split_info_name)
 %
 % script to read "Split-Info" file, in either .mat or .txt format
-% interprets and reformats for compatibility with PRONTO code
+% interprets and reformats for compatibility with OPPNI code
 %
 
 [path,prefix,ext] = fileparts(split_info_name);

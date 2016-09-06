@@ -120,6 +120,13 @@ end
 if isempty(AFNI_PATH) || isempty(FSL_PATH)
     read_settings;
 end
+if ~isempty(AFNI_PATH) && AFNI_PATH(end)~='/'
+	AFNI_PATH = [AFNI_PATH '/'];
+end
+if ~isempty(FSL_PATH)  && FSL_PATH(end)~='/'
+	FSL_PATH = [FSL_PATH '/'];
+end
+
 
 read_version;
 
@@ -214,7 +221,7 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
 
         for i = 1:length(METRIC_set)
             for j = 1:length(metric_names)
-                if ~strcmp(metric_names{j},'artifact_prior')
+                if ~strcmp(metric_names{j},'artifact_prior') && ~strcmp(metric_names{j},'cond_struc')
                     METRIC_set{i}.(metric_names{j}) = mean(METRIC_set{i}.(metric_names{j}));
                 end
             end
@@ -222,6 +229,7 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
             METRIC_set{i}.artifact_prior.MOT_corr = mean(METRIC_set{i}.artifact_prior.MOT_corr);
             METRIC_set{i}.artifact_prior.WM_zscor = mean(METRIC_set{i}.artifact_prior.WM_zscor);
             METRIC_set{i}.artifact_prior.GS_fract = mean(METRIC_set{i}.artifact_prior.GS_fract);
+            METRIC_set{i}.cond_struc.XCond        =      METRIC_set{i}.cond_struc.XCond;
         end
         % initial check on parameters, done after 1st subject is loaded
         if( ksub==1 )
@@ -235,6 +243,7 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
             metric_names = fieldnames( METRIC_set{1} );
             % drop out the "artifact priors" entry
             metric_names(strcmp(metric_names,'artifact_prior'))=[];
+            metric_names(strcmp(metric_names,'cond_struc'))=[];
 
             N_metric     = length(metric_names);
             %
@@ -257,8 +266,10 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
             spat_mot(ip, ksub) = METRIC_set{ip}.artifact_prior.MOT_corr;
             % amount of white matter signal bias
             spat_wm(ip, ksub) = METRIC_set{ip}.artifact_prior.WM_zscor;
-
-            spat_gsf(ip, ksub) = METRIC_set{ip}.artifact_prior.GS_fract;
+            % fraction of (unidirectional) activation)
+            spat_gsf(ip, ksub) = abs( METRIC_set{ip}.artifact_prior.GS_fract - 0.5 ) + 0.5;
+            % condition numbres
+            cond_des(ip, ksub) = max( METRIC_set{ip}.cond_struc.XCond );
         end
     end
 
@@ -298,79 +309,66 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
 
     % FIXED PIPELINES:
 
+    % file designating which steps to keep in fix optimization step
+    KEEPFIX = ones( size(pipeset,1),3 ); % (condition, motion, global signal)
+    % design matrix condition
+    KEEPFIX(:,1) = double( max(cond_des,[],2) < 1000 );
+    % head motion
+    if( mot_gs_control(1)>0 && sum(pipeset(:,1)==1)>0 && sum(pipeset(:,1)==0)>0 )
+       im0 = find( pipeset(:,1) ==0 );
+       im1 = find( pipeset(:,1) ==1 );
+       for(j=1:length(im0)) Pm(j,1) = signrank( spat_mot( im0(j) ,:) - spat_mot( im1(j) ,:) ); end
+       KEEPFIX(im0,2) = double(Pm>0.05);       
+    end
+    % global signal
+    if( mot_gs_control(2)>0 && sum(pipeset(:,9)==1)>0 && sum(pipeset(:,9)==0)>0 )
+       im0 = find( pipeset(:,9) ==0 );
+       im1 = find( pipeset(:,9) ==1 );
+       for(j=1:length(im0)) Pm(j,1) = signrank( spat_gsf( im0(j) ,:) - spat_gsf( im1(j) ,:) ); end
+       KEEPFIX(im0,3) = double(Pm>0.05);       
+    end   
+    % combining
+    KEEPFIX_index = find( prod(KEEPFIX,2)>0 );
+    
     % ranking (higher rank=better), take the median across subjects
     % NB: optimization performed on chosen metric
-    MED_rank     = median( tiedrank( allMetrics{idx_optMet} ) , 2);
+    MED_rank     = median( tiedrank( allMetrics{idx_optMet}(KEEPFIX_index,:) ) , 2);
     % test for significant ordering
-    [prob cdist] =  friedman_test( allMetrics{idx_optMet} ) ;
+    [prob cdist] =  friedman_test( allMetrics{idx_optMet}(KEEPFIX_index,:) ) ;
     % recording rank significance
     output_notes{3} = ['fixed ranking significance at p=',num2str(prob)];
 
-    % index the set of significant pipelines
-    optfix0   = find( MED_rank >= (max(MED_rank)-cdist) );
-    % get the pipeline names
-    optpipes0 = pipeset( optfix0, : );
-    % index optimal fix pipelines with both MC and PHY+ included
-    optkeeps = intersect( find(optpipes0(:,1) ==1), find(optpipes0(:,end) ==1) );
-
-    % if MC and PHYCAA+ are significantly detrimental, warn & re-evaluate:
-    if( isempty(optkeeps) )
-        %%
-        disp( 'UNEXPECTED PIPELINE TRENDS: pipelines with both MC and PHY+ not selected' );
-
-        if( sum(pipeset(:,1))>0 && sum(pipeset(:,end))>0 ) % if both exist
-
-            disp('Readjusting FIX choice...');
-
-            % get highest ranked MC&PHY+ pipeline
-            gomax = max( MED_rank( pipeset(:,1) & pipeset(:,end) ) );
-            % index the set of significant pipelines
-            optfix0   = find( MED_rank >= gomax );
-            % get the pipeline names
-            optpipes0 = pipeset( optfix0, : );
-            % index optimal fix pipelines with both MC and PHY+ included
-            optkeeps = intersect( find(optpipes0(:,1) ==1), find(optpipes0(:,end) ==1) );
-            % added flag to notify of unexpected trends
-            output_notes{4} = ['WARNING: adjusted FIX threshold to include MC & PHY+'];
-
-        elseif( sum(pipeset(:,1))>0 || sum(pipeset(:,end))>0 )  % just MC/PHY+
-
-            % get highest ranked MC or PHY+ pipeline
-            gomax = max( MED_rank( pipeset(:,1) | pipeset(:,end) ) );
-            % index the set of significant pipelines
-            optfix0   = find( MED_rank >= gomax );
-            % get the pipeline names
-            optpipes0 = pipeset( optfix0, : );
-            % index optimal fix pipelines with both MC and PHY+ included
-            optkeeps = union( find(optpipes0(:,1) ==1), find(optpipes0(:,end) ==1) );
-            % added flag to notify of unexpected trends
-            output_notes{4} = ['WARNING: FIX options may not include MC/PHY+'];        
-        else
-            % just restate the index list
-            optkeeps = 1:size(optpipes0,1);
-            % added flag to notify of unexpected trends
-            output_notes{4} = ['WARNING: FIX options do not include MC/PHY+'];        
-        end
-    end
-
-    % sub-select pipeline indices with MC/PHY+
-    optfix   = optfix0( optkeeps );
-    optpipes = optpipes0( optkeeps,: );
-
     % selection 1: optimally ranked pipeline
-    [v ix] = max( MED_rank(optfix) ); irank= optfix(ix);
+    [v ix] = max( MED_rank ); irank= KEEPFIX_index(ix);
+    
+    % indices for the set of significant pipelines
+    optfix    = KEEPFIX_index( MED_rank >= (max(MED_rank)-cdist) );
+    % get the pipeline names/ranks
+    optpipes  = pipeset( optfix, : );    
     % count net #pipeline steps applied in each case
     stuffdone= sum(optpipes,2);
+    
     % selection 2: minimal processing in optimal set
     [v ix] = min(stuffdone);  iless= optfix(ix);
     % selection 3: most extensive processing in optimal set
     [v ix] = max(stuffdone);  imore= optfix(ix);
-
+    
+    output_notes{4}=[];
+    if( sum(optpipes(:,1))==0 )
+        output_notes{4} = [output_notes{4}, ' /WARNING: FIX options do not include MC. ']; 
+    end
+    if( sum(optpipes(:,end))==0 )
+        output_notes{4} = [output_notes{4}, ' /WARNING: FIX options do not include PHY+. ']; 
+    end
+    
     %=================================================================================================
     %=================================================================================================
 
     % INDIVIDUAL PIPELINES:
 
+    % suppress scores for bad condition# matrices
+    condAdjMetrics = allMetrics{idx_optMet} - (1E6)*(cond_des >= 1000);
+    
     if( (mot_gs_control(1)>0) && (mot_gs_control(2)==0) ) %% 1. Only control for motion artifact
 
         disp(['IND, correcting for motion artifact']);
@@ -378,9 +376,9 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
         output_notes{5} = ['IND: correct for motion only'];
 
         % best set with no steps held fixed
-        [vind,iind0] = max( allMetrics{idx_optMet},[],1 );
+        [vind,iind0] = max( condAdjMetrics,[],1 );
         % best set with MC fixed on
-        [vind,iindM] = max( allMetrics{idx_optMet} - 1000*repmat( (1-pipeset(:,1)), [1 Nsubject] ),[],1 );
+        [vind,iindM] = max( condAdjMetrics - (1E6)*repmat( (1-pipeset(:,1)), [1 Nsubject] ),[],1 );
 
         % spatial correlation with edge artifact for each subject / pair of pipelines
         for(is=1:Nsubject) cormot(is,:) = [ spat_mot( iind0(is),is ) spat_mot( iindM(is),is ) ]; end
@@ -393,25 +391,7 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
             else                        iind(is,1) = iind0(is);
             end
         end
-        if( exist('OCTAVE_VERSION','builtin') )
-            %%% FIGURE PLOTTING TURNED OFF FOR OCTAVE
 
-            disp(['figures not plotted in Octave']);
-        elseif (usejava('desktop') && usejava('jvm'))
-
-            % Check whether desktop and JAVA are available in MATLAB
-            %%% FIGURE PLOTTING TURNED OFF FOR OCTAVE
-            figure;
-            subplot(1,2,1);
-            fence_plot( cormot, 0, 0.001 );
-            hold on; plot( [0.75 2.25], sigthr*[1 1], '--k' ); xlim([0.75 2.25]);
-            pairflag = (cormot(:,1)==cormot(:,2));
-            plot( ones(sum(pairflag),1) , cormot(pairflag,1), 'ok', 2*ones(sum(pairflag),1) , cormot(pairflag,2), 'ok','markerfacecolor','g', 'markersize',4);
-            text(2.05, sigthr*1.05, 'p=.01');
-            title('Spatial motion artifact');
-            set(gca,'Xtick',1:2,'XTickLabel',{'no MC', 'with MC'});
-            ylabel('edge artifact correlation');
-        end
     elseif( (mot_gs_control(1)==0) && (mot_gs_control(2)>0) )    %% 2. Only control for global signal bias
 
         disp(['IND, correcting for GS bias']);
@@ -419,13 +399,13 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
         output_notes{5} = ['IND: correct for GS bias only'];
 
         % best set with no steps held fixed
-        [vind iind0] = max( allMetrics{idx_optMet},[],1 );
+        [vind iind0] = max( condAdjMetrics,[],1 );
         % best set with GSPC1 fixed on
-        [vind iindG] = max( allMetrics{idx_optMet} - 1000*repmat( (1-pipeset(:,end-1)), [1 Nsubject] ) ,[],1);
+        [vind iindG] = max( condAdjMetrics - (1E6)*repmat( (1-pipeset(:,9)), [1 Nsubject] ) ,[],1);
 
         % spatial correlation with edge artifact for each subject / pair of pipelines
         for(is=1:Nsubject)
-            cor_gs(is,:) = abs([ spat_gsf( iind0(is),is ) spat_gsf( iindG(is),is ) ] - 0.5) + 0.5;
+            cor_gs(is,:) = [ spat_gsf( iind0(is),is ), spat_gsf( iindG(is),is ) ];
         end
         % test: cormot value > sigthr indicates sinificant increase in motion artifact
         sigthr = mean(cor_gs(:,2)) + 2.3*std(cor_gs(:,2));
@@ -436,26 +416,6 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
             end
         end
 
-        if( exist('OCTAVE_VERSION','builtin') )
-            %%% FIGURE PLOTTING TURNED OFF FOR OCTAVE
-
-            disp(['figures not plotted in Octave']);
-        elseif (usejava('desktop') && usejava('jvm'))
-
-            % Check whether desktop and JAVA are available in MATLAB
-            %%% FIGURE PLOTTING TURNED OFF FOR OCTAVE
-            figure;
-            subplot(1,2,2);
-            fence_plot( cor_gs, 0, 0.001 );
-            hold on; plot( [0.75 2.25], sigthr*[1 1], '--k' ); xlim([0.75 2.25]);
-            pairflag = (cor_gs(:,1)==cor_gs(:,2));
-            plot( ones(sum(pairflag),1) , cor_gs(pairflag,1), 'ok', 2*ones(sum(pairflag),1) , cor_gs(pairflag,2), 'ok','markerfacecolor','g', 'markersize',4);
-            text(2.05, sigthr*1.05, 'p=.01');
-            title('Global signal bias');
-            set(gca,'Xtick',1:2,'XTickLabel',{'no GSPC1', 'with GSPC1'});
-            ylabel('fraction of voxels with same sign');
-        end
-
     elseif( (mot_gs_control(1)>0) && (mot_gs_control(2)>0) )  %% 3. Control for both motion artifact and global signal bias
 
         disp(['IND, correcting for motion artifact AND GS bias']);
@@ -463,9 +423,9 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
         output_notes{5} = ['IND: correct for motion and GS bias'];
 
         % best set with no steps held fixed
-        [vind iind0] = max( allMetrics{idx_optMet},[],1 );
+        [vind iind0] = max( condAdjMetrics,[],1 );
         % best set with MC fixed on
-        [vind iindM] = max( allMetrics{idx_optMet} - 1000*repmat( (1-pipeset(:,1)), [1 Nsubject] ),[],1 );
+        [vind iindM] = max( condAdjMetrics - (1E6)*repmat( (1-pipeset(:,1)), [1 Nsubject] ),[],1 );
 
         % spatial correlation with edge artifact for each subject / pair of pipelines
         for(is=1:Nsubject) cormot(is,:) = [ spat_mot( iind0(is),is ) spat_mot( iindM(is),is ) ]; end
@@ -473,17 +433,17 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
         sigthr = mean(cormot(:,2)) + 2.3*std(cormot(:,2)); saa = sigthr;
 
         % null out any significant motion data
-        Mset_star = allMetrics{idx_optMet} - double(spat_mot > sigthr) *1000;
+        Mset_star = condAdjMetrics - double(spat_mot > sigthr) *(1E6);
 
         %=================
 
         % best set with no steps held fixed
         [vind iind0] = max( Mset_star,[],1 );
         % best set with GSPC1 fixed on
-        [vind iindG] = max( Mset_star - 1000*repmat( (1-pipeset(:,end-1)), [1 Nsubject] ),[],1 );
+        [vind iindG] = max( Mset_star - (1E6)*repmat( (1-pipeset(:,9)), [1 Nsubject] ),[],1 );
 
         % spatial correlation with edge artifact for each subject / pair of pipelines
-        for(is=1:Nsubject) cor_gs(is,:) = abs([ spat_gsf( iind0(is),is ) spat_gsf( iindG(is),is ) ] - 0.5) + 0.5; end
+        for(is=1:Nsubject) cor_gs(is,:) = [ spat_gsf( iind0(is),is ), spat_gsf( iindG(is),is ) ]; end
         % test: cormot value > sigthr indicates sinificant increase in motion artifact
         sigthr = mean(cor_gs(:,2)) + 2.3*std(cor_gs(:,2)); sbb = sigthr;
         % now dictate optimal subject pipelines accordingly
@@ -493,34 +453,6 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
             end
         end
 
-        % FIGURE PLOTTING ONLY FOR MATLAB
-        if( exist('OCTAVE_VERSION','builtin') )
-            %%% FIGURE PLOTTING TURNED OFF FOR OCTAVE
-
-            disp(['figures not plotted in Octave']);
-        elseif (usejava('desktop') && usejava('jvm'))
-            figure;
-
-            subplot(1,2,1);
-            fence_plot( cormot, 0, 0.001 );
-            hold on; plot( [0.75 2.25], saa*[1 1], '--k' ); xlim([0.75 2.25]);
-            pairflag = (cormot(:,1)==cormot(:,2));
-            plot( ones(sum(pairflag),1) , cormot(pairflag,1), 'ok',2*ones(sum(pairflag),1) , cormot(pairflag,2), 'ok','markerfacecolor','g', 'markersize',4);
-            text(2.05, saa*1.05, 'p=.01');
-            title('Spatial motion artifact (stage1)');
-            set(gca,'Xtick',1:2,'XTickLabel',{'no MC', 'with MC'});
-            ylabel('edge artifact correlation');
-            subplot(1,2,2);
-            fence_plot( cor_gs, 0, 0.001 );
-            hold on; plot( [0.75 2.25], sbb*[1 1], '--k' ); xlim([0.75 2.25]);
-            pairflag = (cor_gs(:,1)==cor_gs(:,2));
-            plot( ones(sum(pairflag),1) , cor_gs(pairflag,1), 'ok',2*ones(sum(pairflag),1) , cor_gs(pairflag,2), 'ok','markerfacecolor','g', 'markersize',4);
-            text(2.05, sbb*1.05, 'p=.01');
-            title('Global signal bias (stage2)');
-            set(gca,'Xtick',1:2,'XTickLabel',{'no GSPC1', 'with GSPC1'});
-            ylabel('fraction of GS voxels with same sign');
-        end
-
     else %% 4. No control of artifact
 
         disp('IND, no apriori artifact control - BE CAREFUL WHEN INTERPRETING!');
@@ -528,9 +460,8 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
         output_notes{5} = ['IND: no apriori artifact control'];
 
         % best set with no steps held fixed
-        [vind iind] = max( allMetrics{idx_optMet},[],1 );
+        [vind iind] = max( condAdjMetrics,[],1 );
     end
-
 
     % SUMMARIZE METRICS
     if Nsubject==1
@@ -573,9 +504,8 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
         end
     end
 
-
     % list of significant fixed pipelines
-    pipeline_sets.Signif_Fix = optpipes0;
+    pipeline_sets.Signif_Fix = optpipes;
     % record 3 optimal fixed choices
     pipeline_sets.fix = pipeset(irank  ,:);
     pipeline_sets.min = pipeset(iless  ,:);
@@ -660,7 +590,7 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
             SV.pipeline_sets.ind_for_the_group = pipeline_sets.ind;
             %SV.METRIC_opt = METRIC_opt;
             for metric_counter = 1:length(metric_names)
-                if ~strcmp(metric_names{metric_counter},'artifact_prior')
+                if (~strcmp(metric_names{metric_counter},'artifact_prior') && ~strcmp(metric_names{metric_counter},'cond_struc'))
                     SV.METRIC_opt.con.(metric_names{metric_counter})=METRIC_opt.con.(metric_names{metric_counter})(ksub,1);
                     SV.METRIC_opt.fix.(metric_names{metric_counter})=METRIC_opt.fix.(metric_names{metric_counter})(ksub,1);
                     SV.METRIC_opt.ind.(metric_names{metric_counter})=METRIC_opt.ind.(metric_names{metric_counter})(ksub,1);
@@ -874,8 +804,12 @@ end
     
 function x = get_numvols(file)
 
-%hdr = load_nii_hdr(file);
-v = load_nii(file);
-hdr=v.hdr; clear v;
+[p,f,e] = fileparts(file);
+if(isempty(strfind(e,'.gz'))) %if not a zip file, read the header direct
+    hdr = load_nii_hdr(file);
+else %otherwise need to inflate and load .nii
+    v = load_nii(file);
+    hdr=v.hdr; clear v;
+end
 
 x = hdr.dime.dim(5);

@@ -42,6 +42,13 @@ end
 if isempty(AFNI_PATH) || isempty(FSL_PATH)
     read_settings;
 end
+if ~isempty(AFNI_PATH) && AFNI_PATH(end)~='/'
+	AFNI_PATH = [AFNI_PATH '/'];
+end
+if ~isempty(FSL_PATH)  && FSL_PATH(end)~='/'
+	FSL_PATH = [FSL_PATH '/'];
+end
+
 if ~isdeployed
     addpath(CODE_PATH);
     addpath([CODE_PATH 'NIFTI_tools']);

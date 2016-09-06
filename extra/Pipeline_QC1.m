@@ -54,10 +54,10 @@ function Pipeline_QC1( inputfile, varargin )
 % ------------------------------------------------------------------------%
 
 % add paths
-% addpath_pronto MatFiles;
-% addpath_pronto MatFiles/NIFTI_tools;
+% addpath_oppni MatFiles;
+% addpath_oppni MatFiles/NIFTI_tools;
 % mkdir QC1_results;
-%%%%%%%%%%%%%%%%%%%%%%%%%addpath_pronto MatFiles/NIFTI_tools;
+%%%%%%%%%%%%%%%%%%%%%%%%%addpath_oppni MatFiles/NIFTI_tools;
 
 % initializing constants
 
@@ -66,8 +66,8 @@ function Pipeline_QC1( inputfile, varargin )
 [pathstr] = which('Pipeline_QC1.m');
 pathstr = fileparts(pathstr);
 pathstr = fileparts(pathstr);
-addpath_pronto([pathstr '/scripts_matlab']);
-addpath_pronto([pathstr '/scripts_matlab/NIFTI_tools']);
+addpath_oppni([pathstr '/scripts_matlab']);
+addpath_oppni([pathstr '/scripts_matlab/NIFTI_tools']);
 
 
 if nargin < 2

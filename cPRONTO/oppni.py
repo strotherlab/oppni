@@ -447,6 +447,7 @@ def parse_args_check():
                         help="(optional) determine which software to use to run the code: matlab or compiled(default)")
 
     parser.add_argument("--cluster", action="store", dest="hpc_type",
+                        # TODO change the default to None to ensure run_locally works as expected
                         default='SGE', choices=('ROTMAN', 'BRAINCODE', 'CAC', 'SCINET', 'SHARCNET', 'CBRAIN', 'SGE'),
                         help="Please specify the type of cluster you're running the code on.")
 
@@ -1455,6 +1456,7 @@ def submit_jobs():
         else:
             spnorm_step1_completed = True
 
+    # TODO move this block to the top of spnorm block right above as spnorm depends on part1 regardless of flag dospnormfirst
     # submitting jobs for preprocessing for all combinations of pipelines
     if run_part_one and is_done.preprocessing is False:
         # running part 1 only on subjects with incomplete processing

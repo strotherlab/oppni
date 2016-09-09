@@ -1,6 +1,10 @@
 #!/usr/bin/env python
+# OPPNI Tool: for fMRI pReprocessing and OptimizatioN Toolkit
+# Author: Pradeep Reddy Raamana <praamana@research.baycrest.org>
+# Version 0.6 (May 2016)
 
 import argparse
+import json
 import os
 import pickle
 import random
@@ -21,17 +25,18 @@ from time import localtime, strftime
 import cfg_front as cfg_pronto
 import proc_status_front as check_proc_status
 
-file_name_hpc_config = 'hpc_config.pkl'
-file_name_job_ids_by_group = 'pronto_job_ids_by_step_prefix.pkl'
+file_name_hpc_config = 'hpc_config.json'
+file_name_job_ids_by_group = 'pronto_job_ids_by_step_prefix.json'
 file_name_prev_options = 'pronto-options.pkl'
 
 # descriptive variables
 NOT_DONE = False
 DONE = True
 
+# noinspection PyGlobalUndefined
 global hpc
 hpc = {'type': 'SGE',
-       'shell' : '/bin/bash',
+       'shell': '#!/usr/bin/env bash',
        'prefix': '#$',
        'spec': None,
        'header': '',
@@ -101,7 +106,7 @@ def validate_pipeline_file(pipeline_file):
 
 
 def validate_task_file(task_path):
-    "Basic validation of task spec file."
+    """Basic validation of task spec file."""
 
     with open(task_path, 'r') as tf:
         task_spec = tf.read().splitlines()
@@ -120,6 +125,7 @@ def validate_env_var(var):
 
 
 def validate_user_env(opt):
+    """Validates set up of user's shell environment variables."""
     if not hpc['dry_run']:
         for var in ['AFNI_PATH', 'FSL_PATH']:
             validate_env_var(var)
@@ -132,31 +138,35 @@ def validate_input_file(input_file, options=None, new_input_file=None):
     """Key function to ensure input file is valid, and creates a copy of the input file in the output folders.
         Also handles the reorganization of output files depending on options chosen."""
 
-    if ( new_input_file is None) or (options is None) or (options.use_prev_processing_for_QC):
-        # in case of resubmission, or when applying QC on an existing processing from older versions of PRONTO,
+    if (new_input_file is None) or (options is None) or (options.use_prev_processing_for_QC):
+        # in case of resubmission, or when applying QC on an existing processing from older versions of OPPNI,
         # this should not append additional layer
         new_file = tempfile.TemporaryFile()
+        # in case of resubmission, this should not append additional layer
         cur_suffix = None
     else:
         new_file = open(new_input_file, 'w')
         cur_suffix = options.suffix
 
     unique_subjects = OrderedDict()
-
+    invalid_lines = list()
     line_count = 0
-    dupl_count = 0
+    dupl_prefix_count = 0
     with open(input_file, 'r') as ipf:
         for line in ipf.readlines():
+            line_count += 1
             subject, new_line = validate_input_line(line, cur_suffix)
             if subject is False or subject is None:
-                raise ValueError('Error in line number {}.'.format(line_count))
+                print('Error in line number {}.'.format(line_count))
+                invalid_lines.append(line_count)
+                continue
             else:
-                line_count += 1
                 subject['line'] = new_line
                 # if the key doesnt exist, dict returns None
                 if unique_subjects.get(subject['prefix']) is not None:
-                    print "Potential duplicate prefix in line {}: {} \t Previously processed line contained this prefix.".format(line_count, subject['prefix'])
-                    dupl_count += 1
+                    print "Potential duplicate prefix in line {}: {}".format(line_count, subject['prefix'])
+                    print " \t Previously processed line contained this prefix."
+                    dupl_prefix_count += 1
                 unique_subjects[subject['prefix']] = subject
                 new_file.write(new_line)
 
@@ -186,16 +196,18 @@ def validate_input_file(input_file, options=None, new_input_file=None):
         if not (num_runs_specified == 0 or num_runs_specified == len(bool_all_subjects)):
             print('Optional fields can either be specified for ALL the subjects, or NONE at all. ')
             raise ValueError(
-                ' ---> {0} specified only for {1} out of {2} subjects'.format(optf, num_runs_specified, len(bool_all_subjects)))
+                ' ---> {0} specified only for {1} out of {2} subjects'.format(optf, num_runs_specified,
+                                                                              len(bool_all_subjects)))
 
     print('Parsed {0} lines without error.'.format(line_count))
-    if dupl_count > 0:
-        print('\t excluding {} duplicate prefixes: {} lines'.format(dupl_count, len(unique_subjects)))
+    if dupl_prefix_count > 0:
+        print('\t excluding {} duplicate prefixes: {} lines'.format(dupl_prefix_count, len(unique_subjects)))
+
     return unique_subjects
 
 
 def validate_input_line(ip_line, suffix=''):
-    "Method where the real validation of the input line happens!"
+    """Method where the real validation of the input line happens!"""
 
     line = ip_line.strip()
     LINE = line.upper()
@@ -230,7 +242,7 @@ def validate_input_line(ip_line, suffix=''):
             subject['nii'] = nii
 
     # OUT part
-    if ("OUT=" not in LINE):
+    if "OUT=" not in LINE:
         print "OUT= section not defined."
         return (False, "")
     else:
@@ -259,13 +271,13 @@ def validate_input_line(ip_line, suffix=''):
         return (False, "")
     else:
         idx = reDrop.search(line).groups()
-        if (not len(idx) is 2):
+        if not len(idx) == 2:
             print "Atleast two indices must be specified to drop from the start and end."
             return (False, "")
         elif (not all([ii.isdigit() for ii in idx])):
             print "DROP indices must be numeric!"
             return (False, "")
-        elif (not all([ii >= 0 for ii in idx])):
+        elif not all([ii >= 0 for ii in idx]):
             print("All the DROP indices must be non-negative.")
         else:
             subject['drop_beg'] = idx[0]
@@ -273,35 +285,39 @@ def validate_input_line(ip_line, suffix=''):
 
     # the following parts are not mandatory, errors will be raised later on, when inconsistencies are found.
     # TASK part
-    if ("TASK=" in line):
+    if "TASK=" in line:
         task = reTask.search(line).group(1)
         if not os.path.isfile(task):
             print "Task file " + task + " not found."
+            return None, None
         else:
             validate_task_file(task)
             subject['task'] = task
 
     # PHYSIO part
-    if ("PHYSIO=" in LINE):
+    if "PHYSIO=" in LINE:
         physio = rePhysio.search(line).group(1)
         if not os.path.isfile(physio + '.puls.1D') or not os.path.isfile(physio + '.resp.1D'):
             print "PHYSIO files (puls and/or resp) at " + physio + " not found."
+            return None, None
         else:
             subject['physio'] = physio
 
     # STRUCT part
-    if ("STRUCT=" in LINE):
+    if "STRUCT=" in LINE:
         struct = reStruct.search(line).group(1)
         if not os.path.isfile(struct):
             print "STRUCT file " + struct + " not found."
+            return None, None
         else:
             subject['struct'] = struct
 
     # PHYSIO part
-    if ("CUSTOMREG=" in LINE):
+    if "CUSTOMREG=" in LINE:
         mask = reCustReg.search(line).group(1)
         if not os.path.isfile(mask):
             print "Binary mask " + mask + " not found."
+            return None, None
         else:
             subject['mask'] = mask
 
@@ -309,8 +325,8 @@ def validate_input_line(ip_line, suffix=''):
 
 
 def parse_args_check():
-    # parse different input flags
-    parser = argparse.ArgumentParser(prog="oppni")
+    """Parser setup and assessment of different input flags."""
+    parser = argparse.ArgumentParser(prog="opni")
 
     parser.add_argument("-s", "--status", action="store", dest="status_update_in",
                         default=None,
@@ -322,7 +338,8 @@ def parse_args_check():
                         help="Performs a basic validation of an input file (existence of files and consistency!).")
 
     parser.add_argument("-p", "--part", action="store", dest="part", type=int,
-                        default=0, choices=[0, 1, 2, 3, 4], # #  "one", "two", "preproc", "optim", "spnorm", "all", "qc1", "qc2", "qc"]
+                        default=0, choices=[0, 1, 2, 3, 4],
+                        # #  "one", "two", "preproc", "optim", "spnorm", "all", "qc1", "qc2", "qc"]
                         help="select pipeline optimization step,"
                              "\n\t 0: All steps [default]"
                              "\n\t 1: Preprocessing ans statistics estimation step, "
@@ -347,7 +364,12 @@ def parse_args_check():
     parser.add_argument("-m", "--metric", action="store", dest="metric",
                         default="dPR",
                         choices=cfg_pronto.CODES_METRIC_LIST,
-                        help="Pptimization metric")
+                        help="Optimization metric")
+
+    parser.add_argument("--os", "--opt_scheme", action="store", dest="opt_scheme",
+                        default="ALL",
+                        choices=cfg_pronto.CODES_OPTIM_SCHEMES_OPTIONS,
+                        help="Optimization scheme to decide on which pipelines to be produced.")
 
     # parser.add_argument("--autodetect", action="store_true", dest="autodetect",
     #                    help="Automatically detect subjects and optimize for each subject independently, "
@@ -369,9 +391,10 @@ def parse_args_check():
     # TODO option to make the contrasts separable.
 
     parser.add_argument("-k", "--keepmean", action="store", dest="keepmean",
-                        default="1",
+                        default="0",
                         help="(optional) determine whether the ouput nifti files contain the mean scan "
-                             "(Default keepmean=1, i.e. not remove the mean)")
+                             "(Default keepmean=0, i.e. remove the mean)")
+
     parser.add_argument("-v", "--voxelsize", action="store", dest="voxelsize",
                         help="(optional) determine the output voxel size of nifti file")
 
@@ -438,7 +461,7 @@ def parse_args_check():
 
     parser.add_argument("--output_nii_also", action="store", dest="output_nii_also",
                         default="0", choices=['1', '0'],
-                        help="Whether to output spms for all the optimal pipelines.")
+                        help="Whether to output all pipeline spms in Nifti format. \n WARNING: Be advised the space requirements will be orders of magnitude higher. Default off")
 
     # HPC related
     parser.add_argument("-e", "--environment", action="store", dest="environment",
@@ -447,8 +470,7 @@ def parse_args_check():
                         help="(optional) determine which software to use to run the code: matlab or compiled(default)")
 
     parser.add_argument("--cluster", action="store", dest="hpc_type",
-                        # TODO change the default to None to ensure run_locally works as expected
-                        default='SGE', choices=('ROTMAN', 'BRAINCODE', 'CAC', 'SCINET', 'SHARCNET', 'CBRAIN', 'SGE'),
+                        default=None, choices=('ROTMAN', 'BRAINCODE', 'CAC', 'SCINET', 'SHARCNET', 'CBRAIN', 'SGE'),
                         help="Please specify the type of cluster you're running the code on.")
 
     parser.add_argument("--memory", action="store", dest="memory",
@@ -457,7 +479,7 @@ def parse_args_check():
     parser.add_argument("-n", "--numcores", action="store", dest="numcores",
                         default=1,
                         help=argparse.SUPPRESS)
-                        # help="DEPRECATED. number of threads used for the processing of a single run. (restricted to 1 now)")
+    # help="DEPRECATED. number of threads used for the processing of a single run. (restricted to 1 now)")
 
     parser.add_argument("-q", "--queue", action="store", dest="queue",
                         default=None,
@@ -474,7 +496,7 @@ def parse_args_check():
     parser.add_argument("--noSGE", action="store_true", dest="run_locally",
                         default=False,
                         help=argparse.SUPPRESS)
-                        # help="Same as --run_locally. Retained for backward compatibility.")
+    # help="Same as --run_locally. Retained for backward compatibility.")
     parser.add_argument("--numprocess", action="store", dest="numprocess",
                         default=1,
                         help="When running the pipeline wihout using SGE, this switch specifies the number of simultaneous processes")
@@ -490,6 +512,9 @@ def parse_args_check():
                         default=False,
                         help="This option enables you to run QC jobs on existing processing generated with older versions of OPPNI.")
 
+    parser.add_argument("--print_options_in", "--po", action="store", dest="print_options_path",
+                        default=None,
+                        help="Prints the options used in the previous processing of this folder.")
 
     if len(sys.argv) < 2:
         print('Too few arguments!')
@@ -509,26 +534,31 @@ def parse_args_check():
     elif options.val_input_file_path is not None:
         # performing a basic validation
         try:
-            unq_sub = validate_input_file(options.val_input_file_path)
+            _ = validate_input_file(options.val_input_file_path)
             print " validation succesful."
         except:
             print " validation failed."
         sys.exit(0)
+    elif options.print_options_path is not None:
+        print_options(options.print_options_path)
+        sys.exit(0)
 
     global hpc
 
-    # sanity checks on HPC inputs and obtaining the cfg of hpc
+    # sanity checks
+    # on HPC inputs and obtaining the cfg of hpc
     hpc['type'] = options.hpc_type
     if options.run_locally is False:
 
         if int(options.numcores) > 1:
             setattr(options, 'numcores', int(1))
-            warnings.warn('--numcores is specified. This flag is deprecated, and is restricted to 1 in favor of single-core jobs.')
+            warnings.warn(
+                '--numcores is specified. This flag is deprecated, and is restricted to 1 in favor of single-core jobs.')
 
         hpc['type'] = find_hpc_type(options.hpc_type, options.run_locally)
         hpc['spec'], hpc['header'], hpc['prefix'] = get_hpc_spec(hpc['type'], options)
     else:
-        if not hpc['type'] == 'LOCAL':
+        if not hpc['type'] in (None, 'LOCAL'):
             raise ValueError('Conflicting options specified: specify either of --run_locally or --cluster CLUSTERTYPE.')
 
     if hpc['type'] in (None, 'LOCAL'):
@@ -552,8 +582,17 @@ def parse_args_check():
     steps_dict = validate_pipeline_file(options.pipeline_file)
     setattr(options, 'pipeline_steps', steps_dict)
 
+    # # enforcing the conditions of proper usage
+
+    # if slice-timing correction is turned on
+    if 1 in steps_dict['TIMECOR']:
+        # make sure EPI acquisition pattern is specified
+        if options.TPATTERN.lower() not in cfg_pronto.SLICE_TIMING_PATTERNS or options.TPATTERN in [None, ""]:
+            raise ValueError( "Slice-timing correction is turned on - EPI acquisition pattern has not been specified"
+                              " or is invalid. \n Must specify one of {}".format(cfg_pronto.SLICE_TIMING_PATTERNS))
+
     contrast_specified = options.contrast_list_str != 'None'
-    reference_specified = options.reference != None
+    reference_specified = options.reference is not None
     physio_correction_requested = (1 in options.pipeline_steps['RETROICOR']) or (1 in options.pipeline_steps['PHYPLUS'])
     custom_mask_requested = 1 in options.pipeline_steps['CUSTOMREG']
 
@@ -596,7 +635,7 @@ def parse_args_check():
         print "  OPPNI will only generate the preprocessed data"
         options.contrast_list_str = "None"
 
-    if hasattr(options, 'DEOBLIQUE') and options.DEOBLIQUE:
+    if hasattr(options, 'DEOBLIQUE') and (options.DEOBLIQUE == 1 or options.DEOBLIQUE is True):
         options.DEOBLIQUE = "1"
     else:
         options.DEOBLIQUE = "0"
@@ -671,7 +710,7 @@ def parse_args_check():
 
 
 def organize_output_folders(options):
-    "Organization of the folders and cleanup if needed."
+    """Organization of the folders and cleanup if needed."""
 
     parent_dir_wrapper = os.path.dirname(os.path.abspath(sys.argv[0]))
 
@@ -716,29 +755,31 @@ def organize_output_folders(options):
     return cur_garage, time_stamp, proc_out_dir, suffix
 
 
-def find_hpc_type(user_supplied_type, run_locally=False):
+def find_hpc_type(user_supplied_type=None, run_locally=False):
+    """Helper to determine (in a hacky way) the type of HPC environment is running on. """
+
     if user_supplied_type is None and run_locally is False:
         if find_executable('qsub') is None:
             raise SystemError('Requested processing on SGE, but command qsub is not found!')
 
         sge_root = os.getenv("SGE_ROOT")
         if sge_root is not None and find_executable('qconf') is not None:
-            type = 'SGE'
+            h_type = 'SGE'
         elif find_executable('qmgr') is not None and \
                 (find_executable('qconf') is None and find_executable('sbatch') is None):
-            type = 'TORQUE'
+            h_type = 'TORQUE'
         elif find_executable('sbatch') is not None and find_executable('srun') is not None:
-            type = 'SLURM'
+            h_type = 'SLURM'
         else:
             raise ValueError('Can not determine the type of cluster you are one.\n Please specify it with --cluster')
     else:
-        type = user_supplied_type.upper()
+        h_type = user_supplied_type.upper()
 
-    return type
+    return h_type
 
 
 def set_defaults_hpc(options, input_memory, input_queue, input_numcores, input_parallel_env):
-    "Assigns known defaults to HPC parameters"
+    """Assigns known defaults to HPC parameters"""
 
     if options.memory is None:
         memory = input_memory
@@ -766,26 +807,27 @@ def set_defaults_hpc(options, input_memory, input_queue, input_numcores, input_p
     return memory, queue, numcores, parallel_env
 
 
-def get_hpc_spec(type=None, options=None):
-    "Returns a specification of various HPC parameters for a given system."
+def get_hpc_spec(h_type=None, options=None):
+    """Helper to provide the HPC directives for different HPC environments, such as SGE and Torque.
+    SLURM is not fully supported yet."""
 
-    if type is None:
-        type = find_hpc_type().upper()
+    if h_type is None:
+        h_type = find_hpc_type().upper()
 
     # assigning defaults to make it easy for the end user
     # TODO need to tease out the lists of names for different HPC environments into cfg_oppni.py
     if options is not None:
-        if type in ('ROTMAN', 'ROTMAN-SGE', 'SGE'):
+        if h_type in ('ROTMAN', 'ROTMAN-SGE', 'SGE'):
             memory, queue, numcores, parallel_env = set_defaults_hpc(options, 2, 'all.q', 1, 'npairs')
-        elif type in ('CAC', 'HPCVL', 'QUEENSU'):
+        elif h_type in ('CAC', 'HPCVL', 'QUEENSU'):
             memory, queue, numcores, parallel_env = set_defaults_hpc(options, 2, 'abaqus.q', 1, 'shm.pe')
-        elif type in ('BRAINCODE-SGE', 'BRAINCODE', 'BCODE'):
+        elif h_type in ('BRAINCODE-SGE', 'BRAINCODE', 'BCODE'):
             memory, queue, numcores, parallel_env = set_defaults_hpc(options, 2, 'common.q', 1, '')
-        elif type in ('SCINET', 'PBS', 'TORQUE'):
-            warnings.warn('HPC {} has not been tested fully. Use at your own risk!'.format(type))
+        elif h_type in ('SCINET', 'PBS', 'TORQUE'):
+            warnings.warn('HPC {} has not been tested fully. Use at your own risk!'.format(h_type))
             memory, queue, numcores, parallel_env = set_defaults_hpc(options, 2, 'batch', 1, '')
-        elif type in ('SLURM'):
-            warnings.warn('HPC {} has not been tested fully. Use at your own risk!'.format(type))
+        elif h_type in ('SLURM'):
+            warnings.warn('HPC {} has not been tested fully. Use at your own risk!'.format(h_type))
             memory, queue, numcores, parallel_env = set_defaults_hpc(options, 2, '', 1, '')
     else:
         memory = '2'
@@ -795,40 +837,41 @@ def get_hpc_spec(type=None, options=None):
 
     spec = {'memory': None, 'numcores': None, 'queue': None}
 
-    if type in ('ROTMAN', 'ROTMAN-SGE', 'SGE'):
+    if h_type in ('ROTMAN', 'ROTMAN-SGE', 'SGE'):
         prefix = '#$'
         spec['memory'] = ('-l h_vmem=', memory + 'g')
         spec['numcores'] = ('-pe {} '.format(parallel_env), numcores)
         spec['queue'] = ('-q ', queue)
-    elif type in ('CAC', 'HPCVL', 'QUEENSU'):
+    elif h_type in ('CAC', 'HPCVL', 'QUEENSU'):
         prefix = '#$'
         spec['memory'] = ('-l mf=', memory + 'G')
         spec['numcores'] = ('-pe shm.pe ', numcores)
         spec['queue'] = ('-q ', queue)
-    elif type in ('BRAINCODE-SGE', 'BRAINCODE', 'BCODE'):
+    elif h_type in ('BRAINCODE-SGE', 'BRAINCODE', 'BCODE'):
         prefix = '#$'
         spec['memory'] = ('-l h_vmem=', memory + 'g')
         spec['numcores'] = ('-pe {} '.format(parallel_env), numcores)
         spec['queue'] = ('-q ', queue)
-    elif type in ('SCINET', 'PBS', 'TORQUE'):
+    elif h_type in ('SCINET', 'PBS', 'TORQUE'):
         prefix = '#PBS'
         spec['memory'] = ('-l mem=', memory)
         spec['numcores'] = ('-l ppn=', numcores)
         spec['queue'] = ('-q ', queue)
-    elif type in ('SLURM'):
+    elif h_type in ('SLURM'):
         prefix = '#SBATCH'
         spec['memory'] = ('--mem=', memory)
         spec['numcores'] = ('--n ', numcores)
         spec['queue'] = ('-p ', queue)
     else:
-        raise ValueError('HPC type {} unrecognized or not implemented.'.format(type))
+        raise ValueError('HPC type {} unrecognized or not implemented.'.format(h_type))
 
     header = list()
     header.append('{0} -V'.format(prefix))
     header.append('{0} -b y'.format(prefix))
     header.append('{0} -j y'.format(prefix))
     for key, val in spec.items():
-        if key == 'numcores' and int(numcores) <= 1:
+        # avoiding unnecessary specifications
+        if (key == 'numcores' and int(numcores) == 1) or (key == 'queue' and queue is None):
             continue
         else:
             header.append('{0} {1}{2}'.format(prefix, val[0], val[1]))
@@ -839,7 +882,29 @@ def get_hpc_spec(type=None, options=None):
     return spec, header, prefix
 
 
+def print_options(proc_path):
+    """prints the various options specified by the user for previous processing."""
+    proc_path = os.path.abspath(proc_path)
+    assert os.path.exists(proc_path), "Specified processing folder does not exist!"
+    opt_file = os.path.join(proc_path, file_name_prev_options)
+    with open(opt_file, 'rb') as of:
+        all_subjects, prev_options, prev_input_file, _ = pickle.load(of)
+        attr_width = 29
+        step_width = 10
+        for attr in dir(prev_options):
+            if not attr.startswith('_'):
+                attr_val = prev_options.__getattribute__(attr)
+                if attr == 'pipeline_steps':
+                    print "{:>{}} : ".format(attr, attr_width)
+                    for step, step_choices in attr_val.items():
+                        print " {:>{}}  {:>{}} : {}".format(' ', attr_width, step, step_width, step_choices)
+                    print " "
+                else:
+                    print "{:>{}} : {}".format(attr, attr_width, attr_val)
+
+
 def update_status_and_exit(out_dir):
+    """Utility to update the user on the status of processing, and resubmit failed jobs for processing if necessary."""
     assert os.path.exists(out_dir), \
         "The processing directory for which the status update has been requested doesn't exist!"
 
@@ -847,20 +912,27 @@ def update_status_and_exit(out_dir):
     # update_Q_status(out_dir)
     print('\nNow checking the outputs on disk ...')
     try:
-        prev_proc_status, prev_options, prev_input_file_all, failed_sub_file, all_subjects = update_proc_status(out_dir)
+        prev_proc_status, prev_options, prev_input_file_all, \
+        failed_sub_file, failed_spnorm_file, all_subjects = update_proc_status(out_dir)
 
         if not prev_proc_status.all_done:
             print('Previous processing is incomplete.')
-            user_confirmation = raw_input("Would you like to resubmit jobs for failed subjects/runs? (y/[N])")
-            if user_confirmation.lower() in ['y', 'yes', 'ye']:
-                print('Attempting resubmission ... ')
-                try:
-                    reprocess_failed_subjects(prev_proc_status, prev_options, failed_sub_file,
-                                              prev_input_file_all, all_subjects, out_dir)
-                    print('Resubmission done. Check the status later.')
-                except:
-                    print('Resubmission failed. Try again later.')
-                    raise
+            if failed_sub_file is not None and failed_spnorm_file is not None:
+                user_confirmation = raw_input("Would you like to resubmit jobs for failed subjects/runs?  y / [N] : ")
+                if user_confirmation.lower() in ['y', 'yes', 'ye']:
+                    print(' Yes. \n Attempting resubmission ... ')
+                    try:
+                        reprocess_failed_subjects(prev_proc_status, prev_options, failed_sub_file, failed_spnorm_file,
+                                                  prev_input_file_all, all_subjects, out_dir)
+                        print('Resubmission done. Check the status later.')
+                    except:
+                        print('Resubmission failed. Try again later.')
+                        raise
+                else:
+                    # presenting the user with chosen option.
+                    print ' No.'
+            else:
+                print('Unable to create input files for failed subjects/runs - make sure you have write permissions.')
     except:
         print('Unable to resubmit.')
         raise
@@ -870,86 +942,95 @@ def update_status_and_exit(out_dir):
 
 
 def update_proc_status(out_dir):
+    """Helper to the original update_status routine."""
     opt_file = os.path.join(out_dir, file_name_prev_options)
 
     with open(opt_file, 'rb') as of:
         all_subjects, options, new_input_file, _ = pickle.load(of)
-        proc_status, failed_sub_file = check_proc_status.run(
+        proc_status, failed_sub_file, failed_spnorm_file = check_proc_status.run(
             [new_input_file, options.pipeline_file, '--skip_validation'])
-    return proc_status, options, new_input_file, failed_sub_file, all_subjects
+    return proc_status, options, new_input_file, failed_sub_file, failed_spnorm_file, all_subjects
 
 
-def update_Q_status(out_dir):
-    if find_executable('qstat') is None:
-        print('\t qstat is not found - perhaps you are not on a headnode for the cluster. \n'
-              '\t Unable to query queue statuses. Run it on headnode to get the complete report.')
-        return
-
-    scheduler = drmaa.Session()
-    scheduler.initialize()
-
-    job_id_file = os.path.join(out_dir, file_name_job_ids_by_group)
-    try:
-        with open(job_id_file, 'rb') as jobs_list:
-            jobs_list_grouped = pickle.load(jobs_list)
-
-            for step, id_dict in jobs_list_grouped.items():
-                print('  --> {}'.format(step))
-                num_jobs_rqh, num_jobs_err = q_status(scheduler, id_dict)
-
-    except IOError as ioe:
-        print('Trouble reading the job IDs saved from last session. Check queue status manually. \n {}'.format(ioe))
-
-    # exiting the session
-    scheduler.exit()
-
-
-def q_status(scheduler, job_ids):
-    "Display the status of each job, and count the number of jobs in error/Okay state"
-
-    # decode_status = {drmaa.JobState.UNDETERMINED: 'status cannot be determined',
-    #                  drmaa.JobState.QUEUED_ACTIVE: 'queued and active',
-    #                  drmaa.JobState.SYSTEM_ON_HOLD: 'queued and in system hold',
-    #                  drmaa.JobState.USER_ON_HOLD: 'queued and in user hold',
-    #                  drmaa.JobState.USER_SYSTEM_ON_HOLD: 'queued and in user and system hold',
-    #                  drmaa.JobState.RUNNING: 'running',
-    #                  drmaa.JobState.SYSTEM_SUSPENDED: 'suspended by system',
-    #                  drmaa.JobState.USER_SUSPENDED: 'suspended by user',
-    #                  drmaa.JobState.DONE: 'finished normally',
-    #                  drmaa.JobState.FAILED: 'finished, but failed'}
-
-    num_jobs_rqh = 0  # num. jobs running or in queue
-    num_jobs_err = 0  # num. jobs in error state
-
-    for prefix, job_id in job_ids.items():
-        try:
-            job_state = scheduler.jobStatus(str(job_id))
-        except drmaa.InvalidJobException:
-            # when jobid has been flushed out of the scheduler memory!
-            job_state = drmaa.JobState.UNDETERMINED
-        else:
-            print "error quering the job status"
-            raise
-
-        print('\t {}: {} '.format(prefix, job_state))
-
-        # if job_state != 'unknown':
-        #     if 'e' in job_state:
-        #         num_jobs_err += 1
-        #
-        #     if 'r' in job_state or 'q' in job_state:
-        #         num_jobs_rqh += 1
-
-    # if num_jobs_rqh > 0:
-    #     print(' {} jobs are still either running, held or waiting to be processing.'.format(num_jobs_rqh))
-    #
-    # if num_jobs_err > 0:
-    #     print('{} jobs are stuck in error state. Manage them manually'.format(num_jobs_err))
-
-    return num_jobs_rqh, num_jobs_err
+# def update_Q_status(out_dir):
+#     """Helper to track the status of the submitted jobs on the queue."""
+#     if find_executable('qstat') is None:
+#         print('\t qstat is not found - perhaps you are not on a headnode for the cluster. \n'
+#               '\t Unable to query queue statuses. Run it on headnode to get the complete report.')
+#         return
+#
+#     scheduler = drmaa.Session()
+#     scheduler.initialize()
+#
+#     job_id_file = os.path.join(out_dir, file_name_job_ids_by_group)
+#     try:
+#         with open(job_id_file, 'rb') as jobs_list:
+#             jobs_list_grouped = json.load(jobs_list)
+#
+#             for step, id_dict in jobs_list_grouped.items():
+#                 print('  --> {}'.format(step))
+#                 num_jobs_rqh, num_jobs_err = q_status(scheduler, id_dict)
+#
+#     except IOError as ioe:
+#         print('Trouble reading the job IDs saved from last session. Check queue status manually. \n {}'.format(ioe))
+#
+#     # exiting the session
+#     scheduler.exit()
+#
+#
+# def q_status(scheduler, job_ids):
+#     """
+#      Display the status of each job, and count the number of jobs in error/Okay state
+#
+#     :param scheduler: drmma scheduler object
+#     :param job_ids: dict of job IDs to track
+#     :return: number of jobs running or in queue, and failed.
+#
+#     """
+#
+#     # decode_status = {drmaa.JobState.UNDETERMINED: 'status cannot be determined',
+#     #                  drmaa.JobState.QUEUED_ACTIVE: 'queued and active',
+#     #                  drmaa.JobState.SYSTEM_ON_HOLD: 'queued and in system hold',
+#     #                  drmaa.JobState.USER_ON_HOLD: 'queued and in user hold',
+#     #                  drmaa.JobState.USER_SYSTEM_ON_HOLD: 'queued and in user and system hold',
+#     #                  drmaa.JobState.RUNNING: 'running',
+#     #                  drmaa.JobState.SYSTEM_SUSPENDED: 'suspended by system',
+#     #                  drmaa.JobState.USER_SUSPENDED: 'suspended by user',
+#     #                  drmaa.JobState.DONE: 'finished normally',
+#     #                  drmaa.JobState.FAILED: 'finished, but failed'}
+#
+#     num_jobs_rqh = 0  # num. jobs running or in queue
+#     num_jobs_err = 0  # num. jobs in error state
+#
+#     for prefix, job_id in job_ids.items():
+#         try:
+#             job_state = scheduler.jobStatus(str(job_id))
+#         except drmaa.InvalidJobException:
+#             # when jobid has been flushed out of the scheduler memory!
+#             job_state = drmaa.JobState.UNDETERMINED
+#         else:
+#             print "error quering the job status"
+#             raise
+#
+#         print('\t {}: {} '.format(prefix, job_state))
+#
+#         # if job_state != 'unknown':
+#         #     if 'e' in job_state:
+#         #         num_jobs_err += 1
+#         #
+#         #     if 'r' in job_state or 'q' in job_state:
+#         #         num_jobs_rqh += 1
+#
+#     # if num_jobs_rqh > 0:
+#     #     print(' {} jobs are still either running, held or waiting to be processing.'.format(num_jobs_rqh))
+#     #
+#     # if num_jobs_err > 0:
+#     #     print('{} jobs are stuck in error state. Manage them manually'.format(num_jobs_err))
+#
+#     return num_jobs_rqh, num_jobs_err
 
 def make_job_file_and_1linecmd(file_path):
-    "Generic job file generator, and returns one line version too."
+    """Generic job file generator, and returns one line version too."""
 
     hpc_directives = list()
     job_name = os.path.splitext(os.path.basename(file_path))[0]
@@ -973,7 +1054,7 @@ def make_job_file_and_1linecmd(file_path):
 
 
 def make_job_file(file_path):
-    "Generic job file generator"
+    """Generic job file generator"""
 
     hpc_directives = list()
     job_name = os.path.splitext(os.path.basename(file_path))[0]
@@ -1018,30 +1099,38 @@ def local_exec(script_path):
     return -random.randrange(1000)  # proc.returncode
 
 
-def reprocess_failed_subjects(prev_proc_status, prev_options, failed_sub_file, prev_input_file_all, all_subjects,
-                              garage):
+def reprocess_failed_subjects(prev_proc_status, prev_options, failed_sub_file, failed_spnorm_file,
+                              prev_input_file_all, all_subjects, garage):
+    """Utility to resubmit the jobs to process the failed parts of the processing. """
     global hpc
 
     try:
         hpc_cfg_file = os.path.join(garage, file_name_hpc_config)
         with open(hpc_cfg_file, 'rb') as hpc_f:
-            hpc = pickle.load(hpc_f)
+            hpc = json.load(hpc_f)
     except:
-        print('hpc config was not saved previously or proerly!')
+        print('hpc config was not saved previously or proerly! Unable to resubmit.')
         raise
 
     hpc['dry_run'] = False
 
     if prev_proc_status.preprocessing is NOT_DONE:
-        failed_subjects = validate_input_file(failed_sub_file, prev_options, None)
+        failed_sub_p1 = validate_input_file(failed_sub_file, prev_options, None)
         # running the failed subjects throught part 1
         print('Resubmitting preprocessing jobs .. ')
-        status_p1, jobs_p1 = run_preprocessing(failed_subjects, prev_options, failed_sub_file, garage)
+        status_p1, jobs_p1 = run_preprocessing(failed_sub_p1, prev_options, failed_sub_file, garage)
 
     if prev_proc_status.optimization is NOT_DONE:
         # but optimization will be done entire dataset
         print('Resubmitting stats & optim. jobs .. ')
         status_p2, jobs_p2 = run_optimization(all_subjects, prev_options, prev_input_file_all, garage)
+
+    if prev_proc_status.spnorm is NOT_DONE:
+        failed_sub_spn = validate_input_file(failed_spnorm_file, prev_options, None)
+        print('Resubmitting spatial normalization jobs .. ')
+        sp_norm_step = 0  # both steps 1 and 2
+        status_spn, jobs_spn = process_spatial_norm(failed_sub_spn, prev_options, failed_spnorm_file, sp_norm_step,
+                                                    garage)
 
     if prev_proc_status.QC1 is NOT_DONE:
         # rerunning QC
@@ -1057,15 +1146,13 @@ def reprocess_failed_subjects(prev_proc_status, prev_options, failed_sub_file, p
     if os.path.isfile(job_id_file):
         os.remove(job_id_file)
     with open(job_id_file, 'wb') as jlist:
-        pickle.dump(hpc['job_ids_grouped'], jlist)
+        json.dump(hpc['job_ids_grouped'], jlist)
 
 
 def run_preprocessing(subjects, opt, input_file, garage):
     """
     Generates a job script to run the preprocessing for all combinations of pipeline steps requested.
     """
-
-    job_id_list = None
 
     if opt.dospnormfirst:
         str_dospnormfirst = '1'
@@ -1084,14 +1171,18 @@ def run_preprocessing(subjects, opt, input_file, garage):
 def run_qc_part_one(subjects, opt, input_file, garage):
     # maskname is set to be empty
     arg_list = [1, input_file, 'None', opt.num_PCs]
-    proc_status, job_id_list = process_module_generic(subjects, opt, 'QC1', 'QC_wrapper', arg_list, garage, 'PART1')
+    dependencies = ['PART1', 'PART2', 'GMASK']
+    proc_status, job_id_list = process_module_generic(subjects, opt, 'QC1', 'QC_wrapper', arg_list, garage,
+                                                      dependencies)
 
     return proc_status, job_id_list
 
 
 def run_qc_part_two(subjects, opt, input_file, garage):
-    arg_list = [2, input_file, '', opt.num_PCs]
-    proc_status, job_id_list = process_module_generic(subjects, opt, 'QC2', 'QC_wrapper', arg_list, garage, 'PART2')
+    arg_list = [2, input_file, 'None', opt.num_PCs]
+    dependencies = ['PART1', 'PART2', 'GMASK']
+    proc_status, job_id_list = process_module_generic(subjects, opt, 'QC2', 'QC_wrapper', arg_list, garage,
+                                                      dependencies)
 
     return proc_status, job_id_list
 
@@ -1118,7 +1209,7 @@ def run_optimization(subjects, opt, input_file, garage):
         wm_str = '0'
     mot_gs_control = mc_str + wm_str
 
-    arg_list = [input_file, opt.metric, mot_gs_control, opt.output_all_pipelines, opt.keepmean]
+    arg_list = [input_file, opt.metric, mot_gs_control, opt.output_all_pipelines, opt.keepmean, opt.opt_scheme]
     proc_status, job_id_list = process_module_generic(subjects, opt, 'PART2', 'Pipeline_PART2', arg_list, garage,
                                                       'PART1')
 
@@ -1132,22 +1223,28 @@ def process_spatial_norm(subjects, opt, input_file, sp_norm_step, garage):
     :returns: status of processing and a list of job IDs (or process IDs if running locally).
     """
 
+    if opt.dospnormfirst:
+        dependencies = ['PART1']
+    else:
+        dependencies = ['PART1', 'PART2']
+
     arg_list = [opt.reference, opt.voxelsize, sp_norm_step, opt.DEOBLIQUE]
     proc_status, job_id_list = process_module_generic(subjects, opt, 'SPNORM', 'spatial_normalization', arg_list,
-                                                      garage, None)
+                                                      garage, dependencies)
 
     return proc_status, job_id_list
 
 
 def process_group_mask_generation(subjects, opt, input_file, garage):
+    """Module to submit jobs for the generation of a group mask."""
     arg_list = [input_file]
     proc_status, job_id_list = process_module_generic(subjects, opt, 'GMASK', 'group_mask_tissue_maps', arg_list,
                                                       garage, 'SPNORM')
-
     return proc_status, job_id_list
 
 
-def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix = None, job_dir = None):
+def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=None, job_dir=None):
+    """Helper to construct the necessary complete commands for various parts of the OPPNI processing."""
     if environment.lower() in ('matlab', 'octave'):
         single_quoted = lambda s: r"'{}'".format(s)
 
@@ -1155,32 +1252,45 @@ def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix =
 
         # make an m-file script
         # hyphen/dash can be treated as an operator
-        mfile_name = prefix.replace('-','_')
+        mfile_name = prefix.replace('-', '_')
         mfile_path = os.path.join(job_dir, mfile_name + '.m')
         with open(mfile_path, 'w') as mfile:
             mfile.write('\n')
-            mfile.write("try, {0}({1}); catch ME, display(ME.message); exit(1); end; exit;".format(step_cmd_matlab, cmd_options))
+            mfile.write("try, {0}({1}); catch ME, display(ME.message); exit(1); end; exit;".format(step_cmd_matlab,
+                                                                                                   cmd_options))
             mfile.write('\n')
 
-        # # -nojvm omitted to allow future comptibility
-        # cmd = 'time -p matlab -nodesktop -nosplash'
+        # # problem: -nojvm omitted to allow future comptibility
+        # cmd = 'time -p matlab -nojvm -nodesktop -nosplash'
         # full_cmd = "{0} -r \"try, {1}({2}); catch ME, display(ME.message); exit(1); end; exit;\" ".format(
         #     cmd, step_cmd_matlab, cmd_options)
 
         # to simplify the trouble with quotes and escape sequences etc
-        full_cmd = r"time -p matlab -nodesktop -nosplash -r {0} ".format(mfile_name)
+        # -nojvm flag to matlab is very important so it doesnt crash
+        # time -p command is removed as it was failing on HPCVL
+        full_cmd = r"matlab -nodesktop -nojvm  -nosplash -r {0} ".format(mfile_name)
 
     elif environment.lower() in ('standalone', 'compiled'):
         # first single quote is bash to protect from expansion or globbing
         #   second double quote is for matlab to interpret
         # strong_quoted = lambda s: r""" "'{}'" """.format(s)
-        strong_quoted = lambda s: r""" '{}' """.format(s)
+        strong_quoted = lambda s: r""" "{}" """.format(s)
 
         # compiled_exe_path = find_executable('OPPNI')
+        # time -p command is removed as it was failing on HPCVL
         compiled_exe_path = 'run_cPRONTO.sh ' + os.getenv('MCR_PATH')
 
-        cmd = 'time -p {0} {1} '.format(compiled_exe_path, step_id)
-        cmd_options = ' '.join(map(strong_quoted, arg_list))
+        cmd = '{0} {1} '.format(compiled_exe_path, step_id)
+        # enclosing the args with quotes only when needed
+        quoted_args = list([])
+        for arg in arg_list:
+            if isinstance(arg, basestring) and set('[~!@#$%^&*()+{}":;-\' \t]+$').intersection(
+                    arg):  # primitive: ' ' not in arg:
+                # when special characters are present, enclose it in quotes
+                quoted_args.append(strong_quoted(arg))
+            else:
+                quoted_args.append(str(arg))
+        cmd_options = ' '.join(quoted_args)
         full_cmd = cmd + cmd_options
 
     else:
@@ -1209,9 +1319,10 @@ def process_module_generic(subjects, opt, step_id, step_cmd_matlab, arg_list, ga
         # these steps operate on the dataset as a whole
         # input list supplied from their individual functions
         arg_list_subset = copy(arg_list)
-        prefix = '{0}-all-subjects'.format(step_id.lower())
+        prefix = '{0}_all_subjects'.format(step_id.lower())
         # each item will be a tuple (job_path, job_str)
-        jobs_dict['all-subjects'] = make_single_job(opt.environment, step_id, step_cmd_matlab, prefix, arg_list_subset, job_dir)
+        jobs_dict['all_subjects'] = make_single_job(opt.environment, step_id, step_cmd_matlab, prefix, arg_list_subset,
+                                                    job_dir)
 
     else:
         for idx, subject in enumerate(subjects.itervalues()):
@@ -1225,7 +1336,8 @@ def process_module_generic(subjects, opt, step_id, step_cmd_matlab, arg_list, ga
             # adding the input file as the first arg
             arg_list_subset = [subset_input_file] + arg_list
             # each item will be a tuple (job_path, job_str)
-            jobs_dict[subject['prefix']] = make_single_job(opt.environment, step_id, step_cmd_matlab, prefix, arg_list_subset, job_dir)
+            jobs_dict[subject['prefix']] = make_single_job(opt.environment, step_id, step_cmd_matlab, prefix,
+                                                           arg_list_subset, job_dir)
 
     jobs_status, job_id_list = run_jobs(jobs_dict, opt.run_locally, int(opt.numcores), depends_on_step)
     # storing the job ids by group to facilitate a status update in future
@@ -1235,7 +1347,9 @@ def process_module_generic(subjects, opt, step_id, step_cmd_matlab, arg_list, ga
 
 
 def make_single_job(environment, step_id, step_cmd_matlab, prefix, arg_list_subset, job_dir):
-    # making a standalone job file
+    """
+    Helper to generate a standalone job file including the HPC directives and processing commands.
+    """
     full_cmd = construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list_subset, prefix, job_dir)
 
     out_job_filename = prefix + '.job'
@@ -1251,18 +1365,22 @@ def make_single_job(environment, step_id, step_cmd_matlab, prefix, arg_list_subs
 
     with open(job_path, 'a') as jID:
         # remove any single quotes
-        quote_del = [ str.replace(r"'",'') for str in hpc_dir_2 ]
+        if environment.lower() in ('matlab', 'octave'):
+            quote_del = [strg.replace(r"'", '') for strg in hpc_dir_2]
+        else:
+            quote_del = hpc_dir_2
         jID.write('\n'.join(quote_del))
 
     # complete single line command for qsub
     qsub_opt = hpc_dir_1 + hpc_dir_2
     # ensuring unnecessary prefix #$ #PBS is removed
-    qsub_opt = [ str.replace(hpc['prefix'],'') for str in qsub_opt ]
+    qsub_opt = [strg.replace(hpc['prefix'], '') for strg in qsub_opt]
 
     return job_path, qsub_opt
 
 
 def run_jobs(job_paths, run_locally, num_procs, depends_on_step):
+    """ Tool to either submit jobs or run them locally, as directed by the user."""
     job_id_list = {}
     if run_locally:
 
@@ -1294,30 +1412,44 @@ def run_jobs(job_paths, run_locally, num_procs, depends_on_step):
     return True, job_id_list
 
 
+# noinspection PyUnusedLocal
 def make_dry_run(cmd_str):
-    # """ Simple function to perform a dry run (indicated by a -ve job id)."""
+    """ Simple function to perform a dry run (indicated by a -ve job id)."""
 
-    print(cmd_str)
+    # print(cmd_str)
     job_id = random.randrange(1000)
 
     return -job_id
 
 
-def submit_queue(job, depends_on_step):
+def submit_queue(job, depends_on_steps):
+    """ Helper to submit jobs to the queue, taking care of the inter-dependencies. Returns the job ID."""
     global hpc
 
     qsub_path = 'qsub'  # find_executable('qsub')
 
     # encoding dependencies
-    if depends_on_step is not None and depends_on_step in hpc['job_ids_grouped']:
-        # second condition can be False when rerunning from a existing processing
-        # some steps may have been completed already - which means they are not in queue now,
-        # in which this current step doesnt need to wait
-        job_id_list_str = map(str, hpc['job_ids_grouped'][depends_on_step].values())
+    if depends_on_steps is not None:
+        # making it a list when only one step is specified
+        if not isinstance(depends_on_steps, list):
+            depends_on_steps = [depends_on_steps, ]
+
+        job_ids = list()
+        for step in depends_on_steps:
+            if step in hpc['job_ids_grouped']:
+                # this condition can be False when rerunning from a existing processing
+                # some steps may have been completed already - which means they are not in queue now,
+                # in which case this current step doesnt need to wait
+                job_ids.extend(hpc['job_ids_grouped'][step].values())
+
+        if job_ids:  # if not empty
+            job_id_list_str = map(str, job_ids)
+        else:
+            job_id_list_str = ''
     else:
         job_id_list_str = ''
 
-    if hpc['type'].upper() in ( 'ROTMAN', 'BRAINCODE', 'ROTMAN-SGE', 'SGE'):
+    if hpc['type'].upper() in ('ROTMAN', 'BRAINCODE', 'ROTMAN-SGE', 'SGE'):
         # qsub_cmd  = qsub_path + ' -terse '
         qsub_cmd = qsub_path
         terse = '-terse'
@@ -1344,7 +1476,7 @@ def submit_queue(job, depends_on_step):
     # removing empty args (terse and hold list can be empty sometimes)
     arg_list = [arg for arg in arg_list if arg]
     full_cmd = ' '.join(arg_list)
-    full_cmd = re.sub( '\s+', ' ', full_cmd).strip()
+    full_cmd = re.sub('\s+', ' ', full_cmd).strip()
 
     # splitting on space is required, otherwise subprocess throws an error,
     # as the '-opt value' in a single string gets interepreted as the name of an option
@@ -1440,23 +1572,11 @@ def submit_jobs():
         run_qc1 = True
         run_qc2 = True
 
-    if ( options.part in [1, 2, 4] ):
+    if options.part in [1, 2, 4]:
         run_sp_norm = False
         if options.reference_specified:
-            print 'A reference atlas is specified although SPNORM is not requested - skipping spatial normalization..'
+            print 'A reference atlas is specified although SPNORM is not requested - ignoring the atlas.'
 
-    spnorm_completed = False
-    spnorm_step1_completed = False
-    if options.dospnormfirst:
-        sp_norm_step = 1
-        print('spatial normalization (step 1) BEFORE preprocessing:')
-        status_sp, job_ids_spn = process_spatial_norm(unique_subjects, options, input_file, sp_norm_step, cur_garage)
-        if options.run_locally is True and (status_sp is False or status_sp is None):
-            raise Exception('Spatial normalization - step 1 failed.')
-        else:
-            spnorm_step1_completed = True
-
-    # TODO move this block to the top of spnorm block right above as spnorm depends on part1 regardless of flag dospnormfirst
     # submitting jobs for preprocessing for all combinations of pipelines
     if run_part_one and is_done.preprocessing is False:
         # running part 1 only on subjects with incomplete processing
@@ -1464,6 +1584,18 @@ def submit_jobs():
         status_p1, job_ids_pOne = run_preprocessing(unique_subjects, options, rem_input_file, cur_garage)
         if options.run_locally is True and (status_p1 is False or status_p1 is None):
             raise Exception('Preprocessing step failed.')
+
+    spnorm_completed = False
+    spnorm_step1_completed = False
+    if options.dospnormfirst:
+        sp_norm_step = 1
+        print('spatial normalization (step 1) BEFORE optimization:')
+        status_sp, job_ids_spn = process_spatial_norm(unique_subjects, options, input_file, sp_norm_step,
+                                                      cur_garage)
+        if options.run_locally is True and (status_sp is False or status_sp is None):
+            raise Exception('Spatial normalization - step 1 failed.')
+        else:
+            spnorm_step1_completed = True
 
     # submitting jobs for optimization
     if run_part_two and options.analysis != "None" and is_done.optimization is False:
@@ -1502,29 +1634,29 @@ def submit_jobs():
     if is_done.QC2 is False and run_qc2 is True:
         print('QC 2 :')
         status_qc2, job_ids_qc2 = run_qc_part_two(unique_subjects, options, input_file, cur_garage)
-        if options.run_locally is True and (status_qc1 is False or status_qc1 is None):
-            raise Exception('QC part 1 failed.')
+        if options.run_locally is True and (status_qc2 is False or status_qc2 is None):
+            raise Exception('QC part 2 failed.')
 
     # saving the job ids and hpc cfg to facilitate a status update in future
     save_hpc_cfg_and_jod_ids(cur_garage)
 
 
 def save_hpc_cfg_and_jod_ids(cur_garage):
-    "Saves the job ids and hpc cfg to facilitate a status update in future"
+    """Saves the job ids and hpc cfg to facilitate a status update in future"""
 
     # saving the job ids
     job_id_file = os.path.join(cur_garage, file_name_job_ids_by_group)
     if os.path.isfile(job_id_file):
         os.remove(job_id_file)
     with open(job_id_file, 'wb') as jlist:
-        pickle.dump(hpc['job_ids_grouped'], jlist)
+        json.dump(hpc['job_ids_grouped'], jlist, indent=2)
 
     # saving the config
     cfg_file = os.path.join(cur_garage, file_name_hpc_config)
     if os.path.isfile(cfg_file):
         os.remove(cfg_file)
     with open(cfg_file, 'wb') as hcf:
-        pickle.dump(hpc, hcf)
+        json.dump(hpc, hcf, indent=2)
 
 
 if __name__ == '__main__':

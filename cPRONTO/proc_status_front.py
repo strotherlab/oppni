@@ -38,6 +38,45 @@ def count_variations_pipeline_step(pipelineFile, descr):
         return len(digits.findall(stepLine))
 
 
+def is_done_spnorm(sub_prefix, out_dir):
+    """
+    Checks for the completeness of processing, according to the documentation provided in Pipeline_Part1.m
+
+    :param sub_prefix:
+    :param out_dir:
+    :return:
+    :rtype: bool, str
+    """
+
+    # Notes from Nathan:
+    #  I would consider two important "checkpoints" in the registration process.
+    # The first is generation of "intermediate_processed/spat_norm/Transmat_EPItoREF_[ prefix ].mat", which means you have a complete affine transform from functional to template space.
+    #
+    # The second is the generation of the transformed, optimized pipeline outputs
+    #
+    # optimization_results/spms/rSPM_[ prefix ]_CON_FIX_IND_sNorm.nii
+    # optimization_results/processed/Proc_[ prefix ]_CON_sNorm.nii
+    # optimization_results/processed/Proc_[ prefix ]_FIX_sNorm.nii
+    # optimization_results/processed/Proc_[ prefix ]_IND_sNorm.nii
+    #
+    # These are the essential final outputs needed to go forward with group masking, QC, etc.
+
+    intProcFolder = os.path.join(out_dir, 'intermediate_processed')
+    optim_dir = os.path.join(out_dir, 'optimization_results')
+
+    must_exist_list = list()
+    must_exist_list.append(os.path.join(intProcFolder, 'spat_norm', 'Transmat_EPItoREF_'+ sub_prefix + '.mat'))
+    must_exist_list.append(os.path.join(optim_dir, 'spms', 'rSPM_' + sub_prefix + '_CON_FIX_IND_sNorm.nii'))
+    for scheme in cfg_pronto.CODES_OPTIM_SCHEMES:
+        must_exist_list.append(os.path.join(optim_dir, 'processed', 'Proc_' + sub_prefix + '_' + scheme + '_sNorm.nii'))
+
+    exist_bool = map(os.path.exists, must_exist_list)
+    if not all(exist_bool):
+        return False, " spat. norm : Incomplete " + crossed
+    else:
+        return True , " spat. norm : Done.      " + tick_mark
+
+
 def is_done_part1_afni(subPrefix, outFolder, numPipelineSteps):
     """
     Checks for the completeness of processing, according to the documentation provided in Pipeline_Part1.m
@@ -113,13 +152,15 @@ def is_done_QC_part_one(out_dir):
         mustExistList.append(os.path.join(qc1_dir, png))
 
     if not all_files_exist_in(mustExistList):
-        print('QC1: Some/all of the visualizations have not been exported as images.')
+        print('QC1: Some/all of the visualizations have NOT been exported as images.')
+    else:
+        print('QC1: figures done.')
 
     if os.path.isfile(qc1_res) and os.path.getsize(qc1_res) > 0:
-        print('QC1: Necessary diagnostic data to produce QC1 visualizations exist.')
+        #print('QC1: Necessary diagnostic data to produce QC1 visualizations exist.')
         return True
     else:
-        print('QC1: diagnostic data doesn\'t exist or is empty.')
+        print('QC1: diagnostic data (path below) doesn\'t exist or is empty.\n\t {}'.format(qc1_res))
         return False
 
 
@@ -140,13 +181,15 @@ def is_done_QC_part_two(out_dir):
         mustExistList.append(os.path.join(qc2_dir, png))
 
     if not all_files_exist_in(mustExistList):
-        print('QC2: Some/all of the visualizations have not been exported as images.')
+        print('QC2: Some/all of the visualizations have NOT been exported as images.')
+    else:
+        print('QC2: figures done.')
 
     if os.path.isfile(qc2_res) and os.path.getsize(qc2_res) > 0:
-        print('QC2: Necessary diagnostic data to produce visualizations seems to exist.')
+        #print('QC2: Necessary diagnostic data to produce visualizations seems to exist.')
         return True
     else:
-        print('QC2: diagnostic data doesn\'t exist or is empty.')
+        print('QC2: diagnostic data (path below) doesn\'t exist or is empty.\n\t {}'.format(qc2_res))
         return False
 
 
@@ -165,11 +208,21 @@ def is_done_part_two_opt_summary(out_dir):
     mustExistList = (file1,)
 
     if not all_files_exist_in(mustExistList):
-        print "P2 : Optim. summary : Incomplete "
+        #print "P2 : Optim. summary : Incomplete "
         return False
     else:
-        print "P2 : Optim. summary : Finished.  "
+        #print "P2 : Optim. summary : Finished.  "
         return True
+
+
+def flush_out_text(old_stdout, my_stdout, not_verbose):
+
+    sys.stdout = old_stdout
+    if not not_verbose:
+        output_text = my_stdout.getvalue()
+        print(output_text)
+
+    my_stdout.close()
 
 
 def parse_args_check(input_args):
@@ -177,7 +230,7 @@ def parse_args_check(input_args):
     Arg parser!
     """
 
-    parser = ArgumentParser(prog='checkProcessingStatusPronto.py')
+    parser = ArgumentParser(prog='proc_status_oppni.py')
     parser.add_argument("InputFile", help="Input file specifying subject's data and output folder.")
     parser.add_argument("PipelineFile", help="Pipeline file specifying choices for various preprocessing steps.")
 
@@ -194,16 +247,13 @@ def parse_args_check(input_args):
         parser.print_help()
         sys.exit(0)
 
-    input_file = os.path.abspath(args.InputFile)
-    pip_comb_file = os.path.abspath(args.PipelineFile)
+    inputFile = os.path.abspath(args.InputFile)
+    assert os.path.exists(inputFile), "Input file doesn't exist!"
 
-    assert os.path.exists(input_file), "Input file doesn't exist!"
-    assert os.path.exists(pip_comb_file), "Pipeline file doesn't exist!"
-    if not args.skip_validation:
-        oppni.validate_input_file(input_file)
-        oppni.validate_pipeline_file(pip_comb_file)
+    pipFile = os.path.abspath(args.PipelineFile)
+    assert os.path.exists(pipFile), "Pipeline file doesn't exist!"
 
-    return input_file, pip_comb_file, args.not_verbose
+    return inputFile, pipFile, args.not_verbose
 
 
 def run(input_args):
@@ -217,7 +267,7 @@ def run(input_args):
     old_stdout = sys.stdout
     sys.stdout = my_stdout = StringIO()
 
-    input_file, pip_comb_file, not_verbose = parse_args_check(input_args)
+    inputFile, pipFile, not_verbose = parse_args_check(input_args)
 
     proc_status = cfg_pronto.initialize_proc_status()
 
@@ -226,91 +276,147 @@ def run(input_args):
     # "MOTCOR", "CENSOR", "RETROICOR", "TIMECOR", "SMOOTH"
     # only the combinations for the first 5 steps need to be multiplied
     for step in cfg_pronto.CODES_PREPROCESSING_STEPS[0:5]:
-        numPipelineSteps *= count_variations_pipeline_step(pip_comb_file, step)
+        numPipelineSteps *= count_variations_pipeline_step(pipFile, step)
 
-    outFolderStatus = os.path.dirname(input_file)
-    resubmitListPart1File = os.path.join(outFolderStatus, 'InputFile-Resubmit-Part1.prontoStatusCheck')
-    resubmitListPart1 = open(resubmitListPart1File, 'w')
+    outFolderStatus = os.path.dirname(inputFile)
+    name_suffix = os.path.splitext(os.path.basename(inputFile))[0]
 
-    totalNumSubjects = 0
+    try:
+        resubmit_part1_file = os.path.join(outFolderStatus, name_suffix + '-resubmit-part1.txt')
+        resub_part1 = open(resubmit_part1_file, 'w')
+
+        resubmit_spnorm_file = os.path.join(outFolderStatus, name_suffix + '-resubmit-spnorm.txt')
+        resub_spnorm = open(resubmit_spnorm_file, 'w')
+        writable = True
+    except:
+        print('Unable to write list of failed subjects - will skip resubmission. ')
+        writable = False
+        resubmit_part1_file = resubmit_spnorm_file = None
+        resub_part1 = resub_spnorm = None
+
+
+    num_subjects = 0
     failed_count_preproc = 0
     failed_count_stats = 0
+    failed_count_spnorm = 0
 
     # # regex to extract the relevant parts of the input file
     reOut = re.compile(r"OUT=([\w\./+_-]+)[\s]*")
 
-    # TODO reimplement this using front.validate_input_file to parse and iterative over subjects in input file
+    try:
 
-    commonOutFolder = ' '
-    with open(input_file, 'r') as fID:
-        for inputLine in fID.readlines():
-            totalNumSubjects += 1
-            # inImages  = reIn.search(inputLine).group(1)
-            # taskSpec  = reTask.search(inputLine).group(1)
-            outFolderSpec = reOut.search(inputLine).group(1)
-            # sometimes the output prefixes are specified with .nii extention
-            # stripping it off (like PRONTO does internally) 
-            outFolderSpec, tmp_ext = os.path.splitext(outFolderSpec)
-            subjectPrefix = os.path.basename(outFolderSpec)
-            subjectPrefix, tmp_ext = os.path.splitext(subjectPrefix)
+        # TODO reimplement this using front.validate_input_file to parse and iterative over subjects in input file
+        common_out_dir = ' '
+        with open(inputFile, 'r') as fID:
+            for inputLine in fID.readlines():
+                num_subjects += 1
 
-            outFolder = os.path.dirname(outFolderSpec)
-            if totalNumSubjects == 1:
-                # pronto saves the optimization results in the output folder specified for the first subject
-                commonOutFolder = outFolder
+                out_results = reOut.search(inputLine)
+                if out_results is not None:
+                    outFolderSpec = out_results.group(1)
+                else:
+                    print 'Either OUT= not specifed or contains an invalid path that can not be parsed.'
+                    print 'Only Alphanumeric, underscore (_), hyphen (-) and plus (+) characters are allowed. skipping this line {}'.format(num_subjects)
+                    continue
 
-            part1_preproc_done, msg1 = is_done_part1_afni(subjectPrefix, outFolder, numPipelineSteps)
-            part1_stats_done  , msg2 = is_done_part1_stats(subjectPrefix, outFolder)
-            both_parts_done = (part1_preproc_done and part1_stats_done)
+                # sometimes the output prefixes are specified with .nii extention
+                # stripping it off (like PRONTO does internally)
+                outFolderSpec, tmp_ext = os.path.splitext(outFolderSpec)
+                subjectPrefix = os.path.basename(outFolderSpec)
+                subjectPrefix, tmp_ext = os.path.splitext(subjectPrefix)
 
-            print('{}:  {} \t {}'.format(subjectPrefix, msg1, msg2))
+                out_dir = os.path.dirname(outFolderSpec)
+                if num_subjects == 1:
+                    # pronto saves the optimization results in the output folder specified for the first subject
+                    common_out_dir = out_dir
 
-            if not part1_preproc_done:
-                failed_count_preproc += 1
-                resubmitListPart1.write(inputLine)
+                part1_preproc_done, msg1 = is_done_part1_afni(subjectPrefix, out_dir, numPipelineSteps)
+                part1_stats_done  , msg2 = is_done_part1_stats(subjectPrefix, out_dir)
 
-            if not part1_stats_done:
-                failed_count_stats += 1
+                spnorm_done, msg3 = is_done_spnorm(subjectPrefix, out_dir)
 
-    # print out summary
-    print "\nSummary: \nTotal subjects: ", totalNumSubjects
-    if failed_count_preproc == 0:
-        proc_status.preprocessing = True
-        print "P1 : All finished."
-        os.remove(resubmitListPart1File)
-        resubmitListPart1File = None
+                print('{:>15}:  {} \t {} \t {}'.format(subjectPrefix, msg1, msg2, msg3))
 
-        proc_status.QC1 = is_done_QC_part_one(commonOutFolder)
-        proc_status.QC2 = is_done_QC_part_two(commonOutFolder)
+                if not part1_preproc_done:
+                    failed_count_preproc += 1
+                    if writable:
+                        resub_part1.write(inputLine)
 
-        proc_status.optimization = failed_count_stats==0 and is_done_part_two_opt_summary(commonOutFolder)
+                if not part1_stats_done:
+                    failed_count_stats += 1
+
+                if not spnorm_done:
+                    failed_count_spnorm += 1
+                    if writable:
+                        resub_spnorm.write(inputLine)
+
+        # print out summary
+        print "\nSummary: \n# subjects: ", num_subjects
+        # part 1
+        if failed_count_preproc == 0:
+            proc_status.preprocessing = True
+            print "P1 : all finished."
+            if resubmit_part1_file is not None:
+                os.remove(resubmit_part1_file)
+            if not writable:
+                resubmit_part1_file = None
+            else:
+                resubmit_part1_file = 'writable'
+        else:
+            proc_status.preprocessing = False
+            proc_status.rem_input_file = resubmit_part1_file
+            print "P1 : incomplete \t  # subjects/runs failed: {} / {} ({:.0f}%)".format(
+                failed_count_preproc, num_subjects, (100 * failed_count_preproc / num_subjects))
+            print "\t resubmit list : ", resubmit_part1_file
+
+        # part 2
+        proc_status.optimization = (failed_count_stats == 0) and is_done_part_two_opt_summary(common_out_dir)
         if not proc_status.optimization:
-            print " Resubmit PRONTO jobs with -p 2 flag, with the same input file."
-    else:
-        proc_status.preprocessing = False
-        proc_status.rem_input_file = resubmitListPart1File
-        print "P1: Incomplete \t  # Subjects/Runs Failed: {} / {} ({:.0f}%)".format(failed_count_preproc, totalNumSubjects, (100 * failed_count_preproc / totalNumSubjects))
-        print "Resubmit list : ", resubmitListPart1File
-        # resubmit jobs is not easily possible, due to the presence of
-        # number of other arguments to PRONTO, that are not supplied to this code.
-        # e.g. subprocess.call("./Run_Pipelines.py -i {0} -c {1}".format(resubmitListPart1File,pipFile), shell=True)
-        #   would be insufficient!
+            print "P2 : Incomplete \n\t # sbujects whose stats need to be computed: {}".format(failed_count_stats)
+        else:
+            print "P2 : all finished.  "
 
-    sys.stdout = old_stdout
-    if not not_verbose:
-        output_text = my_stdout.getvalue()
-        print(output_text)
+        # spnorm
+        if failed_count_spnorm == 0:
+            proc_status.spnorm = True
+            print "SPNORM : all finished."
+            if resubmit_spnorm_file is not None:
+                os.remove(resubmit_spnorm_file)
+            if not writable:
+                resubmit_spnorm_file = None
+            else:
+                resubmit_spnorm_file = 'writable'
+        else:
+            proc_status.spnorm = False
+            proc_status.rem_spnorm_file = resubmit_spnorm_file
+            print "SPNORM : incomplete \t  # subjects/runs failed: {} / {} ({:.0f}%)".format(
+                failed_count_spnorm, num_subjects, (100 * failed_count_spnorm / num_subjects))
+            print "\t resubmit list : ", resubmit_spnorm_file
 
-    my_stdout.close()
+        # QC
+        proc_status.QC1 = is_done_QC_part_one(common_out_dir)
+        proc_status.QC2 = is_done_QC_part_two(common_out_dir)
+
+        if writable:
+            resub_spnorm.close()
+            resub_part1.close()
+
+    except Exception as e:
+        print "following exception occurred: \n{}".format(e)
+        raise
+
+    finally:
+        # making sure output of the partial execution will be shown to the user
+        flush_out_text(old_stdout, my_stdout, not_verbose)
 
     # summary indicator of all flags
     proc_status.all_done = True
     for flag in cfg_pronto.STEPS_PROCESSING_STATUS:
-        if getattr(proc_status,flag) is not False and flag is not 'all_done':
+        if getattr(proc_status,flag) is False and flag is not 'all_done':
             proc_status.all_done = False
             break
 
-    return proc_status, resubmitListPart1File
+    return proc_status, resubmit_part1_file, resubmit_spnorm_file
 
 
 if __name__ == '__main__':

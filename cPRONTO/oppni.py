@@ -9,6 +9,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import warnings
 from collections import OrderedDict
 from copy import copy
 from distutils.spawn import find_executable
@@ -322,11 +323,12 @@ def parse_args_check():
 
     parser.add_argument("-p", "--part", action="store", dest="part", type=int,
                         default=0, choices=[0, 1, 2, 3, 4], # #  "one", "two", "preproc", "optim", "spnorm", "all", "qc1", "qc2", "qc"]
-                        help="select pipeline optimization step, \n\t0: All steps [default]"
-                             "\n\t1: Preprocessing ans statistics estimation step, "
-                             "\n\t2: Optimization step, "
-                             "\n\t3: Spatial normalization,"
-                             "\n\t4: quality control. ")
+                        help="select pipeline optimization step,"
+                             "\n\t 0: All steps [default]"
+                             "\n\t 1: Preprocessing ans statistics estimation step, "
+                             "\n\t 2: Optimization step, "
+                             "\n\t 3: Spatial normalization,"
+                             "\n\t 4: quality control. ")
     parser.add_argument("-i", "--input_data", action="store", dest="input_data_orig",
                         help="File containing the input and output data paths", metavar="input spec file")
     parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file", metavar="pipeline combination file",
@@ -443,26 +445,35 @@ def parse_args_check():
                         default="compiled",
                         choices=('matlab', 'compiled'),
                         help="(optional) determine which software to use to run the code: matlab or compiled(default)")
-    parser.add_argument("--memory", action="store", dest="memory",
-                        default="4",
-                        help="(optional) determine the minimum amount RAM needed for the job, e.g. --memory 8G (G==gigabytes)!")
-    parser.add_argument("-n", "--numcores", action="store", dest="numcores",
-                        default=1,
-                        help="(optional) number of threads used for the process (not allowed for some SGE systems)")
-    parser.add_argument("-q", "--queue", action="store", dest="queue",
-                        default="bigmem_16.q",
-                        help="(optional) SGE queue name. Default is bigmem_16.q, but it is recommended to specify this explicitly.")
 
     parser.add_argument("--cluster", action="store", dest="hpc_type",
-                        default='SGE', choices=('SGE', 'SUNGRID', 'TORQUE', 'PBS', 'LOCAL'),
-                        help="Please specify the type of cluster you're running the code on. SGE/SUNGRID mean the same as TORQUE/PBS. LOCAL has not been fully tested yet.")
+                        default='SGE', choices=('ROTMAN', 'BRAINCODE', 'CAC', 'SCINET', 'SHARCNET', 'CBRAIN', 'SGE'),
+                        help="Please specify the type of cluster you're running the code on.")
+
+    parser.add_argument("--memory", action="store", dest="memory",
+                        default="2",
+                        help="(optional) determine the minimum amount RAM needed for the job, e.g. --memory 8 (in gigabytes)!")
+    parser.add_argument("-n", "--numcores", action="store", dest="numcores",
+                        default=1,
+                        help=argparse.SUPPRESS)
+                        # help="DEPRECATED. number of threads used for the processing of a single run. (restricted to 1 now)")
+
+    parser.add_argument("-q", "--queue", action="store", dest="queue",
+                        default=None,
+                        help="(optional) SGE queue name. Default is bigmem_16.q, but it is recommended to specify this explicitly.")
+
+    parser.add_argument("-pe", "--parallel_env", action="store", dest="parallel_env",
+                        default=None,
+                        help="(optional) Name of the parallel environment under which the multi-core jobs gets executed. This must be specified explicitly when numcores > 1.")
+
     parser.add_argument("--run_locally", action="store_true", dest="run_locally",
                         default=False,
-                        help="Run the pipeline on this computer without using SGE. "
+                        help="Run the pipeline on this computer without using SGE. This has not been fully tested yet, and is not recommended."
                              "Specify the number of cores using -n (or --numcores) to allow the program to run in pararallel")
     parser.add_argument("--noSGE", action="store_true", dest="run_locally",
                         default=False,
-                        help="Same as --run_locally. Retained for backward compatibility.")
+                        help=argparse.SUPPRESS)
+                        # help="Same as --run_locally. Retained for backward compatibility.")
     parser.add_argument("--numprocess", action="store", dest="numprocess",
                         default=1,
                         help="When running the pipeline wihout using SGE, this switch specifies the number of simultaneous processes")
@@ -488,7 +499,6 @@ def parse_args_check():
     try:
         options = parser.parse_args()
     except:
-        parser.print_help()
         parser.exit(1)
 
     # updating the status to the user if requested.
@@ -509,6 +519,11 @@ def parse_args_check():
     # sanity checks on HPC inputs and obtaining the cfg of hpc
     hpc['type'] = options.hpc_type
     if options.run_locally is False:
+
+        if int(options.numcores) > 1:
+            setattr(options, 'numcores', int(1))
+            warnings.warn('--numcores is specified. This flag is deprecated, and is restricted to 1 in favor of single-core jobs.')
+
         hpc['type'] = find_hpc_type(options.hpc_type, options.run_locally)
         hpc['spec'], hpc['header'], hpc['prefix'] = get_hpc_spec(hpc['type'], options)
     else:
@@ -721,38 +736,85 @@ def find_hpc_type(user_supplied_type, run_locally=False):
     return type
 
 
+def set_defaults_hpc(options, input_memory, input_queue, input_numcores, input_parallel_env):
+    "Assigns known defaults to HPC parameters"
+
+    if options.memory is None:
+        memory = input_memory
+    else:
+        memory = options.memory
+
+    if options.queue is None:
+        queue = input_queue
+    else:
+        queue = options.queue
+
+    if options.numcores is None or options.numcores < 1:
+        numcores = input_numcores
+    else:
+        numcores = options.numcores
+
+    if options.numcores >= 1:
+        if options.parallel_env is None:
+            parallel_env = input_parallel_env
+        else:
+            parallel_env = options.parallel_env
+    else:
+        parallel_env = None
+
+    return memory, queue, numcores, parallel_env
+
+
 def get_hpc_spec(type=None, options=None):
+    "Returns a specification of various HPC parameters for a given system."
 
     if type is None:
-        type = find_hpc_type()
+        type = find_hpc_type().upper()
 
+    # assigning defaults to make it easy for the end user
+    # TODO need to tease out the lists of names for different HPC environments into cfg_oppni.py
     if options is not None:
-        memory = options.memory
-        numcores = options.numcores
-        queue = options.queue
+        if type in ('ROTMAN', 'ROTMAN-SGE', 'SGE'):
+            memory, queue, numcores, parallel_env = set_defaults_hpc(options, 2, 'all.q', 1, 'npairs')
+        elif type in ('CAC', 'HPCVL', 'QUEENSU'):
+            memory, queue, numcores, parallel_env = set_defaults_hpc(options, 2, 'abaqus.q', 1, 'shm.pe')
+        elif type in ('BRAINCODE-SGE', 'BRAINCODE', 'BCODE'):
+            memory, queue, numcores, parallel_env = set_defaults_hpc(options, 2, 'common.q', 1, '')
+        elif type in ('SCINET', 'PBS', 'TORQUE'):
+            warnings.warn('HPC {} has not been tested fully. Use at your own risk!'.format(type))
+            memory, queue, numcores, parallel_env = set_defaults_hpc(options, 2, 'batch', 1, '')
+        elif type in ('SLURM'):
+            warnings.warn('HPC {} has not been tested fully. Use at your own risk!'.format(type))
+            memory, queue, numcores, parallel_env = set_defaults_hpc(options, 2, '', 1, '')
     else:
         memory = '2'
         numcores = 1
         queue = 'all.q'
+        parallel_env = None
 
     spec = {'memory': None, 'numcores': None, 'queue': None}
 
-    if type.upper() in ('ROTMAN-SGE', 'SGE', 'ROTMAN'):
+    if type in ('ROTMAN', 'ROTMAN-SGE', 'SGE'):
         prefix = '#$'
         spec['memory'] = ('-l h_vmem=', memory + 'g')
-        spec['numcores'] = ('-pe npairs ', numcores)
+        spec['numcores'] = ('-pe {} '.format(parallel_env), numcores)
         spec['queue'] = ('-q ', queue)
-    elif type.upper() in ('HPCVL', 'QUEENSU'):
+    elif type in ('CAC', 'HPCVL', 'QUEENSU'):
         prefix = '#$'
         spec['memory'] = ('-l mf=', memory + 'G')
         spec['numcores'] = ('-pe shm.pe ', numcores)
         spec['queue'] = ('-q ', queue)
-    elif type.upper() in ('SCINET', 'PBS', 'TORQUE'):
+    elif type in ('BRAINCODE-SGE', 'BRAINCODE', 'BCODE'):
+        prefix = '#$'
+        spec['memory'] = ('-l h_vmem=', memory + 'g')
+        spec['numcores'] = ('-pe {} '.format(parallel_env), numcores)
+        spec['queue'] = ('-q ', queue)
+    elif type in ('SCINET', 'PBS', 'TORQUE'):
         prefix = '#PBS'
         spec['memory'] = ('-l mem=', memory)
         spec['numcores'] = ('-l ppn=', numcores)
         spec['queue'] = ('-q ', queue)
-    elif type.upper() in ('SLURM'):
+    elif type in ('SLURM'):
         prefix = '#SBATCH'
         spec['memory'] = ('--mem=', memory)
         spec['numcores'] = ('--n ', numcores)
@@ -765,7 +827,7 @@ def get_hpc_spec(type=None, options=None):
     header.append('{0} -b y'.format(prefix))
     header.append('{0} -j y'.format(prefix))
     for key, val in spec.items():
-        if key == 'numcores' and int(numcores) == 1:
+        if key == 'numcores' and int(numcores) <= 1:
             continue
         else:
             header.append('{0} {1}{2}'.format(prefix, val[0], val[1]))
@@ -1254,12 +1316,12 @@ def submit_queue(job, depends_on_step):
     else:
         job_id_list_str = ''
 
-    if hpc['type'].upper() in ('ROTMAN-SGE', 'ROTMAN', 'SGE'):
+    if hpc['type'].upper() in ( 'ROTMAN', 'BRAINCODE', 'ROTMAN-SGE', 'SGE'):
         # qsub_cmd  = qsub_path + ' -terse '
         qsub_cmd = qsub_path
         terse = '-terse'
         hold_spec = '-hold_jid ' + ",".join(job_id_list_str)
-    elif hpc['type'].upper() in ('HPCVL', 'QUEENSU'):
+    elif hpc['type'].upper() in ('CAC', 'HPCVL', 'QUEENSU'):
         # qsub_cmd  = qsub_path + ' -terse '
         qsub_cmd = qsub_path
         terse = '-terse'
@@ -1344,14 +1406,21 @@ def submit_jobs():
     if options.part is 0:
         run_part_one = True
         run_part_two = True
+        run_sp_norm = True
         run_qc1 = True
         run_qc2 = True
     elif options.part is 1:
         run_part_one = True
         run_part_two = False
+        run_sp_norm = False
+        run_qc1 = False
+        run_qc2 = False
     elif options.part is 2:
         run_part_one = False
         run_part_two = True
+        run_sp_norm = False
+        run_qc1 = False
+        run_qc2 = False
     elif options.part is 3:
         run_part_one = False
         run_part_two = False
@@ -1361,13 +1430,16 @@ def submit_jobs():
         else:
             print 'A reference atlas is not specified - skipping spatial normalization..'
             run_sp_norm = False
+        run_qc1 = False
+        run_qc2 = False
     elif options.part is 4:
         run_part_one = False
         run_part_two = False
+        run_sp_norm = False
         run_qc1 = True
         run_qc2 = True
 
-    if ( options.part in [0, 1, 2, 4] ):
+    if ( options.part in [1, 2, 4] ):
         run_sp_norm = False
         if options.reference_specified:
             print 'A reference atlas is specified although SPNORM is not requested - skipping spatial normalization..'

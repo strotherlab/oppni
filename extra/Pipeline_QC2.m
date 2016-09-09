@@ -14,7 +14,7 @@ function Pipeline_QC2( inputfile, newmaskname, Npcs )
 %                           containing subject information
 %   newmaskname           = string specifying name/path of the new group-level 
 %                           consensus mask
-%                           ** IF running PRONTO, set newmaskname=[], and it
+%                           ** IF running OPPNI, set newmaskname=[], and it
 %                           will automatically detect new masks
 %   Npcs                  = # of principal components to produce from subject SPMs
 %                           for group-level PCA (rSVD analyses).
@@ -66,16 +66,16 @@ function Pipeline_QC2( inputfile, newmaskname, Npcs )
 % ------------------------------------------------------------------------%
 
 % % add paths
-% addpath_pronto MatFiles;
-% addpath_pronto MatFiles/NIFTI_tools;
+% addpath_oppni MatFiles;
+% addpath_oppni MatFiles/NIFTI_tools;
 % mkdir QC2_results;
-%%%%%%%%%%%%%%%%%%%%%%%%%addpath_pronto MatFiles/NIFTI_tools;
+%%%%%%%%%%%%%%%%%%%%%%%%%addpath_oppni MatFiles/NIFTI_tools;
 
 [pathstr] = which('Pipeline_QC2.m');
 pathstr = fileparts(pathstr);
 pathstr = fileparts(pathstr);
-addpath_pronto([pathstr '/scripts_matlab']);
-addpath_pronto([pathstr '/scripts_matlab/NIFTI_tools']);
+addpath_oppni([pathstr '/scripts_matlab']);
+addpath_oppni([pathstr '/scripts_matlab/NIFTI_tools']);
 
 % quick open of input file to get directory
 fid = fopen(inputfile);
@@ -383,7 +383,7 @@ print_to_file(gcf, QC2_folder,'FIG4_inter_subject_SPM_similarity');
     group_pca.con.rSPMZs = out.rSPM_match;
     group_pca.con.rep    = out.R_match;    
     group_pca.con.scores = out.subj_weights;
-    
+    group_pca.con.var    = out.Var_match;
     
 %%---------------- FIX
 
@@ -434,7 +434,7 @@ print_to_file(gcf, QC2_folder,'FIG4_inter_subject_SPM_similarity');
     group_pca.fix.rSPMZs = out.rSPM_match;
     group_pca.fix.rep    = out.R_match;    
     group_pca.fix.scores = out.subj_weights;
-    
+    group_pca.fix.var    = out.Var_match;    
     
 %%---------------- IND
 
@@ -486,6 +486,7 @@ print_to_file(gcf, QC2_folder,'FIG4_inter_subject_SPM_similarity');
     group_pca.ind.rSPMZs = out.rSPM_match;
     group_pca.ind.rep    = out.R_match;    
     group_pca.ind.scores = out.subj_weights;
+    group_pca.ind.var    = out.Var_match;
        
 %% Recording outputs to save:
 

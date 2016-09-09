@@ -15,7 +15,7 @@ function group_mask_tissue_maps( inputfile, newmaskname )
 %                input subject information
 %   newmaskname= string specifying name/path of the new group-level 
 %                consensus mask being produced as output
-%                * If running PRONTO, leave it empty *
+%                * If running OPPNI, leave it empty *
 %                  Default newmaskname=[] puts it in first output folder specified in "inputfile" 
 %
 % OUTPUT:  
@@ -53,9 +53,9 @@ if isempty(CODE_PATH)
     end
 end
 if ~isdeployed
-    addpath_pronto(CODE_PATH);
-    addpath_pronto([CODE_PATH 'NIFTI_tools']);
-    addpath_pronto([CODE_PATH 'toolbox'])
+    addpath_oppni(CODE_PATH);
+    addpath_oppni([CODE_PATH 'NIFTI_tools']);
+    addpath_oppni([CODE_PATH 'toolbox'])
 end
 
 if nargin < 2
@@ -287,8 +287,8 @@ volume_stats.MASK_distance = jmed_dist;
 volume_stats.MASK_outlier_thresh = thr_j;
 
 % mean and variability of maps (without robustifying average)
-brain_volumes.MEAN_avg   = mean(NN_weight_set,2);
-brain_volumes.MEAN_std   = std(NN_weight_set,0,2);
+brain_volumes.MEAN_avg   = mean(meanset,2);
+brain_volumes.MEAN_std   = std(meanset,0,2);
 brain_volumes.NN_avg     = mean(NN_weight_set,2);
 brain_volumes.NN_std     = std(NN_weight_set,0,2);
 brain_volumes.WM_avg     = mean(WM_weight_set,2);

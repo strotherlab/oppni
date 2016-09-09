@@ -130,6 +130,13 @@ end
 if isempty(AFNI_PATH) || isempty(FSL_PATH)
     read_settings;
 end
+if ~isempty(AFNI_PATH) && AFNI_PATH(end)~='/'
+	AFNI_PATH = [AFNI_PATH '/'];
+end
+if ~isempty(FSL_PATH)  && FSL_PATH(end)~='/'
+	FSL_PATH = [FSL_PATH '/'];
+end
+
 read_version;
 
 %% Reading optional input arguments, or giving default assignments to variables
@@ -173,7 +180,7 @@ if nargin<9
     TPATTERN = [];
     fprintf('ERROR: User must specify the slice-timing pattern for fMRI data (TPATTERN) as part of inputs.\n');
     fprintf('TPATTERN options include:\n\t alt+z (or altplus)  = alternating in the plus direction\n\t alt+z2              = alternating, starting at slice #1 instead of #0\n\t alt-z (or altminus) = alternating in the minus direction\n\t alt-z2              = alternating, starting at slice #nz-2 instead of #nz-1\n\t seq+z (or seqplus)  = sequential in the plus direction\n\t seq-z (or seqminus) = sequential in the minus direction\n\n');
-    error('Terminating PRONTO');
+    error('Terminating OPPNI');
 else
     tpatlist={'alt+z','altplus','alt+z2','alt-z','altminus','alt-z2','seq+z','seqplus','seq-z','seqminus','auto_hdr'};
 %     compar=0; 
@@ -185,13 +192,13 @@ else
 %     if( compar == 0 )
 %         fprintf('ERROR: Invalid slice-timing pattern (TPATTERN).\n');
 %         fprintf('TPATTERN options include:\n\t alt+z (or altplus)  = alternating in the plus direction\n\t alt+z2              = alternating, starting at slice #1 instead of #0\n\t alt-z (or altminus) = alternating in the minus direction\n\t alt-z2              = alternating, starting at slice #nz-2 instead of #nz-1\n\t seq+z (or seqplus)  = sequential in the plus direction\n\t seq-z (or seqminus) = sequential in the minus direction\n\n');
-%         error('Terminating PRONTO');
+%         error('Terminating OPPNI');
 %     end        
 
     if ~ischar(TPATTERN) || ~ismember(TPATTERN, tpatlist)
         fprintf('ERROR: Invalid slice-timing pattern (TPATTERN).\n');
         fprintf('TPATTERN options include:\n\t alt+z (or altplus)  = alternating in the plus direction\n\t alt+z2              = alternating, starting at slice #1 instead of #0\n\t alt-z (or altminus) = alternating in the minus direction\n\t alt-z2              = alternating, starting at slice #nz-2 instead of #nz-1\n\t seq+z (or seqplus)  = sequential in the plus direction\n\t seq-z (or seqminus) = sequential in the minus direction\n\n');
-        error('Terminating PRONTO');
+        error('Terminating OPPNI');
     end
 end
 if nargin<10 || isempty(TOFWHM) || ~exist('TOFWHM','var')
@@ -415,7 +422,11 @@ for ksub = 1:numel(InputStruct)
         Xnoise  = motPCs;
 
         for krun = 1:N_run
-            split_info_set{krun}.spat_weight = NN_weight_avg;
+            % check if argument for vascular masking exists and is turned off
+            if( isfield(split_info_set{1},'VASC_MASK') && split_info_set{1}.VASC_MASK==0 )
+                 split_info_set{krun}.spat_weight = ones(size(NN_weight_avg)); %%replace w/ unit weights
+            else split_info_set{krun}.spat_weight = NN_weight_avg;
+            end
             split_info_set{krun}.mask_vol    = mask;
         end
 
@@ -790,8 +801,8 @@ else
     end
 end
 
-num_phyca_reg = 0;
 save([Subject_OutputDirIntermed '/regressors/reg' subjectprefix  '/' nomen 'y0.mat'],'Regressors','CODE_PROPERTY','-v7');
+METRIC_set_0.cond_struc = design_cond(volmat,Regressors);
 
 %% PHYCAA+ option
 %%
@@ -880,6 +891,7 @@ else
     end
 end
     save([Subject_OutputDirIntermed '/regressors/reg' subjectprefix '/' nomen 'y1.mat'],'Regressors','CODE_PROPERTY','-v7');
+    METRIC_set_y.cond_struc = design_cond(volmat,Regressors);
 else
     IMAGE_set_y  = [];
     TEMP_set_y   = [];
@@ -1062,6 +1074,7 @@ else
 end
     
 save([Subject_OutputDirIntermed '/regressors/reg' subjectprefix '/' nomen 'y0.mat'],'Regressors','CODE_PROPERTY','-v7');
+METRIC_set_0.cond_struc = design_cond(volmat,Regressors);
 
 %% PHYCAA+ option
 %%
@@ -1153,6 +1166,7 @@ else
 end
     
     save([Subject_OutputDirIntermed '/regressors/reg' subjectprefix '/' nomen 'y1.mat'],'Regressors','CODE_PROPERTY','-v7');
+    METRIC_set_y.cond_struc = design_cond(volmat,Regressors);
 else
     IMAGE_set_y  = [];
     TEMP_set_y   = [];

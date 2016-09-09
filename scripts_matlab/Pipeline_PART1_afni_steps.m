@@ -30,6 +30,13 @@ end
 if isempty(AFNI_PATH) || isempty(FSL_PATH)
     read_settings;
 end
+if ~isempty(AFNI_PATH) && AFNI_PATH(end)~='/'
+	AFNI_PATH = [AFNI_PATH '/'];
+end
+if ~isempty(FSL_PATH)  && FSL_PATH(end)~='/'
+	FSL_PATH = [FSL_PATH '/'];
+end
+
 addpath(CODE_PATH)
 addpath([CODE_PATH '/NIFTI_tools'])
 
@@ -488,8 +495,12 @@ end
 
 function x = get_numvols(file)
 
-%hdr = load_nii_hdr(file);
-v = load_nii(file);
-hdr=v.hdr; clear v;
+[p,f,e] = fileparts(file);
+if(isempty(strfind(e,'.gz'))) %if not a zip file, read the header direct
+    hdr = load_nii_hdr(file);
+else %otherwise need to inflate and load .nii
+    v = load_nii(file);
+    hdr=v.hdr; clear v;
+end
 
 x = hdr.dime.dim(5);

@@ -6,6 +6,8 @@ CODES_PREPROCESSING_STEPS = ["MOTCOR", "CENSOR", "RETROICOR", "TIMECOR",
              "SMOOTH", "DETREND", "MOTREG", "TASK",
              "GSPC1", "PHYPLUS", "CUSTOMREG", "LOWPASS"]
 
+CODES_INPUT_SECTIONS = ['IN', 'OUT', 'DROP', 'STRUCT', 'PHYSIO', 'TASK', 'CUSTOMREG']
+
 TASK_MANDATORY_FIELDS = ['UNIT', 'TR_MSEC', 'TYPE']
 
 CODES_PRONTO_STEPS = [ 'PART1', 'QC1', 'PART2', 'QC2', 'GMASK', 'SPNORM' ]
@@ -14,27 +16,34 @@ CODES_ANALYSIS_MODELS = ['None', 'LDA', 'GNB', 'GLM', 'erCVA', 'erGNB', 'erGLM',
 
 CODES_METRIC_LIST = ["dPR", "P", "R"]
 
+CODES_OPTIM_SCHEMES = [ 'CON', 'FIX', 'IND' ]
+CODES_OPTIM_SCHEMES_OPTIONS = [ 'CON', 'FIX', 'IND', 'ALL' ] # ['CON', 'FIX', 'IND']
+
 CODES_SUBSPACES = [ 'onecomp','multicomp' ]
 
 CODES_SPM_TYPES = ['zscore', 'corr']
 
-STEPS_PROCESSING_STATUS = ['preprocessing', 'optimization', 'QC1', 'QC2', 'all_done' ]
+SLICE_TIMING_PATTERNS = ['alt+z', 'alt+z2', 'alt-z', 'alt-z2', 'seq+z', 'seq-z', 'auto_hdr']
 
-outputs_qc_part_one = [ 'FIG1_motion_statistics.png',
-                        'FIG2_spm_artifact.png',
-                        'FIG3_pipeline_similarity_by_dataset.png',
-                        'FIG4_effects_of_pipeline_steps.png' ]
+STEPS_PROCESSING_STATUS_WITH_QC = ['preprocessing', 'optimization', 'spnorm', 'QC1', 'QC2', 'all_done' ]
+STEPS_PROCESSING_STATUS = ['preprocessing', 'optimization', 'spnorm', 'QC1', 'QC2', 'all_done' ]
 
-outputs_qc_part_two = [ 'FIG1_optimized_pipeline_steps.png',
-                        'FIG2_optimized_performance_metrics.png',
-                        'FIG3_spatial_norm_statistics.png',
-                        'FIG4_inter_subject_SPM_similarity.png' ]
+qc_out_format = 'pdf' # 'png
+outputs_qc_part_one = [ 'FIG1_motion_statistics.' + qc_out_format,
+                        'FIG2_spm_artifact.' + qc_out_format,
+                        'FIG3_pipeline_similarity_by_dataset.' + qc_out_format,
+                        'FIG4_effects_of_pipeline_steps.' + qc_out_format ]
+
+outputs_qc_part_two = [ 'FIG1_optimized_pipeline_steps.' + qc_out_format,
+                        'FIG2_optimized_performance_metrics.' + qc_out_format,
+                        'FIG3_spatial_norm_statistics.' + qc_out_format,
+                        'FIG4_inter_subject_SPM_similarity.' + qc_out_format ]
 
 
 def initialize_proc_status():
+    """Method to initialize a namedtuple to store the indicators of processing status"""
 
-    # creating a namedtuple to store the indicators of status
-    flag_list = ' '.join(STEPS_PROCESSING_STATUS) + ' rem_input_file'
+    flag_list = ' '.join(STEPS_PROCESSING_STATUS_WITH_QC) + ' rem_input_file rem_spnorm_file'
     proc_status = namedtuple("status_indicator", flag_list)
     # initializing them to False
     for flag in proc_status._fields:

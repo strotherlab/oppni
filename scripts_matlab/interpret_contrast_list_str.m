@@ -36,7 +36,7 @@ for ksub = 1:numel(InputStruct)
         end
         clear split_info
         %hdr = load_nii_hdr([InputStruct(ksub).run(krun).Input_nifti_file_path '/' InputStruct(ksub).run(krun).Input_nifti_file_prefix]);
-        v = load_nii([InputStruct(ksub).run(krun).Input_nifti_file_path '/' InputStruct(ksub).run(krun).Input_nifti_file_prefix]);
+        v = load_untouch_nii([InputStruct(ksub).run(krun).Input_nifti_file_path '/' InputStruct(ksub).run(krun).Input_nifti_file_prefix]);
         hdr=v.hdr; clear v; 
         
         InputStruct(ksub).run(krun).Nt = hdr.dime.dim(5) - InputStruct(ksub).run(krun).DROP_first - InputStruct(ksub).run(krun).DROP_last;
@@ -218,6 +218,19 @@ for ksub = 1:numel(InputStruct)
                     % round blocklengths
                     split_info.cond(i).blklength = round(split_info.cond(i).blklength/split_info.TR_MSEC); %
                 end
+                
+                % quick check to ensure blocks are >=1 TR in length
+                for i = 1:size(split_info.Contrast_List,1) % each contrast 
+                    for condition = 1:2 % two conditions
+                        if split_info.Contrast_List(i,condition)~=0 % only check non-baseline for now
+                            if    ( sum(split_info.cond(split_info.Contrast_List(i,condition)).blklength)==0 )
+                                error(['cannot run block-design: condition "',split_info.cond(i).name,'" has no stimulus durations >1TR']);
+                            elseif( sum(split_info.cond(split_info.Contrast_List(i,condition)).blklength==0)>0 )
+                                warning(['condition "',split_info.cond(i).name,'" has some stimulus blocks of duration <1TR (will not be used!']);
+                            end
+                        end
+                    end
+                end  
             end
             
             if strcmpi(split_info.type,'block')   % if type=block automatically split the data in half/
@@ -258,7 +271,7 @@ end
 function split_info = extract_contrast_list(split_info,contrast_list_str) % create single and group split halves
 
 
-if ~isempty(strfind(contrast_list_str,'-')) && isfield(split_info,'cond')
+if ~isempty(contrast_list_str) && ~strcmpi(contrast_list_str,'NONE') && isfield(split_info,'cond')
     
     ind=find(contrast_list_str==',');
     contrast_list_str(ind) = ' ';
@@ -271,7 +284,7 @@ if ~isempty(strfind(contrast_list_str,'-')) && isfield(split_info,'cond')
     for k = 1:num_contrast
         
         if(isempty(strfind(Contrast_temp{k},'-')))
-            Contrast_name = cellstr(Contrast_temp{k});
+            Contrast_name  = {Contrast_temp{k}, 'baseline'};
         else Contrast_name = regexp(Contrast_temp{k},'-','split');
         end
         
@@ -307,22 +320,26 @@ if ~isempty(strfind(contrast_list_str,'-')) && isfield(split_info,'cond')
     end
     split_info.Contrast_List = Contrast;
 
+else
+    split_info.Contrast_List = 0; %% zero-field if no contrasts are defined
 end 
 
-if  isempty(strfind(contrast_list_str,'-'))
-    ind=find(contrast_list_str==',');
-    contrast_list_str(ind) = ' ';
-    
-    if(isempty(strfind(contrast_list_str,' ')))
-        Contrast_name = cellstr(contrast_list_str);
-    else Contrast_name = regexp(contrast_list_str,' ','split');
-    end
-    
-    for k = 1:length(Contrast_name)
-        Contrast(k,:) = [str2num(Contrast_name{k}(1)) str2num(Contrast_name{k}(2))];
-    end
-    split_info.Contrast_List = Contrast;
-end
+% %DEPRECATED: this allowed "old" version numeric contrasts (e.g. '00' or '12')
+% %currently disallowed
+% if  isempty(strfind(contrast_list_str,'-'))
+%     ind=find(contrast_list_str==',');
+%     contrast_list_str(ind) = ' ';
+%     
+%     if(isempty(strfind(contrast_list_str,' ')))
+%         Contrast_name = cellstr(contrast_list_str);
+%     else Contrast_name = regexp(contrast_list_str,' ','split');
+%     end
+%     
+%     for k = 1:length(Contrast_name)
+%         Contrast(k,:) = [str2num(Contrast_name{k}(1)) str2num(Contrast_name{k}(2))];
+%     end
+%     split_info.Contrast_List = Contrast;
+% end
 
 %% create "combined" contrasts
 function split_out = interpret_combined_contrast(split_info,Cond_in)
@@ -398,7 +415,7 @@ end
 for i = 1:size(Contrast_List,1)
     
     max_sp = ceil(Nt/2); %% allocated relative to middle timepoint
-    
+        
     % First split
     class1 = split_info.group.idx_cond(i,1).sp(split_info.group.idx_cond(i,1).sp<=max_sp);
     class2 = split_info.group.idx_cond(i,2).sp(split_info.group.idx_cond(i,2).sp<=max_sp);

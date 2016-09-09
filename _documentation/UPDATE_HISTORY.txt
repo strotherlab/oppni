@@ -1,7 +1,7 @@
 VERSION     = 1.2            % This is the major version number.
 DATE        = '$Date: 2014-12-17 10:53:34 -0500 (Wed, 17 Dec 2014) $'       % do not edit this line, it will be automatically updated
 REVISION    = '$Revision: 171 $'   % do not edit this line, it will be automatically updated
-DESCRIPTION ='PRONTO with LOWPASS, more de-spiking options, and DEOBLIQUE, TPATTERN Options'
+DESCRIPTION ='OPPNI with LOWPASS, more de-spiking options, and DEOBLIQUE, TPATTERN Options'
 % END - The above lines are written in Matlab/Octave format, and they will be evaluated in matlab or octave.
 
 ====================================================================================
@@ -20,6 +20,94 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 ------------------------------------------------------------------------------------
 Overview Change Log:
 ------------------------------------------------------------------------------------
+
+[UPDATES 2016/09/05] by Nathan
+
+OPPNI_version_check.m
+	> load .nii.gz file instead of header if zipped (ln.446-451)
+	> deleted within-script calls to (deprecated versions of) Parse_Input_File, Parse_Split_Info, Read_Input_File (ln.456-)
+
+Pipeline_PART1.m
+	> bug fix in calls to AFNI_PATH, FSLPATH; if empty, do not add a trailing slash (ln.133,136)
+	> added calls to design_cond for non-group analysis (ln. 1077,1169)
+
+Pipeline_PART1_afni_steps.m
+	> bug fix in calls to AFNI_PATH, FSLPATH; if empty, do not add a trailing slash (ln.33,36) 
+
+Pipeline_PART2.m
+	> bug fix in calls to AFNI_PATH, FSLPATH; if empty, do not add a trailing slash (ln.123,126)
+	> changes to handle special "cond_struc" field of pipeline metrics (ln. 224,232,246,272,594)
+	> loading .gzip files to read header - uses "untouch" option so oblique scans can be read (ln.811)
+	> changes to FIX/IND optimization to exclude pipelines w/ bad condition #s 
+	  ...and to FIX, exclude pipelines with significant motion artifact, instead of just forcing MOTCOR on 
+	  ...(ln.312-508, various)
+
+design_cond.m
+	> extensive revisions
+
+interpret_contrast_list_str.m
+	> loading .gzip files to read header - uses "untouch" option so oblique scans can be read (ln.39)
+	> fixed error in checks for block length <1TR, moved to correct spot in code (ln.226-234)
+	> fixed part that skips "contrast creation" step if a no-contrast analysis is specified (ln.274)
+    > fixed code to produce "empty" contrast list for NOCONTRAST analysis (ln.323-324)
+
+spatial_normalization.m
+	> bug fix in calls to AFNI_PATH, FSLPATH; if empty, do not add a trailing slash (ln.45,48)
+spatial_normalization_noise_roi.m
+	> bug fix in calls to AFNI_PATH, FSLPATH; if empty, do not add a trailing slash (ln.34,37)
+
+[UPDATES 2016/09/02] by Nathan
+
+Pipeline_PART1.m
+    > added option to turn of vascular masking using "VASC_MASK=0" modelparam field (ln.425-428)
+
+rSVD_splithalf.m
+    > restored computation of eigenvalue (variance) which was commented out (ln.91-104)
+Pipeline_QC2.m
+    > now store eigenvalue (variance) as part of outputs (ln. 371)
+
+* created "design_cond.m" file which checks the condition# of the design matrix
+Pipeline_PART1.m
+    > store design matrix condition number in METRIC_set (ln. 805,894)
+
+[UPDATES 2016/08/17] by Nathan
+
+interpret_contrast_list_str.m 
+	> check whether durations are too short if block design selected (ln.224-234)
+	> allow of "1-condition" analysis in er models (ln. 274,287) / comment out (ln. 325-340)
+
+[UPDATES 2016/08/15] by Nathan
+
+** major rebranding: PRONTO has been relabeled OPPNI (optimization of preprocessing pipelines for neuroimaging)
+    > renamed "Run_Pipelines_noSGE.m" to "run_oppni_local.m"
+    > replaced all instances of PRONTO with OPPNI in console outputs, renamed "addpath_pronto.m" to "addpath_oppni.m"
+      and "PRONTO_version_check.m" to "OPPNI_version_check.m"
+** repo change:      OPPNI software has been moved to Git. All changes here are relative to last (stable)
+                     svn trunk version
+** updated the NIFTI_tools folder to latest version 
+   (http://www.mathworks.com/matlabcentral/fileexchange/8797-tools-for-nifti-and-analyze-image)
+
+> modified initial check of AFNI_PATH and FSL_PATH global variables
+  to ensure a trailing slash (lines 23-30) for following scripts:
+    Pipeline_PART1.m, Pipeline_PART1_afni_steps.m, Pipeline_PART2.m, 
+    extract_subjects.m, spatial_normalization.m, spatial_normalization_noise_roi.m
+
+> disabled load_nii_hdr in favour of load_nii, to allow cases of .gzip file
+  where header loading is not available
+    (Pipeline_PART1_afni_steps.m, ln.498-501; Pipeline_PART2.m, ln.884-888;
+     interpret_contrast_list_str.m, ln.38-41))
+
+[Parse_Input_File.m]
+	> no longer strips off/re-adds .nii suffix, allowing .gzipped files (ln 20-21,136)
+
+> created files for reading in BIDS-formatted data (in "bids" directory):
+    * oppni_bids.m to run
+    * bids_to_oppni_task.m created
+    * make_input_file.m, make_pipeline_file.m created
+> p_json.m downloaded from (http://www.mathworks.com/matlabcentral/fileexchange/25713-highly-portable-json-input-parser)
+  to parse .json files
+
+---------------------------------------------------------------------------
 
 [UPDATES 2016/06/08] by Nathan
 

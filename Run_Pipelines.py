@@ -219,7 +219,7 @@ else:
 sge_flag  = os.getenv("SGE_ROOT")
 if sge_flag==None and not noSGE==True:
     print "Sun grid engine (SGE) has not been detected!"
-    print "Use --noSGE switch if you want to run The PReprocessing OptimizatioN TOolkit (PRONTO) without SGE, this will run the code only on the current node!"
+    print "Use --noSGE switch if you want to run the Optimization of Preprocessing Pipelines for NeuroImaging (OPPNI) without SGE, this will run the code only on the current node!"
     exit(1)
 if not sge_flag==None:
     print "Submitting jobs to Sun Grid Engine (SGE)"
@@ -374,7 +374,7 @@ else:
     analysis = None
 if analysis==None:
     print "WARNING: without an analysis model (specified by switch -a), no optimization will be performed"
-    print "PRONTO only generates the preprocessed data"
+    print "OPPNI only generates the preprocessed data"
     contrast="nocontrast"
     analysis="None"
 if hasattr(options,'metric'):
@@ -456,27 +456,27 @@ if TPATTERN==None:
 
 ###############  Checking the switches
 if (analysis.upper()=="LDA") and (drf=="None"):
-    print "WARNING (Deprecated usage): --drf switch not defined for LDA model. PRONTO will check TASK files for parameter(s)"
+    print "WARNING (Deprecated usage): --drf switch not defined for LDA model. OPPNI will check TASK files for parameter(s)"
 if (analysis.upper()=="GNB") and (decision_model=="None"):
-    print "WARNING (Deprecated usage): --decision_model switch not defined for GNB model. PRONTO will check TASK files for parameter(s)"
+    print "WARNING (Deprecated usage): --decision_model switch not defined for GNB model. OPPNI will check TASK files for parameter(s)"
 if (analysis.upper()=="ERCVA") and (drf=="None"):
-    print "WARNING (Deprecated usage): --drf switch not defined for erCVA model. PRONTO will check TASK files for parameter(s)"
+    print "WARNING (Deprecated usage): --drf switch not defined for erCVA model. OPPNI will check TASK files for parameter(s)"
 if (analysis.upper()=="ERCVA") and (Nblock=="None"):
-    print "WARNING (Deprecated usage): --Nblock switch not defined for erCVA model. PRONTO will check TASK files for parameter(s)"
+    print "WARNING (Deprecated usage): --Nblock switch not defined for erCVA model. OPPNI will check TASK files for parameter(s)"
 if (analysis.upper()=="ERCVA") and (WIND=="None"):
-    print "WARNING (Deprecated usage): --WIND switch not defined for erCVA model. PRONTO will check TASK files for parameter(s)"
+    print "WARNING (Deprecated usage): --WIND switch not defined for erCVA model. OPPNI will check TASK files for parameter(s)"
 if (analysis.upper()=="ERCVA") and (subspace=="None"):
-    print "WARNING (Deprecated usage): --subspace switch not defined for erCVA model. PRONTO will check TASK files for parameter(s)"
+    print "WARNING (Deprecated usage): --subspace switch not defined for erCVA model. OPPNI will check TASK files for parameter(s)"
 if (analysis.upper()=="ERGNB") and (Nblock=="None"):
-    print "WARNING (Deprecated usage): --Nblock switch not defined for erGNB model. PRONTO will check TASK files for parameter(s)"
+    print "WARNING (Deprecated usage): --Nblock switch not defined for erGNB model. OPPNI will check TASK files for parameter(s)"
 if (analysis.upper()=="ERGNB") and (WIND=="None"):
-    print "WARNING (Deprecated usage): --WIND switch not defined for erGNB model. PRONTO will check TASK files for parameter(s)"
+    print "WARNING (Deprecated usage): --WIND switch not defined for erGNB model. OPPNI will check TASK files for parameter(s)"
 if (analysis.upper()=="SCONN") and (spm=="None"):
-    print "WARNING (Deprecated usage): --spm switch has to be used with the SCONN model. PRONTO will check TASK files for parameter(s)"
+    print "WARNING (Deprecated usage): --spm switch has to be used with the SCONN model. OPPNI will check TASK files for parameter(s)"
 if (analysis.upper()=="GLM") and (convolve=="None"):
-    print "WARNING (Old style usage): --convolve switch has to be used with the GLM model. PRONTO will check TASK files for parameter(s)"
+    print "WARNING (Old style usage): --convolve switch has to be used with the GLM model. OPPNI will check TASK files for parameter(s)"
 if (analysis.upper()=="GPCA") and (num_PCs=="None"):
-    print "WARNING (Deprecated usage): --num_PCs switch not defined for gPCA model. PRONTO will check TASK files for parameter(s)"
+    print "WARNING (Deprecated usage): --num_PCs switch not defined for gPCA model. OPPNI will check TASK files for parameter(s)"
 
 if not (convolve in ["1","0","None"]):
     print "WARNING (Deprecated usage): --convolve has to be 0 or 1"

@@ -95,22 +95,22 @@ for( i=1:Niters )
 %    % apply the spatial transforms
 %    U1 = U1(:,Out1.index) * diag(Out1.flip);
 %    U2 = U2(:,Out2.index) * diag(Out2.flip);
+% 
+%    % get mean %variance too
+%    svar(:,i) = ( s11(Out1.index) + s22(Out2.index) )./2;
    
    for(k=1:Npc)
       U1(:,k) = U1(:,k) .* sign( corr( U1(:,k), Uref(:,k) ) );
       U2(:,k) = U2(:,k) .* sign( corr( U2(:,k), Uref(:,k) ) );       
    end
-%    
-%    % get mean %variance too
-%    svar(:,i) = ( s11(Out1.index) + s22(Out2.index) )./2;
-%    
+   svar(:,i) = ( s11(:) + s22(:) )./2;
+   
    % estimate reproducible SPM for each component dimension:
    for(k=1:Npc)
        [ rep, rSPM ]   = get_rSPM_ex( U1(:,k), U2(:,k), 1 );
        rSPM_match(:,k) =  rSPM_match(:,k) + rSPM;
        repr_set(k,i)   =  rep;
    end   
-   
    
 end
 

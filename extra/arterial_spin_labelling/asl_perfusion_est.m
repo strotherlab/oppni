@@ -1,7 +1,7 @@
 function out = asl_perfusion_est( input_file, M0_ref, mask_file, subtract_type, dataInfo, format, outname )
 %
 % =========================================================================
-% ASL_PERFUSION_EST:  code to compute pasl perfusion estimates in PRONTO 
+% ASL_PERFUSION_EST:  code to compute pasl perfusion estimates in OPPNI 
 % code framework. Adapted from "ASLtbx" package by Ze Wang
 % (https://cfn.upenn.edu/~zewang/ASLtbx.php) and the associated paper.
 % Any results should be carefully checked against their codeset if possible.

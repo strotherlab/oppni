@@ -1,4 +1,4 @@
-function oppni(proc,varargin)
+function oppni_bids(proc,varargin)
 
 % varargins:
 %

@@ -257,7 +257,11 @@ def validate_input_line(ip_line, suffix=''):
 
         if not os.path.exists(subject['out']):
             os.makedirs(subject['out'])
-        new_line = re.sub(base_out_dir, subject['out'], ip_line)
+
+        # prepending it with OUT= to restrict the sub to only OUT, and not elsewhere such as TASK=
+        prev_dir = 'OUT={}'.format(base_out_dir)
+        curr_dir = 'OUT={}'.format(subject['out'])
+        new_line = re.sub(prev_dir, curr_dir, ip_line)
 
         subject['prefix'] = os.path.basename(out)
         # Parse_Input_File.m is not robust with parsing e.g. an extra / at the end will mess up everything
@@ -474,7 +478,7 @@ def parse_args_check():
                         help="Please specify the type of cluster you're running the code on.")
 
     parser.add_argument("--memory", action="store", dest="memory",
-                        default="2",
+                        default="4",
                         help="(optional) determine the minimum amount RAM needed for the job, e.g. --memory 8 (in gigabytes)!")
     parser.add_argument("-n", "--numcores", action="store", dest="numcores",
                         default=1,
@@ -839,7 +843,7 @@ def get_hpc_spec(h_type=None, options=None):
 
     if h_type in ('ROTMAN', 'ROTMAN-SGE', 'SGE'):
         prefix = '#$'
-        spec['memory'] = ('-l h_vmem=', memory + 'g')
+        spec['memory'] = ('-l mf=', memory + 'g')
         spec['numcores'] = ('-pe {} '.format(parallel_env), numcores)
         spec['queue'] = ('-q ', queue)
     elif h_type in ('CAC', 'HPCVL', 'QUEENSU'):
@@ -1511,7 +1515,7 @@ def submit_jobs():
         # so processing can be done only for the unfinished or failed subjects
         # notice the inputs are combined as a list
         print('\n Running a status check on previous processing ...')
-        is_done, rem_input_file = check_proc_status.run(
+        is_done, rem_input_file, rem_spnorm_file = check_proc_status.run(
             [input_file, options.pipeline_file, '--skip_validation', '--not_verbose'])
         for step in cfg_pronto.STEPS_PROCESSING_STATUS:
             if step is not 'all_done':
@@ -1530,6 +1534,7 @@ def submit_jobs():
         print('This is just a dry run - generating jobs for all steps regardless of their processing status.')
         is_done = cfg_pronto.initialize_proc_status()
         rem_input_file = None
+        rem_spnorm_file = None
 
     if options.run_locally:
         hpc['type'] = "LOCAL"
@@ -1590,7 +1595,7 @@ def submit_jobs():
     if options.dospnormfirst:
         sp_norm_step = 1
         print('spatial normalization (step 1) BEFORE optimization:')
-        status_sp, job_ids_spn = process_spatial_norm(unique_subjects, options, input_file, sp_norm_step,
+        status_sp, job_ids_spn = process_spatial_norm(unique_subjects, options, rem_spnorm_file, sp_norm_step,
                                                       cur_garage)
         if options.run_locally is True and (status_sp is False or status_sp is None):
             raise Exception('Spatial normalization - step 1 failed.')
@@ -1614,7 +1619,7 @@ def submit_jobs():
             sp_norm_step = 0
 
         print('spatial normalization (step 2): ')
-        status_sp = process_spatial_norm(unique_subjects, options, input_file, sp_norm_step, cur_garage)
+        status_sp = process_spatial_norm(unique_subjects, options, rem_spnorm_file, sp_norm_step, cur_garage)
         if options.run_locally is True and (status_sp is False or status_sp is None):
             raise Exception('Spatial normalization - steps 2 and later failed.')
 

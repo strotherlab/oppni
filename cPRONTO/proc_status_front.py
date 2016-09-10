@@ -337,13 +337,11 @@ def run(input_args):
 
                 print('{:>15}:  {} \t {} \t {}'.format(subjectPrefix, msg1, msg2, msg3))
 
-                if not part1_preproc_done:
+                if not part1_preproc_done or not part1_stats_done:
                     failed_count_preproc += 1
+                    failed_count_stats += 1
                     if writable:
                         resub_part1.write(inputLine)
-
-                if not part1_stats_done:
-                    failed_count_stats += 1
 
                 if not spnorm_done:
                     failed_count_spnorm += 1

@@ -13,6 +13,8 @@ import stat
 import subprocess
 import sys
 import tempfile
+import math
+import time
 import warnings
 from collections import OrderedDict
 from copy import copy
@@ -843,7 +845,7 @@ def get_hpc_spec(h_type=None, options=None):
 
     if h_type in ('ROTMAN', 'ROTMAN-SGE', 'SGE'):
         prefix = '#$'
-        spec['memory'] = ('-l mf=', memory + 'g')
+        spec['memory'] = ('-l mf=', memory + 'G')
         spec['numcores'] = ('-pe {} '.format(parallel_env), numcores)
         spec['queue'] = ('-q ', queue)
     elif h_type in ('CAC', 'HPCVL', 'QUEENSU'):
@@ -853,7 +855,7 @@ def get_hpc_spec(h_type=None, options=None):
         spec['queue'] = ('-q ', queue)
     elif h_type in ('BRAINCODE-SGE', 'BRAINCODE', 'BCODE'):
         prefix = '#$'
-        spec['memory'] = ('-l h_vmem=', memory + 'g')
+        spec['memory'] = ('-l mf=', memory + 'G')
         spec['numcores'] = ('-pe {} '.format(parallel_env), numcores)
         spec['queue'] = ('-q ', queue)
     elif h_type in ('SCINET', 'PBS', 'TORQUE'):
@@ -1385,6 +1387,7 @@ def make_single_job(environment, step_id, step_cmd_matlab, prefix, arg_list_subs
 
 def run_jobs(job_paths, run_locally, num_procs, depends_on_step):
     """ Tool to either submit jobs or run them locally, as directed by the user."""
+
     job_id_list = {}
     if run_locally:
 
@@ -1408,10 +1411,20 @@ def run_jobs(job_paths, run_locally, num_procs, depends_on_step):
     else:
         # num_sub_per_job = 1 # ability to specify >1 subjects per job
         # job_id_list = map(submit_queue, jobs_list)
+        txt_out = list()
         for prefix, (job_path, job_details) in job_paths.items():
             job_details_str = ' '.join(job_details)
             job_id_list[prefix] = submit_queue(job_details_str, depends_on_step)
-            print('\t {} \t job id: {}'.format(prefix, job_id_list[prefix]))
+            txt_out.append('{} (job id: {})'.format(prefix, job_id_list[prefix]))
+
+        tty_height, tty_width = subprocess.check_output(['stty', 'size']).split()
+        max_width = max(map(len,txt_out))
+        num_sets  = int(math.floor( int(tty_width) / max_width))
+        for idx in range(0, len(txt_out), num_sets):
+            print('\t' + ' \t '.join(txt_out[idx:min(idx+num_sets,len(txt_out))]))
+            time.sleep(0.08)
+
+    print('')
 
     return True, job_id_list
 

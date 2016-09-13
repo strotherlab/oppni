@@ -201,9 +201,12 @@ def validate_input_file(input_file, options=None, new_input_file=None):
                 ' ---> {0} specified only for {1} out of {2} subjects'.format(optf, num_runs_specified,
                                                                               len(bool_all_subjects)))
 
-    print('Parsed {0} lines without error.'.format(line_count))
-    if dupl_prefix_count > 0:
-        print('\t excluding {} duplicate prefixes: {} lines'.format(dupl_prefix_count, len(unique_subjects)))
+    if len(invalid_lines) > 0:
+        raise SyntaxError('Found {} lines erroneous: {}'.format(len(invalid_lines), ' '.join(map(str,invalid_lines))))
+    else:
+        print('Input file valid: Parsed {0} lines without error.'.format(line_count))
+        if dupl_prefix_count > 0:
+            print('\t excluding {} duplicate prefixes: {} lines'.format(dupl_prefix_count, len(unique_subjects)))
 
     return unique_subjects
 

@@ -26,7 +26,7 @@ CODES_SPM_TYPES = ['zscore', 'corr']
 SLICE_TIMING_PATTERNS = ['alt+z', 'alt+z2', 'alt-z', 'alt-z2', 'seq+z', 'seq-z', 'auto_hdr']
 
 STEPS_PROCESSING_STATUS_WITH_QC = ['preprocessing', 'stats', 'optimization', 'spnorm', 'QC1', 'QC2', 'all_done' ]
-STEPS_PROCESSING_STATUS = ['preprocessing', 'stats', 'optimization', 'spnorm', 'QC1', 'QC2', 'all_done' ]
+STEPS_PROCESSING_STATUS         = ['preprocessing', 'stats', 'optimization', 'spnorm', 'QC1', 'QC2', 'all_done' ]
 
 qc_out_format = 'pdf' # 'png
 outputs_qc_part_one = [ 'FIG1_motion_statistics.' + qc_out_format,

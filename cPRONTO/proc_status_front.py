@@ -353,6 +353,7 @@ def run(input_args):
         # part 1
         if failed_count_preproc == 0:
             proc_status.preprocessing = True
+            proc_status.stats = True
             print "P1 : all finished."
             if resubmit_part1_file is not None:
                 os.remove(resubmit_part1_file)
@@ -362,6 +363,7 @@ def run(input_args):
                 resubmit_part1_file = 'writable'
         else:
             proc_status.preprocessing = False
+            proc_status.stats = False
             proc_status.rem_input_file = resubmit_part1_file
             print "P1 : incomplete \t  # subjects/runs failed: {} / {} ({:.0f}%)".format(
                 failed_count_preproc, num_subjects, (100 * failed_count_preproc / num_subjects))

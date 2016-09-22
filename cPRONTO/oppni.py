@@ -914,8 +914,8 @@ def print_options(proc_path):
 
 def update_status_and_exit(out_dir):
     """Utility to update the user on the status of processing, and resubmit failed jobs for processing if necessary."""
-    assert os.path.exists(out_dir), \
-        "The processing directory for which the status update has been requested doesn't exist!"
+
+    assert os.path.exists(out_dir), "Processing folder to traverse doesn't exist or not readable!"
 
     # print('Queue status update requested ... ')
     # update_Q_status(out_dir)
@@ -943,7 +943,7 @@ def update_status_and_exit(out_dir):
             else:
                 print('Unable to create input files for failed subjects/runs - make sure you have write permissions.')
     except:
-        print('Unable to resubmit.')
+        print('Unable to update status or resubmit failed jobs.')
         raise
 
     # to avoid entering a recursive state
@@ -1422,9 +1422,9 @@ def run_jobs(job_paths, run_locally, num_procs, depends_on_step):
 
         tty_height, tty_width = subprocess.check_output(['stty', 'size']).split()
         max_width = max(map(len,txt_out))
-        num_sets  = int(math.floor( int(tty_width) / max_width))
+        num_sets  = int(math.floor( int(tty_width) / (max_width+4)))
         for idx in range(0, len(txt_out), num_sets):
-            print('\t' + ' \t '.join(txt_out[idx:min(idx+num_sets,len(txt_out))]))
+            print('\t' + '\t'.join(txt_out[idx:min(idx+num_sets,len(txt_out))]))
             time.sleep(0.08)
 
     print('')
@@ -1543,7 +1543,7 @@ def submit_jobs():
         print ' '
 
         if is_done.preprocessing and is_done.optimization and is_done.QC1 and is_done.QC2:
-            print "Both preprocessing and optimization seems to be finished already, along with QC."
+            print "All of preprocessing, optimization and QC seem to be finished already."
             print " if you'd like to force preprocessing, please rename/remove/move the existing outputs and rerun."
             return
     else:

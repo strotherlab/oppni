@@ -275,8 +275,8 @@ def run(input_args):
     numPipelineSteps = 1
     # "MOTCOR", "CENSOR", "RETROICOR", "TIMECOR", "SMOOTH"
     # only the combinations for the first 5 steps need to be multiplied
-    for step in cfg_pronto.CODES_PREPROCESSING_STEPS[0:5]:
-        numPipelineSteps *= count_variations_pipeline_step(pipFile, step)
+    for flag in cfg_pronto.CODES_PREPROCESSING_STEPS[0:5]:
+        numPipelineSteps *= count_variations_pipeline_step(pipFile, flag)
 
     outFolderStatus = os.path.dirname(inputFile)
     name_suffix = os.path.splitext(os.path.basename(inputFile))[0]

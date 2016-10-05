@@ -391,13 +391,21 @@ def parse_args_check():
     parser.add_argument("--dospnormfirst",
                         action="store_true", dest="dospnormfirst", default=False,
                         help="First normalize the data to a reference (specified by switch -r), then perform the preprocessing optimization.")
+
+    # TODO option to make the contrasts separable.
     parser.add_argument("--contrast", action="store", dest="contrast_list_str",
                         default="None",
-                        help="desired task contrast; This argument is necessary when more than two contrasts are "
-                             "defined in the split info files .. "
-                             "Syntax: --Contrast \"CON1 vs CON2,CON2 vs CON3\". Output will be a consensum ouput "
-                             "from all the contrasts.")
-    # TODO option to make the contrasts separable.
+                        help="desired task contrast in form of task-baseline, using names as defined in the task file. "
+                             "Multi-contrast analysis is disabled for now.")
+
+    # # TODO multi-contrast : doesn't work right now.
+    # parser.add_argument("--contrast", action="store", dest="contrast_list_str",
+    #                     default="None",
+    #                     help="desired task contrast; This argument is necessary when more than two contrasts are "
+    #                          "defined in the split info files .. "
+    #                          "Syntax: --contrast \"CON1 vs CON2,CON2 vs CON3\". Output will be a consensus ouput "
+    #                          "from all the contrasts.")
+
 
     parser.add_argument("-k", "--keepmean", action="store", dest="keepmean",
                         default="0",
@@ -505,10 +513,11 @@ def parse_args_check():
     parser.add_argument("--noSGE", action="store_true", dest="run_locally",
                         default=False,
                         help=argparse.SUPPRESS)
-    # help="Same as --run_locally. Retained for backward compatibility.")
+                        # help="Same as --run_locally. Retained for backward compatibility.")
     parser.add_argument("--numprocess", action="store", dest="numprocess",
                         default=1,
-                        help="When running the pipeline wihout using SGE, this switch specifies the number of simultaneous processes")
+                        help=argparse.SUPPRESS)
+                        # help="When running the pipeline wihout using SGE, this switch specifies the number of simultaneous processes")
 
     parser.add_argument("--force_rerun", action="store_true", dest="force_rerun",
                         default=False,
@@ -631,6 +640,13 @@ def parse_args_check():
 
     ## -------------- Check the Input parameters  --------------
 
+    # assert N > 3 to ensure QC/split-half mechanism doesnt fail
+    assert len(unique_subjects) > 3, 'Too few (N<=3) runs in the input file. Rerun with N>3 runs.'
+
+    # assert a single contrast to ensure QC doesnt fail either
+    options.contrast_list_str = options.contrast_list_str.strip()
+    assert '-' in options.contrast_list_str, "Minus not found in the contrast string. Syntax: conditionA-conditionB"
+    assert ',' not in options.contrast_list_str, "Multiple contrasts are specified with a comma! Only 1 contrast is allowed for now."
 
     if hasattr(options, 'reference') and options.reference is not None:
         reference = os.path.abspath(options.reference)

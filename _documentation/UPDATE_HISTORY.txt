@@ -21,6 +21,27 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 Overview Change Log:
 ------------------------------------------------------------------------------------
 
+[UPDATES 2016/10/07] by Nathan
+
+* extensive revision of the "bids" folder, to allow full use of OPPNI pipelines
+  for bids-formatted data
+* for get_numvols, replace load_nii with load_untouch_nii
+  for oblique compatibility [chg]
+* interpret_contrast_list_str (ln.70-80) [chg]
+* add bids textfile to documentation
+* comment out "interpret_contrast_list_str" ln.125
+
+[UPDATES 2016/09/12] by Nathan
+
+GLM_model_fmri.m
+	> replace matrix inversion w backslash operator for stability (ln.33)
+apply_glm.m
+	> replace matrix inversion w backslash operator for stability (throughout)
+
+design_cond.m
+	> unit-normalize predictor matrix before checking condition #,
+          to ensure we are properly checking collinearity (ln.94,130)
+
 [UPDATES 2016/09/05] by Nathan
 
 OPPNI_version_check.m

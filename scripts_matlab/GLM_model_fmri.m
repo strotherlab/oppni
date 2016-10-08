@@ -30,7 +30,7 @@ idxNoise = 1:Nnoise;
 idxSignl = Nnoise+1:Nnoise+Nsignl;
 
 % now perform regression, and get the matrix
-BetaWeights = dataVol * Xall * inv( Xall'*Xall );
+BetaWeights = dataVol * Xall /( Xall'*Xall );
 vol_estim   = BetaWeights * Xall';
 noi_estim   = BetaWeights(:,idxNoise) * Xall(:,idxNoise)';
 %

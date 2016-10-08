@@ -91,7 +91,8 @@ if ~iscell(data)  % use when we are running single subject analysis splitting in
                 Regressors{run_counter}.PHYPLUS,...
                 Regressors{run_counter}.Signal,...
                 Regressors{run_counter}.NOISEROI];
-
+        Xall = bsxfun(@rdivide,Xall,sqrt(sum(Xall.^2)));
+        
         cond_struc.XCond(run_counter,1)     = cond( Xall );
         cond_struc.X_num_rank(run_counter,1) = size(Xall,2);
         cond_struc.X_num_rank(run_counter,2) = rank(Xall  );
@@ -126,7 +127,8 @@ else % use when we are running group analysis or multi-run, no spliting
                 Regressors{run_counter}.PHYPLUS,...
                 Regressors{run_counter}.Signal,...
                 Regressors{run_counter}.NOISEROI];
-
+        Xall = bsxfun(@rdivide,Xall,sqrt(sum(Xall.^2)));
+        
         cond_struc.XCond(run_counter,1)     = cond( Xall );
         cond_struc.X_num_rank(run_counter,1) = size(Xall,2);
         cond_struc.X_num_rank(run_counter,2) = rank(Xall  );

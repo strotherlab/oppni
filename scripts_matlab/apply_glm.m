@@ -37,7 +37,7 @@ if ~iscell(data)  % use when we are running single subject analysis splitting in
     
     Xn = [Regressors.MP xdet_sp1 xdet_sp2];
     Xall = [ Xn Regressors.Signal];
-    BetaWeights = data*Xall*inv(Xall'*Xall);
+    BetaWeights = data*Xall/(Xall'*Xall);
     idxNoise    = 1:size(Xn,2);
     noi_estim   = BetaWeights(:,idxNoise) * Xall(:,idxNoise)';
     denoised_data   = data - noi_estim;
@@ -45,7 +45,7 @@ if ~iscell(data)  % use when we are running single subject analysis splitting in
     if ~isempty(Regressors.NOISEROI)
         Xn   = [Regressors.NOISEROI];
         Xall = [Xn Regressors.Signal];
-        BetaWeights = denoised_data*Xall*inv(Xall'*Xall);
+        BetaWeights = denoised_data*Xall/(Xall'*Xall);
         idxNoise    = 1:size(Xn,2);
         noi_estim   = BetaWeights(:,idxNoise) * Xall(:,idxNoise)';
         denoised_data   = denoised_data - noi_estim;
@@ -54,7 +54,7 @@ if ~iscell(data)  % use when we are running single subject analysis splitting in
     if ~isempty(Regressors.GSPC1)
         Xn   = [Regressors.GSPC1];
         Xall = [Xn Regressors.Signal];
-        BetaWeights = denoised_data*Xall*inv(Xall'*Xall);
+        BetaWeights = denoised_data*Xall/(Xall'*Xall);
         idxNoise    = 1:size(Xn,2);
         noi_estim   = BetaWeights(:,idxNoise) * Xall(:,idxNoise)';
         denoised_data   = denoised_data - noi_estim;
@@ -63,7 +63,7 @@ if ~iscell(data)  % use when we are running single subject analysis splitting in
     
     if ~isempty(Regressors.PHYPLUS)
         Xall   = [Regressors.PHYPLUS];
-        BetaWeights     = denoised_data*Xall*inv(Xall'*Xall);
+        BetaWeights     = denoised_data*Xall/(Xall'*Xall);
         noi_estim       = BetaWeights * Xall';
         denoised_data   = denoised_data - noi_estim;
     end
@@ -91,7 +91,7 @@ else % use when we are running group analysis or multi-run, no spliting
         
         Xn = [Regressors{run_counter}.MP det];
         Xall = [ Xn Regressors{run_counter}.Signal];
-        BetaWeights = data{run_counter}*Xall*inv(Xall'*Xall);
+        BetaWeights = data{run_counter}*Xall/(Xall'*Xall);
         idxNoise    = 1:size(Xn,2);
         noi_estim   = BetaWeights(:,idxNoise) * Xall(:,idxNoise)';
         denoised_data{run_counter}   = data{run_counter} - noi_estim;
@@ -99,26 +99,24 @@ else % use when we are running group analysis or multi-run, no spliting
         if ~isempty(Regressors{run_counter}.NOISEROI)
             Xn   = [Regressors{run_counter}.NOISEROI];
             Xall = [Xn Regressors{run_counter}.Signal];
-            BetaWeights = denoised_data{run_counter}*Xall*inv(Xall'*Xall);
+            BetaWeights = denoised_data{run_counter}*Xall/(Xall'*Xall);
             idxNoise    = 1:size(Xn,2);
             noi_estim   = BetaWeights(:,idxNoise) * Xall(:,idxNoise)';
             denoised_data{run_counter}   = denoised_data{run_counter} - noi_estim;
         end
-           
         
         if ~isempty(Regressors{run_counter}.GSPC1)
             Xn   = [Regressors{run_counter}.GSPC1];
             Xall = [Xn Regressors{run_counter}.Signal];
-            BetaWeights = denoised_data{run_counter}*Xall*inv(Xall'*Xall);
+            BetaWeights = denoised_data{run_counter}*Xall/(Xall'*Xall);
             idxNoise    = 1:size(Xn,2);
             noi_estim   = BetaWeights(:,idxNoise) * Xall(:,idxNoise)';
             denoised_data{run_counter}   = denoised_data{run_counter} - noi_estim;
         end
         
-        
         if ~isempty(Regressors{run_counter}.PHYPLUS)
             Xall   = [Regressors{run_counter}.PHYPLUS];
-            BetaWeights     = denoised_data{run_counter}*Xall*inv(Xall'*Xall);
+            BetaWeights     = denoised_data{run_counter}*Xall/(Xall'*Xall);
             noi_estim       = BetaWeights * Xall';
             denoised_data{run_counter}   = denoised_data{run_counter} - noi_estim;
         end

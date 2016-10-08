@@ -1,0 +1,106 @@
+
+-------------------------------------------------
+Frequently-Asked Questions for running BIDS data.
+-------------------------------------------------
+
+OPPNI has a module designed specifically to run on openfMRI data, formatted
+according to the BIDS (brain imaging data structure) specifications. 
+This document provides some information on how to use this specific module.
+
+1. What you need to run OPPNI:
+
+    You will need access to a Unix-based environment, where you have installed Matlab or compiled
+    matlab program, and two freeware packages for preprocessing fMRI: AFNI (https://afni.nimh.nih.gov/afni)
+    and FSL (www.fmrib.ox.ac.uk/fsl). See the manual appendices for tips on downloading
+    and installing these packages.
+
+2. How to run OPPNI on BIDS-formatted data:
+
+    You will need to define a set of fields, including the location of input
+    files, the intended location for processed output files, and a bunch of
+    parameter settings (e.g. what kind of analysis to conduct).
+
+    The following are mandatory BIDS fields:
+
+        bids_dir       = string specifying the location of the directory containing BIDS data of interest
+                         usually a location in the openfMRI repository
+        output_dir     = string specifying the location you want to output processed data
+        level          = string specifying level of processing. Options include
+                            'participant': processing at the individual subject level 
+                            'group'      : group-level optimization of preprocessing pipelines
+
+    The following are mandatory fields that are specific to OPPNI:
+
+        run_name       = string specifying the name of the fMRI task you want to analyze.
+        task_design    = the type of task. Must be either 'block' or 'event'
+
+    The following are optional fields that are specific to OPPNI. They can be safely omitted
+    and still run OPPNI successfully. However, check carefully what the default setting is:
+
+        participant    = integer indexing a single subject of interest. This is used when you only want
+                         to process one subject, i.e. for highly-parallelized HPC environment
+                         *Default: all subjects will be processed serially
+        contrast       = string specifying which conditions of task run you want to analyze
+                         e.g. if there are conditions "motor" and "fixation", you can analyze the difference
+                         based on contrast = 'motor-fixation'
+                         *Default: will contrast all task conditions vs. baseline
+        analysis_model = string specifying the model used to analyze processed data. The options depend
+                         on the 'task_design' field
+                             If task_design = 'block', options are   'LDA',  'GNB'
+                             If task_design = 'event', options are 'erCVA','erGNB'
+                         *Default: use multivariate model (LDA or erCVA)
+        ndrop          = positive integer, specifying number of scans to drop from the start of the run, 
+                         in order to avoid non-equilibrium effects
+                         *Default: don't drop any scan volumes
+        atlasfile      = string specifying path and name of a reference anatomical template, used as
+                         the target for spatial normalization
+                         *Default: if not specified, spatial normalization is not performed
+
+                      
+3. Preprocessing and analyzing your data
+
+    As an example, consider a BIDS dataset located in '/home/bids_data', and an intended output
+      directory of '/home/bids_processed'. Assume each subject has a block-design fMRI dataset, labeled 
+      'sub-01_motor_task_bold.nii', 'sub-02_motor_task_bold.nii', ..., etc.
+      where the motor task has two conditions 'motor_left' and 'motor_right'
+
+3.1 The syntax for running individual-subject analysis with default settings is:
+
+        run_oppni_bids( '/home/bids_data', '/home/bids_processed', 'participant', ...
+                        '--run_name'   ,'motor_task',...
+                        '--task_design','block' );
+
+    This will generate the full list of metrics on individual subject pipelines, analyzing
+    the contrast (motor_left+motor_right) vs baseline, with an LDA analysis model.
+    Now, to generate optimal subject pipelines, you will run the group-level analysis:
+
+        run_oppni_bids( '/home/bids_data', '/home/bids_processed', 'group', ...
+                        '--run_name'   ,'motor_task',...
+                        '--task_design','block' );
+
+3.2 Consider a more complex case, where
+        -you only want to analyze the third subject on the list
+        -you want analyze the motor_left vs. motor_right block contrast using a GNB analysis model.
+        -you want to drop the first 3 scan volumes
+        -you want to transform your data into a common template space using a template
+         '/home/templates/MNI152.nii'
+
+    Now the individual-subject and group-level analyses are (respectively):
+
+        run_oppni_bids( '/home/bids_data', '/home/bids_processed', 'participant', ...
+                        '--run_name'   ,'motor_task',...
+                        '--task_design','block' ,...
+                        '--participant','03' ,...
+                        '--contrast','motor_left-motor_right',...
+                        '--analysis_model','GNB',... 
+                        '--ndrop','3',... 
+                        '--atlasfile','/home/templates/MNI152.nii' );
+
+        run_oppni_bids( '/home/bids_data', '/home/bids_processed', 'group', ...
+                        '--run_name'   ,'motor_task',...
+                        '--task_design','block' ,...
+                        '--participant','03' ,...
+                        '--contrast','motor_left-motor_right',...
+                        '--analysis_model','GNB',... 
+                        '--ndrop','3',... 
+                        '--atlasfile','/home/templates/MNI152.nii' );

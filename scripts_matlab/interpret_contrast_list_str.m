@@ -68,10 +68,21 @@ for ksub = 1:numel(InputStruct)
         
         % if contrast is not provided, use default labels
         if isempty(contrast_list_str) || strcmpi(contrast_list_str,'NONE')
+            
+            % concat all non-baseline conditions
+            ccat = [];
+            for(i=1:length(split_info.cond))
+                if(~strcmpi(split_info.cond(i).name,'baseline'))
+                    if(i==1)  ccat = [split_info.cond(i).name];
+                    else      ccat = [ccat, '+', split_info.cond(i).name]; 
+                    end
+                end
+            end
+            
             if     strcmpi(split_info.type,'event')
-                contrast_list_str = '10';
+                contrast_list_str = [ccat,'-baseline'];
             elseif strcmpi(split_info.type,'block')
-                contrast_list_str = '12';
+                contrast_list_str = [ccat,'-baseline'];
             elseif strcmpi(split_info.type,'nocontrast')
                 contrast_list_str = '00';
             else
@@ -111,7 +122,7 @@ for ksub = 1:numel(InputStruct)
                     split_info.cond(ktemp).blklength = zeros(size(split_info.cond(ktemp).onsetlist));
                 end
             else
-                split_info.type = 'block';
+                %%%split_info.type = 'block';
             end
             
             % default do not convolve user provided design_mat

@@ -499,7 +499,7 @@ function x = get_numvols(file)
 if(isempty(strfind(e,'.gz'))) %if not a zip file, read the header direct
     hdr = load_nii_hdr(file);
 else %otherwise need to inflate and load .nii
-    v = load_nii(file);
+    v = load_untouch_nii(file);
     hdr=v.hdr; clear v;
 end
 

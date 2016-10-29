@@ -52,6 +52,9 @@ reIn = re.compile(r"IN=([\w\./+_-]+)[\s]*")
 reOut = re.compile(r"OUT=([\w\./+_-]+)[\s]*")
 reDrop = re.compile(r"DROP=\[(\d+),(\d+)\][\s]*")
 reTask = re.compile(r"TASK=([\w\./+_-]+)[\s]*")
+# to parse the task files
+reName = re.compile(r"NAME=\[([\w\./+_-]+)\][\s]*")
+
 
 rePhysio = re.compile(r"PHYSIO=([\w\./+_-]+)[\s]*")
 reStruct = re.compile(r"STRUCT=([\w\./+_-]+)[\s]*")
@@ -107,7 +110,7 @@ def validate_pipeline_file(pipeline_file):
     return steps_dict
 
 
-def validate_task_file(task_path):
+def validate_task_file(task_path, cond_names_in_contrast=None):
     """Basic validation of task spec file."""
 
     with open(task_path, 'r') as tf:
@@ -118,6 +121,13 @@ def validate_task_file(task_path):
     for field in cfg_pronto.TASK_MANDATORY_FIELDS:
         if field + '=' not in task_spec:
             raise TypeError('{} is not defined in task file'.format(field))
+
+    if cond_names_in_contrast is not None:
+        cond_names_in_file = reName.findall(task_spec)
+        for name in cond_names_in_contrast:
+            if name not in cond_names_in_file:
+                raise ValueError("Condition {} in contrast is not defined in task file:"
+                                 "\n {} \n Defined: {}".format(name, task_path, cond_names_in_file))
 
     return True
 
@@ -136,7 +146,7 @@ def validate_user_env(opt):
             validate_env_var('MCR_PATH')
 
 
-def validate_input_file(input_file, options=None, new_input_file=None):
+def validate_input_file(input_file, options=None, new_input_file=None, cond_names_in_contrast=None):
     """Key function to ensure input file is valid, and creates a copy of the input file in the output folders.
         Also handles the reorganization of output files depending on options chosen."""
 
@@ -157,7 +167,7 @@ def validate_input_file(input_file, options=None, new_input_file=None):
     with open(input_file, 'r') as ipf:
         for line in ipf.readlines():
             line_count += 1
-            subject, new_line = validate_input_line(line, cur_suffix)
+            subject, new_line = validate_input_line(line, cur_suffix, cond_names_in_contrast)
             if subject is False or subject is None:
                 print('Error in line number {}.'.format(line_count))
                 invalid_lines.append(line_count)
@@ -211,7 +221,7 @@ def validate_input_file(input_file, options=None, new_input_file=None):
     return unique_subjects
 
 
-def validate_input_line(ip_line, suffix=''):
+def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
     """Method where the real validation of the input line happens!"""
 
     line = ip_line.strip()
@@ -300,7 +310,7 @@ def validate_input_line(ip_line, suffix=''):
             print "Task file " + task + " not found."
             return None, None
         else:
-            validate_task_file(task)
+            validate_task_file(task, cond_names_in_contrast)
             subject['task'] = task
 
     # PHYSIO part
@@ -406,6 +416,9 @@ def parse_args_check():
     #                          "Syntax: --contrast \"CON1 vs CON2,CON2 vs CON3\". Output will be a consensus ouput "
     #                          "from all the contrasts.")
 
+    parser.add_argument("--vasc_mask", action="store", dest="vasc_mask",
+                        default="1", choices = ("0", "1"),
+                        help="Toggles estimation of subject-specific vascular mask that would be excluded prior to analysis (0: disble, 1: enable). Recommended.")
 
     parser.add_argument("-k", "--keepmean", action="store", dest="keepmean",
                         default="0",
@@ -613,11 +626,16 @@ def parse_args_check():
     reference_specified = options.reference is not None
     physio_correction_requested = (1 in options.pipeline_steps['RETROICOR']) or (1 in options.pipeline_steps['PHYPLUS'])
     custom_mask_requested = 1 in options.pipeline_steps['CUSTOMREG']
+    vasc_mask_requested = "1" == options.vasc_mask
+
+    if 1 not in options.pipeline_steps['PHYPLUS'] and vasc_mask_requested:
+        warnings.warn("PHYCAA+ is not enabled, which is needed for the requested estimation of subject-specific vascular mask!")
 
     # saving useful flags for sanity checks on completeness of inputs later
     setattr(options, 'contrast_specified', contrast_specified)
     setattr(options, 'reference_specified', reference_specified)
     setattr(options, 'physio_correction_requested', physio_correction_requested)
+    setattr(options, 'vasc_mask_requested', vasc_mask_requested)
     setattr(options, 'custom_mask_requested', custom_mask_requested)
 
     cur_garage, time_stamp, proc_out_dir, suffix = organize_output_folders(options)
@@ -627,11 +645,18 @@ def parse_args_check():
     if options.dospnormfirst and not options.reference_specified:
         raise ValueError('Spatial normalization requested, but a reference atlas is not specified.')
 
+    # assert a single contrast to ensure QC doesnt fail either
+    options.contrast_list_str = options.contrast_list_str.strip()
+    assert '-' in options.contrast_list_str, "Minus not found in the contrast string. Syntax: conditionA-conditionB"
+    cond_names_in_contrast = options.contrast_list_str.split('-')
+
+    assert ',' not in options.contrast_list_str, "Multiple contrasts are specified with a comma! Only 1 contrast is allowed for now."
+
     # ensuring the validity of input file, given the options and pipeline file
     # and compiling a list of unique subjects into a new file with output folder modified
     new_input_file = os.path.join(cur_garage, 'input_file.txt')
     # validation also will create the new input file in the output folder
-    unique_subjects = validate_input_file(options.input_data_orig, options, new_input_file)
+    unique_subjects = validate_input_file(options.input_data_orig, options, new_input_file, cond_names_in_contrast)
     if options.use_prev_processing_for_QC:
         new_input_file = options.input_data_orig
 
@@ -642,11 +667,6 @@ def parse_args_check():
 
     # assert N > 3 to ensure QC/split-half mechanism doesnt fail
     assert len(unique_subjects) > 3, 'Too few (N<=3) runs in the input file. Rerun with N>3 runs.'
-
-    # assert a single contrast to ensure QC doesnt fail either
-    options.contrast_list_str = options.contrast_list_str.strip()
-    assert '-' in options.contrast_list_str, "Minus not found in the contrast string. Syntax: conditionA-conditionB"
-    assert ',' not in options.contrast_list_str, "Multiple contrasts are specified with a comma! Only 1 contrast is allowed for now."
 
     if hasattr(options, 'reference') and options.reference is not None:
         reference = os.path.abspath(options.reference)
@@ -704,6 +724,7 @@ def parse_args_check():
         print "WARNING (Deprecated usage): --spm has to be corr or zscore"
 
     options.model_param_list_str = "keepmean " + options.keepmean \
+                                   + " vasc_mask " + options.vasc_mask \
                                    + " convolve " + options.convolve \
                                    + " decision_model " + options.decision_model \
                                    + " drf " + options.drf \

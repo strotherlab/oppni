@@ -723,8 +723,9 @@ def parse_args_check():
     if not (options.spm.lower() in ["corr", "zscore", "none"]):
         print "WARNING (Deprecated usage): --spm has to be corr or zscore"
 
+    # notice the option name VASC_MASK must be uppercase
     options.model_param_list_str = "keepmean " + options.keepmean \
-                                   + " vasc_mask " + options.vasc_mask \
+                                   + " VASC_MASK " + options.vasc_mask \
                                    + " convolve " + options.convolve \
                                    + " decision_model " + options.decision_model \
                                    + " drf " + options.drf \

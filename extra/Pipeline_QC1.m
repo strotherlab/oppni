@@ -296,6 +296,8 @@ while ischar(tline) % for every input line in textfile...
         metric_names = fieldnames( METRIC_set{1} );
         % drop out the "artifact priors" entry
         metric_names(strcmp(metric_names,'artifact_prior'))=[];
+        % dropping out cond_struc also
+        metric_names(strcmp(metric_names,'cond_struc'))=[];
         %
         N_metric     = length(metric_names);
         % initialize cell array of different performance metrics

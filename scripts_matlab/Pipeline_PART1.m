@@ -410,27 +410,25 @@ for ksub = 1:numel(InputStruct)
         clear vxmat volcel;
 
         % GROUP: get priors into 2d matrices
-        NN_weight_avg = outwt.NN_weight;
-        WM_weight_avg = outwm.WM_weight;
-        NN_mask_avg   = outwt.NN_mask;
-        WM_mask_avg   = outwm.WM_mask;
-        if size(FXYZ,3)>1
-             FXYZ_avg      = mean( FXYZ, 3 );
-        else FXYZ_avg = FXYZ;
-        end
+        split_info_set{1}.NN_weight_avg = outwt.NN_weight;
+        split_info_set{1}.WM_weight_avg = outwm.WM_weight;
+        split_info_set{1}.NN_mask_avg   = outwt.NN_mask;
+        split_info_set{1}.WM_mask_avg   = outwm.WM_mask;
+        split_info_set{1}.FXYZ_avg      = mean( FXYZ, 3 );        
+        
         Xsignal = HRFdesign;
         Xnoise  = motPCs;
 
         for krun = 1:N_run
             % check if argument for vascular masking exists and is turned off
             if( isfield(split_info_set{1},'VASC_MASK') && split_info_set{1}.VASC_MASK==0 )
-                 split_info_set{krun}.spat_weight = ones(size(NN_weight_avg)); %%replace w/ unit weights
-            else split_info_set{krun}.spat_weight = NN_weight_avg;
+                 split_info_set{1}.spat_weight = ones(size(split_info_set{1}.NN_weight_avg)); %%replace w/ unit weights
+            else split_info_set{1}.spat_weight = split_info_set{1}.NN_weight_avg;
             end
-            split_info_set{krun}.mask_vol    = mask;
+            split_info_set{1}.mask_vol    = mask;
         end
 
-        save([Subject_OutputDirIntermed '/res0_params/params' subjectprefix '.mat'],'Xsignal','Xnoise','FXYZ_avg','NN_mask_avg','WM_mask_avg','NN_weight_avg','WM_weight_avg','mask','modelparam','CODE_PROPERTY','-v7');
+        save([Subject_OutputDirIntermed '/res0_params/params' subjectprefix '.mat'],'split_info_set','Xsignal','Xnoise','modelparam','CODE_PROPERTY','-v7');
 
         % initialize cell array for activation maps, one cell per pipeline
         IMAGE_set_0  = cell( Nfull, 1 );
@@ -507,8 +505,8 @@ for ksub = 1:numel(InputStruct)
                             pipeset_full(kall,:) = [pipeset_half(i,:) DET MPR TASK GS LP];
 
                             if N_run>1
-                                  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, NN_weight_avg, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV);
-                            else  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal{1}, Xnoise{1}, noise_roi{1}, NN_weight_avg, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV);
+                                  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV);
+                            else  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal{1}, Xnoise{1}, noise_roi{1}, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV);
 
                             end
 
@@ -564,19 +562,13 @@ for ksub = 1:numel(InputStruct)
                 %
                 for(p=1:size(IMAGE_set{n},2)) % and each image from set...
                     % ------ test for motion (correlation with spatial derivatives
-                    [Ao,Bo,rho(p,1)] = canoncorr( IMAGE_set{n}(:,p), FXYZ_avg );
+                    [Ao,Bo,rho(p,1)] = canoncorr( IMAGE_set{n}(:,p), split_info_set{1}.FXYZ_avg );
                     %
                 end
-
                 % correlation with spatial derivatives (motion effects)
                 METRIC_set{n}.artifact_prior.MOT_corr = rho;
-                if N_run==1
-                    % average white matter z-score
-                    METRIC_set{n}.artifact_prior.WM_zscor = mean( IMAGE_set{n}(outwm.WM_mask > 0, : ) );
-                else
-                    % GROUP: take mask as >50% subjects with declared white matter tissue
-                    METRIC_set{n}.artifact_prior.WM_zscor = sum( IMAGE_set{n}( WM_mask_avg > 0.5, : ) > 0 )./ sum( WM_mask_avg > 0.5 )';
-                end
+                % GROUP: take mask as >50% subjects with declared white matter tissue
+                METRIC_set{n}.artifact_prior.WM_zscor = sum( IMAGE_set{n}( split_info_set{1}.WM_mask_avg > 0.5, : ) > 0 )./ sum( split_info_set{1}.WM_mask_avg > 0.5 )';
                 % fraction of voxels >0 (global signal effects)
                 METRIC_set{n}.artifact_prior.GS_fract = sum( IMAGE_set{n}>0 )./Nvox;
             end
@@ -656,7 +648,7 @@ for i = 1:length(pipechars)
     name(i*2) = pipeset(i);
 end
 
-function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, NN_weight_avg, split_info_set, analysis_model,OutputDirPrefix,subjectprefix,Contrast_List,VV)
+function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix,subjectprefix,Contrast_List,VV)
 
 global CODE_PROPERTY
 
@@ -711,7 +703,7 @@ if( GS == 1 )
     
     for( is=1:length(volmat) )
         % get PC components on vascular-masked data
-        volmat_temp = bsxfun(@times,out_vol_denoi{is},NN_weight_avg);
+        volmat_temp = bsxfun(@times,out_vol_denoi{is},split_info_set{1}.spat_weight);
         [vx sx temp]     = svd( volmat_temp'*volmat_temp );
         % regress out "global" PC component
         out                = GLM_model_fmri( out_vol_denoi{is}, 0, vx(:,1), Xsig_curr{is}, 'econ' );
@@ -782,7 +774,7 @@ else
         TMPVOL = zeros( [size(split_info_set{is}.mask_vol), size(out_vol_filt{is},2)] );
         % vascular weighting
         for(p=1:size(out_vol_filt{is},2) )
-            tmp=split_info.mask_vol;tmp(tmp>0)= out_vol_filt{is}(:,p) .* NN_weight_avg;
+            tmp=split_info.mask_vol;tmp(tmp>0)= out_vol_filt{is}(:,p) .* split_info_set{1}.spat_weight;
             TMPVOL(:,:,:,p) = tmp;
         end
 
@@ -811,7 +803,7 @@ if( ~isempty(find( phySet == 1 )) ) % perform if PHYCAA+ is being tested
     %%% ==== Step 2.3(f): PHYCAA+ physiological regression ==== %%%
     %
     %==============================================
-    taskInfo.physio_map = NN_weight_avg;   % include vascular prior
+    taskInfo.physio_map = split_info_set{1}.NN_weight_avg;   % include vascular prior
     taskInfo.task_SPMs  = IMAGE_set_0; % include reference SPM (Edited by babak)
     taskInfo.comp_crit  = 0;                 % less conservative threshold for noise components
     taskInfo.out_format =-1;                 % outputs regressed ONLY dataset
@@ -872,7 +864,7 @@ else
         TMPVOL = zeros( [size(split_info_set{is}.mask_vol), size(out_vol_filt{is},2)] );
 
         for(p=1:size(out_vol_filt{is},2) )
-            tmp=split_info.mask_vol;tmp(tmp>0)=out_vol_filt{is}(:,p) .* NN_weight_avg;
+            tmp=split_info.mask_vol;tmp(tmp>0)=out_vol_filt{is}(:,p) .* split_info_set{1}.spat_weight;
             TMPVOL(:,:,:,p) = tmp;
         end
 
@@ -898,7 +890,7 @@ else
     METRIC_set_y = [];
 end
 
-function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet,Xsignal, Xnoise, noise_roi, NN_weight_avg, split_info_set, analysis_model,OutputDirPrefix, subjectprefix, Contrast_List,VV)
+function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet,Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix, subjectprefix, Contrast_List,VV)
 
 % build pipeline prefix name -- and define current noise matrix
 global CODE_PROPERTY
@@ -985,13 +977,13 @@ if( GS == 1 )
     out_sp2 = out_sp(:,ceil(size(out_sp,2)/2)+1:end);
     % (SPLIT-1)
     % get PC components on vascular-masked data
-    volmat_temp  = bsxfun(@times,out_sp1,NN_weight_avg);
+    volmat_temp  = bsxfun(@times,out_sp1,split_info.spat_weight);
     [vx sx temp] = svd( volmat_temp'*volmat_temp );
     nr1 = [vx(:,1);zeros(size(out_sp2,2),1)];
     
     % (SPLIT-2)
     % get PC components on vascular-masked data
-    volmat_temp  = bsxfun(@times,out_sp2,NN_weight_avg);
+    volmat_temp  = bsxfun(@times,out_sp2,split_info.spat_weight);
     [vx sx temp] = svd( volmat_temp'*volmat_temp );    
     nr2 = [zeros(size(out_sp1,2),1);vx(:,1)];
     Regressors.GSPC1 = [nr1 nr2];
@@ -1055,7 +1047,7 @@ else
     TMPVOL = zeros( [size(split_info.mask_vol), size(vol_concat,2)] );
 
     for(p=1:size(vol_concat,2) )
-        tmp=split_info.mask_vol;tmp(tmp>0)=vol_filt(:,p).*NN_weight_avg;
+        tmp=split_info.mask_vol;tmp(tmp>0)=vol_filt(:,p).*split_info.spat_weight;
         TMPVOL(:,:,:,p) = tmp;
     end
     
@@ -1087,7 +1079,7 @@ if( ~isempty(find( phySet == 1 )) ) % perform if PHYCAA+ is being tested
     %%% ==== Step 2.3(f): PHYCAA+ physiological regression ==== %%%
     %
     %==============================================
-    taskInfo.physio_map = NN_weight_avg;   % include vascular prior
+    taskInfo.physio_map = split_info.NN_weight_avg;   % include vascular prior
     taskInfo.task_SPMs  = IMAGE_set_0;     % include reference SPM
     taskInfo.comp_crit  = 0;                 % less conservative threshold for noise components
     taskInfo.out_format =-1;                 % outputs regressed ONLY dataset
@@ -1147,7 +1139,7 @@ else
     TMPVOL = zeros( [size(split_info.mask_vol), size(vol_filt,2)] );
 
     for(p=1:size(vol_filt,2) )
-        tmp=split_info.mask_vol;tmp(tmp>0)=vol_filt(:,p).*NN_weight_avg;
+        tmp=split_info.mask_vol;tmp(tmp>0)=vol_filt(:,p).*split_info.spat_weight;
         TMPVOL(:,:,:,p) = tmp;
     end
     

@@ -155,7 +155,7 @@ if( sum(strcmpi( analysis_model, univar_list ))==0 )
     
     for( is=1:length(datamat) )
         % vascular down-weighting applied to current, preprocessed data
-        datamat{is} = bsxfun(@times,datamat{is},split_info{is}.spat_weight);  % denoised volume x weight
+        datamat{is} = bsxfun(@times,datamat{is},split_info{1}.spat_weight);  % denoised volume x weight
     end
 end
 

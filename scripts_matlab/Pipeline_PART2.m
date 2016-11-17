@@ -649,7 +649,7 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
                         [ volmat ] = quick_lopass( volmat, (TR_MSEC./1000) );
                     end    
 
-                    volmat  = bsxfun(@times,volmat,NN_weight_avg);
+                    volmat  = bsxfun(@times,volmat,split_info_set{1}.spat_weight);
 
                     nii = VV; %% copy initial NIFTI file, then replace elements
                     if keepmean
@@ -769,7 +769,7 @@ else %% If only 1 pipeline being tested, this becomes the default output
                         [ volmat ] = quick_lopass( volmat, (TR_MSEC./1000) );
                     end    
 
-                    volmat  = bsxfun(@times,volmat,NN_weight_avg);
+                    volmat  = bsxfun(@times,volmat,split_info_set{1}.spat_weight);
 
                     nii = MM;
                     if keepmean

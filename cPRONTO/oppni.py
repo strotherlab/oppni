@@ -146,7 +146,7 @@ def validate_user_env(opt):
             validate_env_var('MCR_PATH')
 
 
-def validate_input_file(input_file, options=None, new_input_file=None, cond_names_in_contrast=None):
+def validate_input_file(input_file, options=None, new_input_file=None, cond_names_in_contrast=None, validate_only=False):
     """Key function to ensure input file is valid, and creates a copy of the input file in the output folders.
         Also handles the reorganization of output files depending on options chosen."""
 
@@ -174,6 +174,11 @@ def validate_input_file(input_file, options=None, new_input_file=None, cond_name
                 continue
             else:
                 subject['line'] = new_line
+
+                # make an output folder only when neeed (not when just validating the input file)
+                if not validate_only and not os.path.exists(subject['out']):
+                    os.makedirs(subject['out'])
+
                 # if the key doesnt exist, dict returns None
                 if unique_subjects.get(subject['prefix']) is not None:
                     print "Potential duplicate prefix in line {}: {}".format(line_count, subject['prefix'])
@@ -269,9 +274,6 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
         else:
             # in case of resubmission, don't alter the previous setup
             subject['out'] = base_out_dir
-
-        if not os.path.exists(subject['out']):
-            os.makedirs(subject['out'])
 
         # prepending it with OUT= to restrict the sub to only OUT, and not elsewhere such as TASK=
         prev_dir = 'OUT={}'.format(base_out_dir)
@@ -565,10 +567,11 @@ def parse_args_check():
     elif options.val_input_file_path is not None:
         # performing a basic validation
         try:
-            _ = validate_input_file(options.val_input_file_path)
+            _ = validate_input_file(options.val_input_file_path, validate_only=True)
             print " validation succesful."
         except:
             print " validation failed."
+            raise
         sys.exit(0)
     elif options.print_options_path is not None:
         print_options(options.print_options_path)

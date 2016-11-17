@@ -21,6 +21,18 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 Overview Change Log:
 ------------------------------------------------------------------------------------
 
+[UPDATES 2016/11/17] by Nathan
+
+* made fixes to correctly disable vascular masking if specified by users
+Pipeline_PART1.m
+    > now store both a "spat_weight" and "NN_weight_avg" mask as fields of split_info_set -- the former used
+      for vascular masking, the latter used as spatial prior for phycaa+ (ln.412-431)
+    > apply_regression_step functions changed - no separate NN_weight_avg field, since it's
+      already stored in split_info_set passed to these functions(ln.508,509, 651,893)
+    > call spat_weight field during analysis, which is set to =1 if VASC_MASK is off (ln.706,777,867,980,986,1050,1142)
+Pipeline_PART2.m
+    > now spat_weight is used to mask optimized outputs too (ln.652,772)
+
 [UPDATES 2016/10/07] by Nathan
 
 * extensive revision of the "bids" folder, to allow full use of OPPNI pipelines

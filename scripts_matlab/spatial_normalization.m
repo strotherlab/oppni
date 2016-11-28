@@ -1,4 +1,4 @@
-function spatial_normalization(InputStruct,reference_file,input_voxelsize,flag_step,DEOBLIQUE)
+function spatial_normalization(InputStruct,analysis_model, contrast_list_str,reference_file,input_voxelsize,flag_step,DEOBLIQUE,WARP_TYPE)
 %==========================================================================
 % SPATIAL_NORMALIZATION : registers data to common template
 %==========================================================================
@@ -66,8 +66,17 @@ end
 
 %% Reading optional input arguments, or giving default assignments to variables
 
+% check if analysis model is specified
+if isempty(analysis_model)
+    analysis_model = 'NONE';
+end
+% check if task contrast is specified
+if nargin<6 || isempty(contrast_list_str)
+    contrast_list_str = 'NONE';
+end
+
 % check if nifti-output option is specified
-if nargin<4 || isempty(flag_step)
+if nargin<6 || isempty(flag_step)
     flag_step = 0;
 else
     if isnumeric(flag_step)
@@ -76,8 +85,15 @@ else
     flag_step = str2num(flag_step(1)); 
 end
 % check if data needs to be "de-obliqued" (default = off)
-if nargin<5 || isempty(DEOBLIQUE)
+if nargin<7 || isempty(DEOBLIQUE)
     DEOBLIQUE = 0;
+end
+if nargin<8 || isempty(WARP_TYPE)
+    WARP_TYPE = 'affine';
+end
+if( strcmpi(WARP_TYPE,'linear') ) WARP_TYPE='affine'; end
+if( ~strcmpi(WARP_TYPE,'affine') && ~strcmpi(WARP_TYPE,'nonlinear')) 
+    error('unrecognized spatial warp -- should be "affine" or "nonlinear"');
 end
 
 % To run on HPCVL
@@ -95,9 +111,16 @@ for ksub = 1:numel(InputStruct)
     end
 end
 
+resultDir = [contrast_list_str,'-',analysis_model]; %% subdirectory for specific analysis model/contrast set
+
+[~, reference_prefix, ~]=fileparts( reference_file );
+
 Nsubject = length(InputStruct); % Count the number of all runs and subjects
 for ksub = 1:Nsubject
-    mkdir_r([InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/spat_norm']);
+    mkdir_r([InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/spat_norm/',reference_prefix,'-affine']);
+    if(strcmpi(WARP_TYPE,'nonlinear'))
+    mkdir_r([InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/spat_norm/',reference_prefix,'-nonlinear']);
+    end
 end
 
 % Find the transforms
@@ -189,17 +212,29 @@ if flag_step==0 || flag_step==1 || flag_step==3
                 unix([AFNI_PATH sprintf('3dSkullStrip -prefix %s -input %s',strip_struct,InputStruct(ksub).run(1).STRUCT_File)]);
             end
         end
+        
         % get transformation of T1 to reference volume
-        trans_t1_ref = sprintf('%s/intermediate_processed/spat_norm/Transmat_T1toREF_%s.mat',InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name);
+        trans_t1_ref = sprintf('%s/intermediate_processed/spat_norm/%s-affine/Transmat_T1toREF_%s.mat',InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,STRUCT_Name);
         if ~exist(trans_t1_ref,'file')
-            unix([FSL_PATH sprintf('flirt -in %s/intermediate_processed/spat_norm/%s_strip.nii -ref %s -out %s/intermediate_processed/spat_norm/%s_T1toREF.nii -omat %s/intermediate_processed/spat_norm/Transmat_T1toREF_%s.mat -bins 256 -cost corratio -searchrx -180 180 -searchry -180 180 -searchrz -180 180 -dof 12  -interp sinc -sincwidth 7 -sincwindow hanning',InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,reference_file,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name)]);
+            unix([FSL_PATH sprintf('flirt -in %s/intermediate_processed/spat_norm/%s_strip.nii -ref %s -out %s/intermediate_processed/spat_norm/%s-affine/%s_T1toREF.nii -omat %s -bins 256 -cost corratio -searchrx -180 180 -searchry -180 180 -searchrz -180 180 -dof 12  -interp sinc -sincwidth 7 -sincwindow hanning',InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,reference_file,InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,STRUCT_Name,trans_t1_ref)]);
         end
         % unzip to ensure afni compatibility
-        if exist(sprintf('%s/intermediate_processed/spat_norm/%s_T1toREF.nii.gz',InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name),'file')
-            unix(['gunzip ' sprintf('%s/intermediate_processed/spat_norm/%s_T1toREF.nii.gz',InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name)]);
+        if exist(sprintf('%s/intermediate_processed/spat_norm/%s-affine/%s_T1toREF.nii.gz',InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,STRUCT_Name),'file')
+            unix(['gunzip ' sprintf('%s/intermediate_processed/spat_norm/%s-affine/%s_T1toREF.nii.gz',InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,STRUCT_Name)]);
         end
+        
+        if( strcmpi(WARP_TYPE,'nonlinear') ) %%%NONLINEAR
+        if ~exist(sprintf('%s/intermediate_processed/spat_norm/%s-nonlinear/%s_T1toREF.nii',InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,STRUCT_Name),'file')
+            trans_t1_ref_nonlin = sprintf('%s/intermediate_processed/spat_norm/%s-nonlinear/Warpfield_T1toREF_%s.nii',InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,STRUCT_Name);
+            if( ~exist(trans_t1_ref_nonlin,'file') )
+                unix(sprintf('fnirt --in=%s/intermediate_processed/spat_norm/%s_strip.nii --ref=%s --config=T1_2_MNI152_2mm.cnf --aff=%s --cout=%s --iout=%s/intermediate_processed/spat_norm/%s-nonlinear/%s_T1toREF.nii',InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,reference_file,trans_t1_ref,trans_t1_ref_nonlin,InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,STRUCT_Name));
+            end
+            unix(['gunzip ' sprintf('%s/intermediate_processed/spat_norm/%s-nonlinear/%s_T1toREF.nii.gz',InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,STRUCT_Name)]);
+        end        
+        end
+        
         % check if normed, downsampled T1 exists --> and create it as a reference for functional data 
-        if ~exist(sprintf('%s/intermediate_processed/spat_norm/%s_T1toREF_downsamp.nii',InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name),'file')
+        if ~exist(sprintf('%s/intermediate_processed/spat_norm/%s-%s/%s_T1toREF_downsamp.nii',InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,WARP_TYPE,STRUCT_Name),'file')
             if voxelsize_type==0
                 hdr = load_nii_hdr([InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/afni_processed/' InputStruct(ksub).run(1).subjectprefix(2:end) '_baseproc.nii']);
                 dim1 = hdr.dime.dim(2);dim2 = hdr.dime.dim(3);dim3 = hdr.dime.dim(4);
@@ -214,20 +249,21 @@ if flag_step==0 || flag_step==1 || flag_step==3
                 
                 % create blank vol
                 unix([FSL_PATH sprintf('fslcreatehd %.1f %.1f %.1f 1 %d %d %d %d 0 0 0 16 %s/intermediate_processed/spat_norm/blankvol.nii',dim1,dim2,dim3,pixdim1,pixdim2,pixdim3,pixdim4,InputStruct(ksub).run(1).Output_nifti_file_path)]);
-                unix([FSL_PATH 'flirt -in ' InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/spat_norm/' STRUCT_Name '_T1toREF.nii -applyxfm -interp sinc -ref ' InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/spat_norm/blankvol.nii -init ' InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/spat_norm/eye.mat -out ' InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/spat_norm/' STRUCT_Name '_T1toREF_downsamp.nii']);
+                unix([FSL_PATH 'flirt -in ' InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/spat_norm/',reference_prefix,'-',WARP_TYPE,'/' STRUCT_Name '_T1toREF.nii -applyxfm -interp sinc -ref ' InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/spat_norm/blankvol.nii -init ' InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/spat_norm/eye.mat -out ' InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/spat_norm/' STRUCT_Name '_T1toREF_downsamp.nii']);
                 
             elseif voxelsize_type==1 % resample to chosen voxel size
-                unix([AFNI_PATH sprintf('3dresample -dxyz%s -inset %s/intermediate_processed/spat_norm/%s_T1toREF.nii -prefix %s/intermediate_processed/spat_norm/%s_T1toREF_downsamp.nii -rmode Cu',voxelsize,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name)]);
-                if exist([InputStruct(ksub).run(1).Output_nifti_file_path,'/intermediate_processed/spat_norm/',STRUCT_Name,'_T1toREF_downsamp.nii.gz'],'file')
-                    unix(['gunzip -f -d ',InputStruct(ksub).run(1).Output_nifti_file_path,'/intermediate_processed/spat_norm/',STRUCT_Name,'_T1toREF_downsamp.nii.gz']);
+                unix([AFNI_PATH sprintf('3dresample -dxyz%s -inset %s/intermediate_processed/spat_norm/%s-%s/%s_T1toREF.nii -prefix %s/intermediate_processed/spat_norm/%s-%s/%s_T1toREF_downsamp.nii -rmode Cu',voxelsize,InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,WARP_TYPE,STRUCT_Name,InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,WARP_TYPE,STRUCT_Name)]);
+                if exist([InputStruct(ksub).run(1).Output_nifti_file_path,'/intermediate_processed/spat_norm/',reference_prefix,'-',WARP_TYPE,'/',STRUCT_Name,'_T1toREF_downsamp.nii.gz'],'file')
+                    unix(['gunzip -f -d ',InputStruct(ksub).run(1).Output_nifti_file_path,'/intermediate_processed/spat_norm/',reference_prefix,'-',WARP_TYPE,'/',STRUCT_Name,'_T1toREF_downsamp.nii.gz']);
                 end
             elseif voxelsize_type==2
-                unix([AFNI_PATH sprintf('3dresample -master %s -inset %s/intermediate_processed/spat_norm/%s_T1toREF.nii -prefix %s/intermediate_processed/spat_norm/%s_T1toREF_downsamp.nii -rmode Cu',voxelsize,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name)]);
-                if exist([InputStruct(ksub).run(1).Output_nifti_file_path,'/intermediate_processed/spat_norm/',STRUCT_Name,'_T1toREF_downsamp.nii.gz'],'file')
-                    unix(['gunzip -f -d ',InputStruct(ksub).run(1).Output_nifti_file_path,'/intermediate_processed/spat_norm/',STRUCT_Name,'_T1toREF_downsamp.nii.gz']);
+                unix([AFNI_PATH sprintf('3dresample -master %s -inset %s/intermediate_processed/spat_norm/%s-%s/%s_T1toREF.nii -prefix %s/intermediate_processed/spat_norm/%s-%s/%s_T1toREF_downsamp.nii -rmode Cu',voxelsize,InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,WARP_TYPE,STRUCT_Name,InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,WARP_TYPE,STRUCT_Name)]);
+                if exist([InputStruct(ksub).run(1).Output_nifti_file_path,'/intermediate_processed/spat_norm/',reference_prefix,'-',WARP_TYPE,'/',STRUCT_Name,'_T1toREF_downsamp.nii.gz'],'file')
+                    unix(['gunzip -f -d ',InputStruct(ksub).run(1).Output_nifti_file_path,'/intermediate_processed/spat_norm/',reference_prefix,'-',WARP_TYPE,'/',STRUCT_Name,'_T1toREF_downsamp.nii.gz']);
                 end
             end
         end
+        
     end
 end
 
@@ -251,9 +287,9 @@ if flag_step==0 || flag_step==2 || flag_step==3
         end
         
         % spatial norm - transform mean epi volume to match stripped T1; create transform matrix
-        if ~exist(sprintf('%s/intermediate_processed/spat_norm/Transmat_EPItoT1_%s.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix),'file')
-        unix([FSL_PATH sprintf('flirt -in %s -out %s/intermediate_processed/spat_norm/mean_%s_sNorm.nii -ref %s/intermediate_processed/spat_norm/%s_strip.nii -omat %s/intermediate_processed/spat_norm/Transmat_EPItoT1_%s.mat -bins 256 -cost normmi -searchrx -180 180 -searchry -180 180 -searchrz -180 180 -dof 6 -interp sinc -sincwidth 7 -sincwindow hanning', ... 
-            mean_file_name,InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix)]);
+        if ~exist(sprintf('%s/intermediate_processed/spat_norm/%s-affine/Transmat_EPItoT1_%s.mat',InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,InputStruct(ksub).run(1).Output_nifti_file_prefix),'file')
+            unix([FSL_PATH sprintf('flirt -in %s -out %s/intermediate_processed/spat_norm/%s-affine/mean_%s_sNorm.nii -ref %s/intermediate_processed/spat_norm/%s_strip.nii -omat %s/intermediate_processed/spat_norm/%s-affine/Transmat_EPItoT1_%s.mat -bins 256 -cost normmi -searchrx -180 180 -searchry -180 180 -searchrz -180 180 -dof 6 -interp sinc -sincwidth 7 -sincwindow hanning', ... 
+            mean_file_name,InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,InputStruct(ksub).run(1).Output_nifti_file_prefix,InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,InputStruct(ksub).run(1).Output_nifti_file_prefix)]);
         end
         
         if numel(InputStruct(ksub).run)>1
@@ -265,57 +301,71 @@ if flag_step==0 || flag_step==2 || flag_step==3
         % go through list of runs for this subject        
         for krun=1:numel(InputStruct(ksub).run)
 
+            if( strcmpi(WARP_TYPE,'affine'))
             % create net-transform matrix
-            if ~exist(sprintf('%s/intermediate_processed/spat_norm/Transmat_EPItoREF_%s.mat',InputStruct(ksub).run(krun).Output_nifti_file_path,InputStruct(ksub).run(krun).Output_nifti_file_prefix),'file')
-            unix([FSL_PATH sprintf('convert_xfm -omat %s/intermediate_processed/spat_norm/Transmat_EPItoREF_%s.mat -concat %s/intermediate_processed/spat_norm/Transmat_T1toREF_%s.mat %s/intermediate_processed/spat_norm/Transmat_EPItoT1_%s.mat', ... 
-                InputStruct(ksub).run(krun).Output_nifti_file_path,InputStruct(ksub).run(krun).Output_nifti_file_prefix,InputStruct(ksub).run(krun).Output_nifti_file_path,STRUCT_Name,InputStruct(ksub).run(krun).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix)]);
+            if ~exist(sprintf('%s/intermediate_processed/spat_norm/%s-affine/Transmat_EPItoREF_%s.mat',InputStruct(ksub).run(krun).Output_nifti_file_path,reference_prefix,InputStruct(ksub).run(krun).Output_nifti_file_prefix),'file')
+                unix([FSL_PATH sprintf('convert_xfm -omat %s/intermediate_processed/spat_norm/%s-affine/Transmat_EPItoREF_%s.mat -concat %s/intermediate_processed/spat_norm/%s-affine/Transmat_T1toREF_%s.mat %s/intermediate_processed/spat_norm/%s-affine/Transmat_EPItoT1_%s.mat', ... 
+                InputStruct(ksub).run(krun).Output_nifti_file_path,reference_prefix,InputStruct(ksub).run(krun).Output_nifti_file_prefix,InputStruct(ksub).run(krun).Output_nifti_file_path,reference_prefix,STRUCT_Name,InputStruct(ksub).run(krun).Output_nifti_file_path,reference_prefix,InputStruct(ksub).run(1).Output_nifti_file_prefix)]);
             end
+            end
+            
             [path_temp,STRUCT_Name] = fileparts(InputStruct(ksub).run(krun).STRUCT_File);
-            ref_file                = sprintf('%s/intermediate_processed/spat_norm/%s_T1toREF_downsamp.nii',InputStruct(ksub).run(krun).Output_nifti_file_path,STRUCT_Name);
-            transform               = sprintf('%s/intermediate_processed/spat_norm/Transmat_EPItoREF%s.mat',InputStruct(ksub).run(krun).Output_nifti_file_path,InputStruct(ksub).run(krun).subjectprefix);
+            ref_file                = sprintf('%s/intermediate_processed/spat_norm/%s-%s/%s_T1toREF_downsamp.nii',InputStruct(ksub).run(krun).Output_nifti_file_path,reference_prefix,WARP_TYPE,STRUCT_Name);
+            transform               = sprintf('%s/intermediate_processed/spat_norm/%s-affine/Transmat_EPItoREF%s.mat',InputStruct(ksub).run(krun).Output_nifti_file_path,reference_prefix,InputStruct(ksub).run(krun).subjectprefix);
+            transform_e2s           = sprintf('%s/intermediate_processed/spat_norm/%s-affine/Transmat_EPItoT1%s.mat',InputStruct(ksub).run(krun).Output_nifti_file_path,reference_prefix,InputStruct(ksub).run(krun).subjectprefix);
+            
+            if(strcmpi(WARP_TYPE,'nonlinear') )
+                transform_nl = sprintf('%s/intermediate_processed/spat_norm/%s-nonlinear/Warpfield_T1toREF_%s.nii',InputStruct(ksub).run(krun).Output_nifti_file_path,reference_prefix,STRUCT_Name);
+            end
 
             % spatially transform "baseproc" run, and create the mask
             if krun==1  
                 input_nifti_file        = [InputStruct(ksub).run(krun).Output_nifti_file_path '/intermediate_processed/afni_processed/' InputStruct(ksub).run(krun).Output_nifti_file_prefix '_baseproc' aligned_suffix '.nii'];
-                output_nifti_file       = [InputStruct(ksub).run(krun).Output_nifti_file_path '/intermediate_processed/afni_processed/' InputStruct(ksub).run(krun).Output_nifti_file_prefix '_baseproc' aligned_suffix '_sNorm.nii'];
-
+                output_nifti_file       = [InputStruct(ksub).run(krun).Output_nifti_file_path '/intermediate_processed/spat_norm/',reference_prefix,'-',WARP_TYPE,'/afni_processed/' InputStruct(ksub).run(krun).Output_nifti_file_prefix '_baseproc' aligned_suffix '_sNorm.nii'];
+                mkdir_r([InputStruct(ksub).run(krun).Output_nifti_file_path '/intermediate_processed/spat_norm/',reference_prefix,'-',WARP_TYPE,'/afni_processed']);
+                
                 if ~exist(output_nifti_file,'file')
-                unix([FSL_PATH sprintf('flirt -in %s -applyxfm -interp sinc -ref %s -init %s -out %s',input_nifti_file,ref_file,transform,output_nifti_file)]);
-                unix(['gunzip -f -d ' output_nifti_file '.gz']);                
+                    if( strcmpi(WARP_TYPE,'affine') )
+                        unix([FSL_PATH sprintf('flirt -in %s -applyxfm -interp sinc -ref %s -init %s -out %s',input_nifti_file,ref_file,transform,output_nifti_file)]);
+                    elseif( strcmpi(WARP_TYPE,'nonlinear') )
+                        unix([FSL_PATH sprintf('applywarp --in=%s --ref=%s --warp=%s --premat=%s --out=%s',input_nifti_file,ref_file,transform_nl,transform_e2s,output_nifti_file)]); 
+                    end                            
+                    unix(['gunzip -f -d ' output_nifti_file '.gz']);                
                 end
-                unix([AFNI_PATH sprintf('3dAutomask -prefix %s/intermediate_processed/spat_norm/%s_mask_sNorm.nii %s',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).subjectprefix(2:end),output_nifti_file)]);
+
+                unix([AFNI_PATH sprintf('3dAutomask -prefix %s/intermediate_processed/spat_norm/%s-%s/%s_mask_sNorm.nii %s',InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,WARP_TYPE,InputStruct(ksub).run(1).subjectprefix(2:end),output_nifti_file)]);
             end
        
-%%          
+%%          ---stop-here---
 
             if flag_step==3  % whether spatial normalization is performed initially
                 input_nifti_file_path = strcat(InputStruct(ksub).run(krun).Output_nifti_file_path, '/intermediate_processed/afni_processed');
                 input_nifti_file_list = strcat(input_nifti_file_path,'/*',InputStruct(ksub).run(krun).Output_nifti_file_prefix,'*.nii');
                 list = dir(input_nifti_file_list); % collect list of all files in specified directory
             else
-                input_nifti_file_path = strcat(InputStruct(ksub).run(krun).Output_nifti_file_path,'/optimization_results');
-                input_nifti_file_list = strcat(input_nifti_file_path,'/processed/*',InputStruct(ksub).run(krun).Output_nifti_file_prefix,'*.nii');
-                  list1 = dir(input_nifti_file_list); % collect list of all files in specified directory
-                input_nifti_file_list = strcat(input_nifti_file_path,'/spms/*',InputStruct(ksub).run(krun).Output_nifti_file_prefix,'*.nii');
-                  list2 = dir(input_nifti_file_list); % collect list of all files in specified directory
-                for(i=1:length(list1)) list1(i).name = ['processed/' list1(i).name]; end
-                for(i=1:length(list2)) list2(i).name = ['spms/'      list2(i).name]; end
-                list = [list1;list2]; % concatenated
+                input_nifti_file_path = strcat(InputStruct(ksub).run(krun).Output_nifti_file_path, '/optimization_results/',resultDir,'/');
+                input_nifti_file_list = strcat(input_nifti_file_path,'/images_unwarped/*',InputStruct(ksub).run(krun).Output_nifti_file_prefix,'*.nii');
+                list = dir(input_nifti_file_list); % collect list of all files in specified directory
             end
+            
+            mkdir_r([input_nifti_file_path,'/images_',reference_prefix,'-',WARP_TYPE]);
             
             for kpip = 1:length(list)
                 if ~isempty(strfind(list(kpip).name,'sNorm'));
                     continue;
                 end
-                input_nifti_file        = strcat(input_nifti_file_path,'/',list(kpip).name);
-                output_nifti_file       = strcat(input_nifti_file_path,'/',list(kpip).name(1:end-4),'_sNorm.nii');
+                input_nifti_file        = strcat(input_nifti_file_path,'/images_unwarped/',list(kpip).name);
+                output_nifti_file       = strcat(input_nifti_file_path,'/images_',reference_prefix,'-',WARP_TYPE,'/',list(kpip).name(1:end-4),'_sNorm.nii');
 
                 % if spatially normalized equivalent does not exist, create it!
                 if ~exist(output_nifti_file,'file')
                     if ~exist([output_nifti_file,'.gz'],'file')
-                    unix([FSL_PATH sprintf('flirt -in %s -applyxfm -interp sinc -ref %s -init %s -out %s',input_nifti_file,ref_file,transform,output_nifti_file)]);
+                        if(strcmpi(WARP_TYPE,'affine'))
+                            unix([FSL_PATH sprintf('flirt -in %s -applyxfm -interp sinc -ref %s -init %s -out %s',input_nifti_file,ref_file,transform,output_nifti_file)]);
+                        elseif(strcmpi(WARP_TYPE,'nonlinear'))
+                            unix([FSL_PATH sprintf('applywarp --in=%s --ref=%s --warp=%s --premat=%s --out=%s',input_nifti_file,ref_file,transform_nl,transform_e2s,output_nifti_file)]); 
+                        end
                     end
-                    
                     unix(['gunzip -f -d ' output_nifti_file '.gz']);
 
                     if ~exist(output_nifti_file,'file')

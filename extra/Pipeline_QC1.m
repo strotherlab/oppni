@@ -1,4 +1,4 @@
-function Pipeline_QC1( inputfile, varargin )
+function Pipeline_QC1( inputfile, analysis_model, contrast_list_str, varargin )
 %
 %==========================================================================
 % PIPELINE_QC1: Quality Control plotting tool. Shows impact of running
@@ -70,7 +70,7 @@ addpath_oppni([pathstr '/scripts_matlab']);
 addpath_oppni([pathstr '/scripts_matlab/NIFTI_tools']);
 
 
-if nargin < 2
+if nargin < 4
     % by default, don't use the opt. results
     opt_flag = 0;
 else
@@ -79,6 +79,8 @@ else
         opt_flag = str2double(opt_flag);
     end
 end
+
+resultDir = [contrast_list_str,'-',analysis_model]; %% subdirectory for specific analysis model/contrast set
 
 % opens the inputfile (includes subject/dataset names that preprocessing is performed on...
 fid = fopen(inputfile);
@@ -169,13 +171,13 @@ while ischar(tline) % for every input line in textfile...
         
         MM=(strcat(outdir,'/intermediate_processed/masks/',prefix,'_mask.nii'));
         % CON pipeline
-        VV=(strcat(outdir,'/optimization_results/processed/Proc_',prefix,'_CON.nii'));
+        VV=(strcat(outdir,'/optimization_results/',resultDir,'/processed/Proc_',prefix,'_CON.nii'));
         diagnostic_fmri_pca( VV, MM, mpe_instring, [QC1_folder,'/diagnostics_CON/',prefix] );%Saman
         % FIX pipeline
-        VV=(strcat(outdir,'/optimization_results/processed/Proc_',prefix,'_FIX.nii'));
+        VV=(strcat(outdir,'/optimization_results/',resultDir,'/processed/Proc_',prefix,'_FIX.nii'));
         diagnostic_fmri_pca( VV, MM, mpe_instring, [QC1_folder,'/diagnostics_FIX/',prefix] );
         % IND pipeline
-        VV=(strcat(outdir,'/optimization_results/processed/Proc_',prefix,'_IND.nii'));
+        VV=(strcat(outdir,'/optimization_results/',resultDir,'/processed/Proc_',prefix,'_IND.nii'));
         diagnostic_fmri_pca( VV, MM, mpe_instring, [QC1_folder,'/diagnostics_IND/',prefix] );
     end
     %%
@@ -262,7 +264,7 @@ while ischar(tline) % for every input line in textfile...
     % Loading information on SPM (brain map) and performance metrics
     
     % load subject SPM data
-    mat_instring  = strcat(outdir,'/intermediate_metrics/res1_spms/spms_',prefix,'.mat'    );
+    mat_instring  = strcat(outdir,'/intermediate_metrics/',resultDir,'/res1_spms/spms_',prefix,'.mat'    );
     load(mat_instring);
     
     % compute cross-correlation between pipeline SPMs
@@ -286,7 +288,7 @@ while ischar(tline) % for every input line in textfile...
         cor_opt(ksub,:) = median( cormat(ixtemp,:), 2 );
     end
     
-    mat_instring  = strcat(outdir,'/intermediate_metrics/res3_stats/stats_',prefix,'.mat'    );
+    mat_instring  = strcat(outdir,'/intermediate_metrics/',resultDir,'/res3_stats/stats_',prefix,'.mat'    );
     load(mat_instring);
     
     % get the list of available performance metrics

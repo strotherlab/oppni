@@ -21,6 +21,62 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 Overview Change Log:
 ------------------------------------------------------------------------------------
 
+[UPDATES 2016/11/27] by Nathan
+
+* overall: made modifications allowing for different types of spatial normalization
+           plus different contrasts/analyses run on the same "base" dataset
+
+run_oppni_local.m
+    > changed input to allow WARP_TYPE argument (ln.1)
+    > accounted for modified input format to Pipeline_PART2, spatial_normalization, group_mask_tissue_maps (ln.63,68,69)
+
+Pipeline_PART1.m
+    > specify results sub-directory (ln.222)
+    > change path to include results sub-directory (ln.253,255,264,265,508,509,634,651,655-656,893,898,899)
+    > change path to reflect reorganization of optimization_results folder (ln.339,613,787,877,1060,1152)
+    * small change, making VASC_MASK argument case insensitive (ln.423)
+
+Pipeline_PART2.m
+    > now takes "analysis_model, contrast_list_str" as positional arguments 2,3 (ln.1)
+    > check on analysis and contrast inputs (ln.134-141)
+    > correct for "nargin" position of old args (ln.161,169)
+    > define results sub-directory (ln.194)
+    > change path to include results sub-directory (ln.214,227,547-8,552-4,590,616-7,629,680,688,707-10,731,743-4,749,800,808)
+
+group_mask_tissue_maps.m
+    > now takes "reference_file, WARP_TYPE" as positional args. 3,4 (ln.1)
+    > define results sub-directory (ln.65)
+    > create groupmask path that includes ref.file + transform type (ln.91)
+    > change path to account for new mask directory (ln.112,181)
+
+interpret_contrast_list_str.m
+    * minor bug-fix, allowing users to run no-contrast analyses (ln.74)
+
+spatial_normalization.m
+    > now takes "analysis_model, contrast_list_str" as positional arguments 2,3 (ln.1)
+    > check on analysis and contrast inputs (ln.69-77)
+    > correct for "nargin" position of old args (ln.79,88)
+    > check on WARP_TYPE (ln.91-96)
+    > define results sub-directory (ln.114-116)
+    > now create subdirectory of spat_norm with registration type+ ref. file(ln.118-123)
+    > account for new spat_norm sub-directory (ln.217,219,222,223,237,252,255-7,260-2,290-2,306-8,313-20)
+    > add nonlinear warp step (T1 to ref) (ln.226-235)
+    > apply affine OR nonliear warp (ln.323-36,362-368)
+    > account for change in optimization_results directory (ln.346-48,351,357-8)
+
+oppni_version_check.m
+    > now takes "analysis_model, contrast_list_str" as positional arguments 2,3 (ln.1)
+    > change path to include results sub-directory (ln.51,52,290,291,313,314,366,367)
+
+Pipeline_QC1.m
+    > now takes "analysis_model, contrast_list_str" as positional arguments 2,3 (ln.1)
+    > accounts for new sub-directory in outputs
+
+Pipeline_QC2.m
+    > now takes "analysis_model, contrast_list_str,reference_file, WARP_TYPE" as positional arguments 2,3,4,5 (ln.1)
+    > accounts for new sub-directory in outputs
+    > accounts for specific registration sub-directory in outputs
+
 [UPDATES 2016/11/17] by Nathan
 
 * made fixes to correctly disable vascular masking if specified by users

@@ -71,12 +71,14 @@ for ksub = 1:numel(InputStruct)
             
             % concat all non-baseline conditions
             ccat = [];
+            if ~strcmpi(split_info.type,'nocontrast')
             for(i=1:length(split_info.cond))
                 if(~strcmpi(split_info.cond(i).name,'baseline'))
                     if(i==1)  ccat = [split_info.cond(i).name];
                     else      ccat = [ccat, '+', split_info.cond(i).name]; 
                     end
                 end
+            end
             end
             
             if     strcmpi(split_info.type,'event')

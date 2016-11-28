@@ -1,4 +1,4 @@
-function group_mask_tissue_maps( inputfile, newmaskname )
+function group_mask_tissue_maps( inputfile, newmaskname, reference_file, WARP_TYPE )
 %
 %==========================================================================
 % GROUP_MASK_TISSUE_MAPS: second part of spatial normalization process,
@@ -62,6 +62,8 @@ if nargin < 2
      newmaskname = [];
 end
 
+[~, reference_prefix, ~]=fileparts( reference_file );
+
 %% Load individual masks
 
 % opens the inputfile (includes subject/dataset names that preprocessing is performed on...
@@ -86,11 +88,12 @@ while ischar(tline) % for every input line in textfile...
 
         if( isempty(newmaskname) )
             %%% create directory + new mask files, in first output dir.
-            newpath = [outdir, '/GroupMasks'];
+            newpath = [outdir, '/GroupMasks_',reference_prefix,'-',WARP_TYPE];
             mkdir_r(newpath);
             newmaskname = [newpath '/group'];                
         else
             [apath,aprefix,aext] = fileparts(newmaskname);
+            apath = [apath,'_',reference_prefix,'-',WARP_TYPE];
             mkdir_r(apath);
             %%% make sure mask-name terminates with .nii string
             newmaskname = [apath,'/',aprefix];
@@ -106,7 +109,7 @@ while ischar(tline) % for every input line in textfile...
         clear split_info; %% remove the rest of structure
     end
     
-    xbase_string  = strcat(outdir,'/intermediate_processed/spat_norm/',prefix,'_mask_sNorm.nii');
+    xbase_string  = strcat(outdir,'/intermediate_processed/spat_norm/',reference_prefix,'-',WARP_TYPE,'/',prefix,'_mask_sNorm.nii');
     MX     = load_untouch_nii(  xbase_string );
     % save into 4D matrix
     maskSet(:,:,:,ksub) = double(MX.img);
@@ -175,7 +178,7 @@ while ischar(tline) % for every input line in textfile...
     prefix   = fullline(isepr+1:end);
     outdir   = fullline(1:isepr-1);
     
-    xbase_string  = strcat(outdir,'/intermediate_processed/afni_processed/',prefix,'_baseproc_sNorm.nii');
+    xbase_string  = strcat(outdir,'/intermediate_processed/spat_norm/',reference_prefix,'-',WARP_TYPE,'/afni_processed/',prefix,'_baseproc_sNorm.nii');
     VX     = load_untouch_nii(  xbase_string );
     vxmat  = nifti_to_mat(VX,nii);
     [Nvox Ntime] = size(vxmat);

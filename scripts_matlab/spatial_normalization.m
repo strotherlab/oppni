@@ -123,6 +123,16 @@ for ksub = 1:Nsubject
     end
 end
 
+%create dilated mask for nonlinear warping
+if( strcmpi(WARP_TYPE,'nonlinear') )
+    unix(sprintf('fslmaths %s -bin %s/intermediate_processed/spat_norm/%s-nonlinear/refmsk_bin.nii',reference_file,InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix));
+    unix(sprintf('fslmaths %s/intermediate_processed/spat_norm/%s-nonlinear/refmsk_bin.nii -dilF %s/intermediate_processed/spat_norm/%s-nonlinear/refmsk_dil1.nii',InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix));
+    unix(sprintf('fslmaths %s/intermediate_processed/spat_norm/%s-nonlinear/refmsk_dil1.nii -dilF %s/intermediate_processed/spat_norm/%s-nonlinear/refmsk_dil.nii',InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix));
+    %%%% clear unneeded files
+    delete(sprintf('%s/intermediate_processed/spat_norm/%s-nonlinear/refmsk_bin.nii',InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix));
+    delete(sprintf('%s/intermediate_processed/spat_norm/%s-nonlinear/refmsk_dil1.nii',InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix));
+end
+
 % Find the transforms
 if flag_step==0 || flag_step==1 || flag_step==3
     
@@ -224,10 +234,11 @@ if flag_step==0 || flag_step==1 || flag_step==3
         end
         
         if( strcmpi(WARP_TYPE,'nonlinear') ) %%%NONLINEAR
+                    
         if ~exist(sprintf('%s/intermediate_processed/spat_norm/%s-nonlinear/%s_T1toREF.nii',InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,STRUCT_Name),'file')
             trans_t1_ref_nonlin = sprintf('%s/intermediate_processed/spat_norm/%s-nonlinear/Warpfield_T1toREF_%s.nii',InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,STRUCT_Name);
             if( ~exist(trans_t1_ref_nonlin,'file') )
-                unix(sprintf('fnirt --in=%s/intermediate_processed/spat_norm/%s_strip.nii --ref=%s --config=T1_2_MNI152_2mm.cnf --aff=%s --cout=%s --iout=%s/intermediate_processed/spat_norm/%s-nonlinear/%s_T1toREF.nii',InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,reference_file,trans_t1_ref,trans_t1_ref_nonlin,InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,STRUCT_Name));
+                unix(sprintf('fnirt --in=%s/intermediate_processed/spat_norm/%s_strip.nii --ref=%s --refmask=%s/intermediate_processed/spat_norm/%s-nonlinear/refmsk_dil.nii --config=T1_2_MNI152_2mm.cnf --aff=%s --cout=%s --iout=%s/intermediate_processed/spat_norm/%s-nonlinear/%s_T1toREF.nii',InputStruct(ksub).run(1).Output_nifti_file_path,STRUCT_Name,reference_file,InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,trans_t1_ref,trans_t1_ref_nonlin,InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,STRUCT_Name));
             end
             unix(['gunzip ' sprintf('%s/intermediate_processed/spat_norm/%s-nonlinear/%s_T1toREF.nii.gz',InputStruct(ksub).run(1).Output_nifti_file_path,reference_prefix,STRUCT_Name)]);
         end        

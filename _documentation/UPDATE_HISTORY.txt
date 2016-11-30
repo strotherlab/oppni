@@ -21,6 +21,13 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 Overview Change Log:
 ------------------------------------------------------------------------------------
 
+[UPDATES 2016/11/30] by Nathan
+* further fixes to nonlinear spatial normalization module
+
+spatial_normalization.m
+> created dilated mask of reference volume (ln.126-134)
+> changed fnirt to use this as --refmask (ln.241)
+
 [UPDATES 2016/11/27] by Nathan
 
 * overall: made modifications allowing for different types of spatial normalization

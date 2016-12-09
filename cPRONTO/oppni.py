@@ -400,9 +400,6 @@ def parse_args_check():
     parser.add_argument("-r", "--reference", action="store", dest="reference",
                         default=None,
                         help="anatomical reference to be used in the spatial normalization step, i.e. -p,--part=3")
-    parser.add_argument("-w", "--warp_type", action="store", dest="warp_type",
-                        default="affine", choices = ("affine", "nonlinear"),
-                        help="Type of spatial normalization.")
     parser.add_argument("--dospnormfirst",
                         action="store_true", dest="dospnormfirst", default=False,
                         help="First normalize the data to a reference (specified by switch -r), then perform the preprocessing optimization.")
@@ -1222,13 +1219,8 @@ def run_preprocessing(subjects, opt, input_file, garage):
 
 
 def run_qc_part_one(subjects, opt, input_file, garage):
-
     # maskname is set to be empty
-    new_mask_name = 'None'
-
-    arg_list = [1, input_file, opt.analysis, opt.contrast_list_str,
-                opt.reference, opt.warp_type, new_mask_name, opt.num_PCs ]
-
+    arg_list = [1, input_file, 'None', opt.num_PCs]
     dependencies = ['PART1', 'PART2', 'GMASK']
     proc_status, job_id_list = process_module_generic(subjects, opt, 'QC1', 'QC_wrapper', arg_list, garage,
                                                       dependencies)
@@ -1237,11 +1229,7 @@ def run_qc_part_one(subjects, opt, input_file, garage):
 
 
 def run_qc_part_two(subjects, opt, input_file, garage):
-
-    new_mask_name = 'None'
-    arg_list = [2, input_file, opt.analysis, opt.contrast_list_str,
-                opt.reference, opt.warp_type, new_mask_name, opt.num_PCs ]
-
+    arg_list = [2, input_file, 'None', opt.num_PCs]
     dependencies = ['PART1', 'PART2', 'GMASK']
     proc_status, job_id_list = process_module_generic(subjects, opt, 'QC2', 'QC_wrapper', arg_list, garage,
                                                       dependencies)
@@ -1271,11 +1259,9 @@ def run_optimization(subjects, opt, input_file, garage):
         wm_str = '0'
     mot_gs_control = mc_str + wm_str
 
-    dependencies = 'PART1'
-    arg_list = [input_file, opt.analysis, opt.contrast_list_str, opt.metric, mot_gs_control,
-                opt.output_all_pipelines, opt.keepmean, opt.opt_scheme]
-    proc_status, job_id_list = process_module_generic(subjects, opt, 'PART2', 'Pipeline_PART2',
-                                                      arg_list, garage, dependencies)
+    arg_list = [input_file, opt.metric, mot_gs_control, opt.output_all_pipelines, opt.keepmean, opt.opt_scheme]
+    proc_status, job_id_list = process_module_generic(subjects, opt, 'PART2', 'Pipeline_PART2', arg_list, garage,
+                                                      'PART1')
 
     return proc_status, job_id_list
 
@@ -1292,8 +1278,7 @@ def process_spatial_norm(subjects, opt, input_file, sp_norm_step, garage):
     else:
         dependencies = ['PART1', 'PART2']
 
-    arg_list = [opt.analysis, opt.contrast_list_str, opt.reference, opt.voxelsize, sp_norm_step,
-                opt.DEOBLIQUE, opt.warp_type ]
+    arg_list = [opt.reference, opt.voxelsize, sp_norm_step, opt.DEOBLIQUE]
     proc_status, job_id_list = process_module_generic(subjects, opt, 'SPNORM', 'spatial_normalization', arg_list,
                                                       garage, dependencies)
 
@@ -1476,12 +1461,7 @@ def run_jobs(job_paths, run_locally, num_procs, depends_on_step):
             job_id_list[prefix] = submit_queue(job_details_str, depends_on_step)
             txt_out.append('{} (job id: {})'.format(prefix, job_id_list[prefix]))
 
-        try:
-            tty_height, tty_width = subprocess.check_output(['stty', 'size']).split()
-        except:
-            tty_height = 50
-            tty_width  = 80
-
+        tty_height, tty_width = subprocess.check_output(['stty', 'size']).split()
         max_width = max(map(len,txt_out))
         num_sets  = int(math.floor( int(tty_width) / (max_width+4)))
         for idx in range(0, len(txt_out), num_sets):

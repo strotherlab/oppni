@@ -1,4 +1,4 @@
-function out = OPPNI_version_check( InputFile1, InputFile2, analysis_model, contrast_list_str, out_name, distatis_flag )
+function out = OPPNI_version_check( InputFile1, InputFile2, out_name, distatis_flag )
 %
 %
 % Syntax: 
@@ -16,9 +16,7 @@ function out = OPPNI_version_check( InputFile1, InputFile2, analysis_model, cont
 %             the two OPPNI results
 %
 
-if(nargin<6 || isempty(distatis_flag)) distatis_flag=0; end
-
-resultDir = [contrast_list_str,'-',analysis_model]; %% subdirectory for specific analysis model/contrast set
+if(nargin<4 || isempty(distatis_flag)) distatis_flag=0; end
 
 %% Read Inputfiles
 
@@ -49,8 +47,8 @@ else
     % 1.1 loading and consistency checking on data
 
     % loading optimization summary file
-    dout1 = load([InputStruct1(1).run(1).Output_nifti_file_path,'/optimization_results/',resultDir,'/matfiles/optimization_summary.mat']);
-    dout2 = load([InputStruct2(1).run(1).Output_nifti_file_path,'/optimization_results/',resultDir,'/matfiles/optimization_summary.mat']);
+    dout1 = load([InputStruct1(1).run(1).Output_nifti_file_path,'/optimization_results/matfiles/optimization_summary.mat']);
+    dout2 = load([InputStruct2(1).run(1).Output_nifti_file_path,'/optimization_results/matfiles/optimization_summary.mat']);
 
     % consistency checking: SPM dims
     Nspm1 = size( dout1.SPM_opt{1}.con,2 );
@@ -287,8 +285,8 @@ else
             fprintf(fin,'\n============== 3. INTERMEDIATE OUTPUTS ==============\n\n');
 
             % first check if mismatched on metrics
-            dout1 = load([InputStruct1(1).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/res3_stats/stats' InputStruct1(1).run(1).subjectprefix '.mat']);
-            dout2 = load([InputStruct2(1).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/res3_stats/stats' InputStruct2(1).run(1).subjectprefix '.mat']);
+            dout1 = load([InputStruct1(1).run(1).Output_nifti_file_path, '/intermediate_metrics/res3_stats/stats' InputStruct1(1).run(1).subjectprefix '.mat']);
+            dout2 = load([InputStruct2(1).run(1).Output_nifti_file_path, '/intermediate_metrics/res3_stats/stats' InputStruct2(1).run(1).subjectprefix '.mat']);
             
             % checking to see if pipeline steps being tested are consistent
             if( size(dout1.pipeset,1) ~= size(dout2.pipeset,1) )
@@ -310,8 +308,8 @@ else
 
                     disp(['runs_,',num2str(ksub),'_of_',num2str(Nsubject)]),
 
-                    dout1 = load([InputStruct1(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/res3_stats/stats' InputStruct1(ksub).run(1).subjectprefix '.mat']);
-                    dout2 = load([InputStruct2(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/res3_stats/stats' InputStruct2(ksub).run(1).subjectprefix '.mat']);
+                    dout1 = load([InputStruct1(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/res3_stats/stats' InputStruct1(ksub).run(1).subjectprefix '.mat']);
+                    dout2 = load([InputStruct2(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/res3_stats/stats' InputStruct2(ksub).run(1).subjectprefix '.mat']);
 
                     for i = 1:length(dout1.METRIC_set) % pipelines
                         for j = 1:length(metric_names) % metrix
@@ -363,8 +361,8 @@ else
 
                         disp(['runs_,',num2str(ksub),'_of_',num2str(Nsubject)]),
 
-                        dout1 = load([InputStruct1(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/res1_spms/spms' InputStruct1(ksub).run(1).subjectprefix '.mat']);
-                        dout2 = load([InputStruct2(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/res1_spms/spms' InputStruct2(ksub).run(1).subjectprefix '.mat']);
+                        dout1 = load([InputStruct1(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/res1_spms/spms' InputStruct1(ksub).run(1).subjectprefix '.mat']);
+                        dout2 = load([InputStruct2(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/res1_spms/spms' InputStruct2(ksub).run(1).subjectprefix '.mat']);
 
                         for i = 1:length(dout1.IMAGE_set) % contr x pipelines x subj
                             diffx(:,i,ksub) = mean(abs(dout1.IMAGE_set{i}-dout2.IMAGE_set{i}));

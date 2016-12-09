@@ -1,12 +1,6 @@
-function QC_wrapper(step,  inputfile, analysis_model, contrast_list_str, reference_file, WARP_TYPE, newmaskname, Npcs )
+function QC_wrapper(step,inputfile, newmaskname, Npcs)
 
-if nargin < 5
-	error('too few args!! must specify: step,  inputfile, analysis_model, contrast_list_str')
-end
-
-
-if nargin < 5
-	WARP_TYPE = 'affine';
+if nargin < 3
     newmaskname = [];
     Npcs = 10;
 end
@@ -26,9 +20,9 @@ if ischar(Npcs)
 end
 
 if step==0 || step==1
-    Pipeline_QC1( inputfile, analysis_model, contrast_list_str )
+    Pipeline_QC1( inputfile )
 end
 if step==0 || step==2
-    Pipeline_QC2(  inputfile, analysis_model, contrast_list_str, reference_file, WARP_TYPE, newmaskname, Npcs )
+    Pipeline_QC2( inputfile , newmaskname, Npcs)
 end
 

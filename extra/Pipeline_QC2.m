@@ -1,4 +1,4 @@
-function Pipeline_QC2( inputfile, analysis_model, contrast_list_str, reference_file, WARP_TYPE, newmaskname, Npcs )
+function Pipeline_QC2( inputfile, newmaskname, Npcs )
 %
 %==========================================================================
 % PIPELINE_QC2: for examining the results of optimized subject data.
@@ -77,8 +77,6 @@ pathstr = fileparts(pathstr);
 addpath_oppni([pathstr '/scripts_matlab']);
 addpath_oppni([pathstr '/scripts_matlab/NIFTI_tools']);
 
-resultDir = [contrast_list_str,'-',analysis_model]; %% subdirectory for specific analysis model/contrast set
-
 % quick open of input file to get directory
 fid = fopen(inputfile);
 % read in first line
@@ -102,7 +100,7 @@ while ischar(tline) && ksub<2 % for every input line in textfile...
     outdir   = fullline(1:isepr-1);
             
     % --> find optimized results
-    summaryname = [outdir, '/optimization_results/',resultDir,'/matfiles/optimization_summary.mat'];
+    summaryname = [outdir, '/optimization_results/matfiles/optimization_summary.mat'];
     load(summaryname);
     % --> create outputs folder
     QC2_folder= [outdir, '/QC2_results'];
@@ -281,7 +279,7 @@ mask = double(MM.img);
         % ------------------------------------------------------------------------------------------------
         % ------------------------------------------------------------------------------------------------
 
-        VV=load_untouch_nii(strcat(outdir,'/optimization_results/',resultDir,'/images_',reference_prefix,'-',WARP_TYPE,'/rSPM_',prefix,'_CON_FIX_IND_sNorm.nii'));  
+        VV=load_untouch_nii(strcat(outdir,'/optimization_results/spms/rSPM_',prefix,'_CON_FIX_IND_sNorm.nii'));  
         
         spm_set(:,:,ksub) = nifti_to_mat( VV,MM );
         [p thr_set(:,:,ksub)] = fdr( spm_set(:,:,ksub), 'z', 0.05, 0 );

@@ -1,4 +1,4 @@
-function run_oppni_local( subject_inputs, pipelines, analysis_model, TR_MSEC, contrast_list, TEMPLATE_VOL, VOXDIMS, DEOBLIQUE, TPATTERN, TOFWHM, opt_metric, WARP_TYPE )
+function run_oppni_local( subject_inputs, pipelines, analysis_model, TR_MSEC, contrast_list, TEMPLATE_VOL, VOXDIMS, DEOBLIQUE, TPATTERN, TOFWHM, opt_metric )
 %
 % RUN_OPPNI_LOCAL: script for running pipelines directly in matlab, for
 % instance where SGE system is not available.
@@ -60,13 +60,13 @@ Pipeline_PART1(subject_inputs,pipelines,analysis_model,[],0,contrast_list,false,
 % run optimization, if analysis model included
 if( ~strcmp(analysis_model ,'NONE') )
     if(def_flag>0) disp('WARNING: pipeline optimization uses default metric of dPR'); end
-    Pipeline_PART2(subject_inputs,analysis_model,contrast_list,opt_metric,[1 0],1,0);
+    Pipeline_PART2(subject_inputs,opt_metric,[1 0],1,0);
 end
 
 % run spatial normalization
 if(normflag)
-    spatial_normalization(subject_inputs,analysis_model,contrast_list,TEMPLATE_VOL,VOXDIMS,0,DEOBLIQUE,WARP_TYPE);
-    group_mask_tissue_maps( subject_inputs, [], TEMPLATE_VOL, WARP_TYPE );
+    spatial_normalization(subject_inputs,TEMPLATE_VOL,VOXDIMS,0,DEOBLIQUE);
+    group_mask_tissue_maps( subject_inputs, [] );
 end
 
 %%

@@ -219,8 +219,6 @@ end
 % 
 % %%========== TEMPORARY: uncomment this option to turn on BlurToFWHM
 
-resultDir = [contrast_list_str,'-',analysis_model]; %% subdirectory for specific analysis model/contrast set
-
 %% Read Inputfiles
 if ~isstruct(InputStruct)
     [InputStruct,MULTI_RUN_INPUTFILE] = Read_Input_File(InputStruct);
@@ -250,9 +248,9 @@ spatial_normalization_noise_roi(InputStruct); % Transform user defined
 %% save generated split_info files
 for ksub = 1:numel(InputStruct)
     for krun = 1:numel(InputStruct(ksub).run)
-        mkdir_r([InputStruct(ksub).run(krun).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/split_info']);
+        mkdir_r([InputStruct(ksub).run(krun).Output_nifti_file_path '/intermediate_processed/split_info']);
         split_info = InputStruct(ksub).run(krun).split_info;
-        save([InputStruct(ksub).run(krun).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/split_info/', InputStruct(ksub).run(krun).Output_nifti_file_prefix '.mat'],'split_info','CODE_PROPERTY','-v7');
+        save([InputStruct(ksub).run(krun).Output_nifti_file_path '/intermediate_processed/split_info/' InputStruct(ksub).run(krun).Output_nifti_file_prefix '.mat'],'split_info','CODE_PROPERTY','-v7');
     end
 end
 clear split_info
@@ -261,8 +259,8 @@ clear split_info
 for ksub = 1:numel(InputStruct)
     
     subjectmask = InputStruct(ksub).run(1).subjectmask;
-    Subject_OutputDirIntermed = [InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir];
-    Subject_OutputDirOptimize = [InputStruct(ksub).run(1).Output_nifti_file_path, '/optimization_results/',resultDir];
+    Subject_OutputDirIntermed = [InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_metrics'];
+    Subject_OutputDirOptimize = [InputStruct(ksub).run(1).Output_nifti_file_path '/optimization_results'];
     subjectprefix = InputStruct(ksub).run(1).subjectprefix;
     mkdir_r([Subject_OutputDirIntermed]);
     mkdir_r([Subject_OutputDirIntermed '/regressors/reg' subjectprefix]);
@@ -336,8 +334,11 @@ for ksub = 1:numel(InputStruct)
             mkdir_r(strcat(Subject_OutputDirIntermed,'/res3_stats'));
             end
             %% b. create output directories for optimization results
-            mkdir_r(strcat(Subject_OutputDirOptimize,'/images_unwarped'));
+            mkdir_r(strcat(Subject_OutputDirOptimize,'/processed'));
+            if( ~strcmpi(analysis_model,'NONE') )
+            mkdir_r(strcat(Subject_OutputDirOptimize,'/spms'));
             mkdir_r(strcat(Subject_OutputDirOptimize,'/matfiles'));
+            end
             warning on;
 
             %%% ==== Step 2.2(b): load and prepare motion MPEs === %%%
@@ -420,8 +421,7 @@ for ksub = 1:numel(InputStruct)
 
         for krun = 1:N_run
             % check if argument for vascular masking exists and is turned off
-            if( (isfield(split_info_set{1},'VASC_MASK') && split_info_set{1}.VASC_MASK==0) ||...
-                (isfield(split_info_set{1},'vasc_mask') && split_info_set{1}.vasc_mask==0) )
+            if( isfield(split_info_set{1},'VASC_MASK') && split_info_set{1}.VASC_MASK==0 )
                  split_info_set{1}.spat_weight = ones(size(split_info_set{1}.NN_weight_avg)); %%replace w/ unit weights
             else split_info_set{1}.spat_weight = split_info_set{1}.NN_weight_avg;
             end
@@ -505,8 +505,8 @@ for ksub = 1:numel(InputStruct)
                             pipeset_full(kall,:) = [pipeset_half(i,:) DET MPR TASK GS LP];
 
                             if N_run>1
-                                  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV,resultDir);
-                            else  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal{1}, Xnoise{1}, noise_roi{1}, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV,resultDir);
+                                  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV);
+                            else  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal{1}, Xnoise{1}, noise_roi{1}, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV);
 
                             end
 
@@ -610,7 +610,7 @@ for ksub = 1:numel(InputStruct)
                     nii.hdr.hist = VV.hdr.hist;
                     nii.hdr.dime.dim(5) = Nfull;
                     nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-                    save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/images_unwarped/rSPM_',subjectprefix,suffix,'_pipelines_all.nii'));
+                    save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/spms/rSPM_',subjectprefix,suffix,'_pipelines_all.nii'));
                 else
 
                     disp('Multiple images per pipeline. Producing 4D volume for each pipeline');
@@ -631,7 +631,7 @@ for ksub = 1:numel(InputStruct)
                         nii.hdr.dime.dim(5) = size(IMAGE_set{n},2);
                         pipeline_name = generate_pipeline_name(pipechars,pipeset(n,:));
                         nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-                        save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/images_unwarped/rSPM_',subjectprefix,'_pipeline_',num2str(n),'_',num2str(p),'vols.nii'));
+                        save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/spms/rSPM_',subjectprefix,'_pipeline_',num2str(n),'_',num2str(p),'vols.nii'));
                     end
                 end
             end
@@ -648,12 +648,12 @@ for i = 1:length(pipechars)
     name(i*2) = pipeset(i);
 end
 
-function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix,subjectprefix,Contrast_List,VV,resultDir)
+function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix,subjectprefix,Contrast_List,VV)
 
 global CODE_PROPERTY
 
-Subject_OutputDirIntermed = [OutputDirPrefix, '/intermediate_metrics/',resultDir];
-Subject_OutputDirOptimize = [OutputDirPrefix, '/optimization_results/',resultDir];
+Subject_OutputDirIntermed = [OutputDirPrefix '/intermediate_metrics'];
+Subject_OutputDirOptimize = [OutputDirPrefix '/optimization_results'];
 
 N_run = length(volmat);
 EmptyCell = cell(1,N_run);
@@ -784,7 +784,7 @@ else
         nii.hdr.hist = VV.hdr.hist;
         nii.hdr.dime.dim(5) = size(vol_concat,2);
         nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-        save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/images_unwarped/Proc',subjectprefix,'_run',num2str(is),'_',nomen, 'y0.nii'));
+        save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/processed/Proc',subjectprefix,'_run',num2str(is),'_',nomen, 'y0.nii'));
 
         %% declare empty datasets
         IMAGE_set_0  = [];
@@ -874,7 +874,7 @@ else
         nii.hdr.hist = VV.hdr.hist;
         nii.hdr.dime.dim(5) = size(vol_concat,2);
         nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-        save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/images_unwarped/Proc',subjectprefix,'_run',num2str(is),'_',nomen, 'y1.nii'));
+        save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/processed/Proc',subjectprefix,'_run',num2str(is),'_',nomen, 'y1.nii'));
 
         %% declare empty datasets
         IMAGE_set_y  = [];
@@ -890,13 +890,13 @@ else
     METRIC_set_y = [];
 end
 
-function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet,Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix, subjectprefix, Contrast_List,VV,resultDir)
+function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet,Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix, subjectprefix, Contrast_List,VV)
 
 % build pipeline prefix name -- and define current noise matrix
 global CODE_PROPERTY
 
-Subject_OutputDirIntermed = [OutputDirPrefix, '/intermediate_metrics/',resultDir];
-Subject_OutputDirOptimize = [OutputDirPrefix, '/optimization_results/',resultDir];
+Subject_OutputDirIntermed = [OutputDirPrefix '/intermediate_metrics'];
+Subject_OutputDirOptimize = [OutputDirPrefix '/optimization_results'];
 
 volmat = volmat{1};
 Ntime = size(volmat,2);
@@ -1057,7 +1057,7 @@ else
     nii.hdr.hist = VV.hdr.hist;
     nii.hdr.dime.dim(5) = size(vol_filt,2);
     nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-    save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/images_unwarped/Proc',subjectprefix,'_',nomen, 'y0.nii'));
+    save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/processed/Proc',subjectprefix,'_',nomen, 'y0.nii'));
     
     %% declare empty datasets
     IMAGE_set_0  = [];
@@ -1149,7 +1149,7 @@ else
     nii.hdr.hist = VV.hdr.hist;
     nii.hdr.dime.dim(5) = size(vol_filt,2);
     nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-    save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/images_unwarped/Proc',subjectprefix,'_',nomen, 'y1.nii'));
+    save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/processed/Proc',subjectprefix,'_',nomen, 'y1.nii'));
     
     %% declare empty datasets
     IMAGE_set_y  = [];

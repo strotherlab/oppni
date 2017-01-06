@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <deployment-project plugin="plugin.deploytool" plugin-version="1.0">
-  <configuration target="target.standalone" target-name="Standalone Application" name="oppni" location="/home/praamana/oppni" file="/home/praamana/oppni/oppni.prj" build-checksum="1370902911">
+  <configuration target="target.standalone" target-name="Standalone Application" name="oppni" location="/home/praamana/oppni" file="/home/praamana/oppni/oppni.prj" build-checksum="1181404167">
     <param.project.name>/home/praamana/oppni/oppni.prj</param.project.name>
     <param.target.type>Standalone Application</param.target.type>
     <param.appname>oppni</param.appname>
     <param.intermediate>${PROJECT_ROOT}/oppni/src</param.intermediate>
     <param.output>${PROJECT_ROOT}/oppni/distrib</param.output>
-    <param.embed.ctf>false</param.embed.ctf>
+    <param.embed.ctf>true</param.embed.ctf>
     <param.tbx_on_path>
       <item>all</item>
     </param.tbx_on_path>
@@ -38,6 +38,7 @@
       <param.appname />
       <param.intermediate />
       <param.output />
+      <param.embed.ctf />
       <param.tbx_on_path />
       <param.warnings />
       <param.version />
@@ -150,7 +151,6 @@
     <build-deliverables>
       <file name="run_oppni.sh" location="${PROJECT_ROOT}/oppni/distrib" optional="false">/home/praamana/oppni/oppni/distrib/run_oppni.sh</file>
       <file name="readme.txt" location="${PROJECT_ROOT}/oppni/distrib" optional="true">/home/praamana/oppni/oppni/distrib/readme.txt</file>
-      <file name="oppni.ctf" location="${PROJECT_ROOT}/oppni/distrib" optional="false">/home/praamana/oppni/oppni/distrib/oppni.ctf</file>
       <file name="oppni" location="${PROJECT_ROOT}/oppni/distrib" optional="false">/home/praamana/oppni/oppni/distrib/oppni</file>
     </build-deliverables>
     <workflow />

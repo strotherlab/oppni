@@ -21,6 +21,11 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 Overview Change Log:
 ------------------------------------------------------------------------------------
 
+[UPDATES 2017/01/10] by Nathan
+
+interpret_contrast_list_str.m
+    * minor bug-fix, allowing users to run no-contrast analyses (ln.74)
+
 [UPDATES 2016/11/17] by Nathan
 
 * made fixes to correctly disable vascular masking if specified by users

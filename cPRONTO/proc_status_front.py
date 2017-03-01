@@ -134,6 +134,28 @@ def is_done_part1_stats(subPrefix, outFolder):
         return True , " Metrics : Done.      " + tick_mark
 
 
+def is_done_group_mask_gen(out_dir):
+    """
+    Checks for the successful generation of group mask
+
+    :param out_dir:
+    :return:
+    :rtype: bool
+    """
+    gmask_dir = os.path.join(out_dir, 'GroupMasks')
+    file_names = ['group_consensus_mask.nii', 'group_spat_norm_qc.mat', 'group_mean_NN_WM.nii']
+
+    must_exist_list = list()
+    for file in file_names:
+        must_exist_list.append(os.path.join(gmask_dir,file))
+
+    if not all_files_exist_in(must_exist_list):
+        print('GMASK: failed.')
+        return False
+    else:
+        print('GMASK:   done.')
+        return True
+
 
 def is_done_QC_part_one(out_dir):
     """
@@ -392,6 +414,9 @@ def run(input_args):
             print "SPNORM : incomplete \t  # subjects/runs failed: {} / {} ({:.0f}%)".format(
                 failed_count_spnorm, num_subjects, (100 * failed_count_spnorm / num_subjects))
             print "\t resubmit list : ", resubmit_spnorm_file
+
+        # GMASK
+        proc_status.gmask = is_done_group_mask_gen(common_out_dir)
 
         # QC
         proc_status.QC1 = is_done_QC_part_one(common_out_dir)

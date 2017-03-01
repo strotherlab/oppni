@@ -54,7 +54,7 @@ reDrop = re.compile(r"DROP=\[(\d+),(\d+)\][\s]*")
 reTask = re.compile(r"TASK=([\w\./+_-]+)[\s]*")
 # to parse the task files
 reName = re.compile(r"NAME=\[([\w\./+_-]+)\][\s]*")
-
+reCondNames = re.compile(r"[^+-]+")
 
 rePhysio = re.compile(r"PHYSIO=([\w\./+_-]+)[\s]*")
 reStruct = re.compile(r"STRUCT=([\w\./+_-]+)[\s]*")
@@ -122,7 +122,7 @@ def validate_task_file(task_path, cond_names_in_contrast=None):
         if field + '=' not in task_spec:
             raise TypeError('{} is not defined in task file'.format(field))
 
-    if cond_names_in_contrast is not None:
+    if not_unspecified(cond_names_in_contrast):
         cond_names_in_file = reName.findall(task_spec)
         for name in cond_names_in_contrast:
             if name not in cond_names_in_file:
@@ -130,6 +130,12 @@ def validate_task_file(task_path, cond_names_in_contrast=None):
                                  "\n {} \n Defined: {}".format(name, task_path, cond_names_in_file))
 
     return True
+
+
+def not_unspecified( var ):
+    """ Checks for null values of a give variable! """
+
+    return var not in [ 'None', None, '' ]
 
 
 def validate_env_var(var):
@@ -146,7 +152,7 @@ def validate_user_env(opt):
             validate_env_var('MCR_PATH')
 
 
-def validate_input_file(input_file, options=None, new_input_file=None, cond_names_in_contrast=None, validate_only=False):
+def validate_input_file(input_file, options=None, new_input_file=None, cond_names_in_contrast=None):
     """Key function to ensure input file is valid, and creates a copy of the input file in the output folders.
         Also handles the reorganization of output files depending on options chosen."""
 
@@ -174,11 +180,6 @@ def validate_input_file(input_file, options=None, new_input_file=None, cond_name
                 continue
             else:
                 subject['line'] = new_line
-
-                # make an output folder only when neeed (not when just validating the input file)
-                if not validate_only and not os.path.exists(subject['out']):
-                    os.makedirs(subject['out'])
-
                 # if the key doesnt exist, dict returns None
                 if unique_subjects.get(subject['prefix']) is not None:
                     print "Potential duplicate prefix in line {}: {}".format(line_count, subject['prefix'])
@@ -197,7 +198,7 @@ def validate_input_file(input_file, options=None, new_input_file=None, cond_name
             # if one of the physiological methods are requested
             if options is not None and options.physio_correction_requested:
                 assert subject['physio'] is not None, \
-                    'RETROICOR and/or PHYPLUS are specified but not the physiological files! Line number {}.'.format(
+                    'RETROICOR is requested but physiological files not specified! Line number {}.'.format(
                         line_count)
             if options is not None and options.custom_mask_requested:
                 assert subject['mask'] is not None, \
@@ -274,6 +275,9 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
         else:
             # in case of resubmission, don't alter the previous setup
             subject['out'] = base_out_dir
+
+        if not os.path.exists(subject['out']):
+            os.makedirs(subject['out'])
 
         # prepending it with OUT= to restrict the sub to only OUT, and not elsewhere such as TASK=
         prev_dir = 'OUT={}'.format(base_out_dir)
@@ -402,7 +406,8 @@ def parse_args_check():
                         help="anatomical reference to be used in the spatial normalization step, i.e. -p,--part=3")
     parser.add_argument("--dospnormfirst",
                         action="store_true", dest="dospnormfirst", default=False,
-                        help="First normalize the data to a reference (specified by switch -r), then perform the preprocessing optimization.")
+                        help=argparse.SUPPRESS)
+                        # help="First normalize the data to a reference (specified by switch -r), then perform the preprocessing optimization.")
 
     # TODO option to make the contrasts separable.
     parser.add_argument("--contrast", action="store", dest="contrast_list_str",
@@ -465,7 +470,8 @@ def parse_args_check():
                              "zscore (Z-scored map of reproducible correlation values)", metavar="FORMAT")
     parser.add_argument("--N_resample", action="store", dest="N_resample",
                         default="10",
-                        help="Specify the number of resamples for multi-run analysis")
+                        help=argparse.SUPPRESS)
+                        # help="Specify the number of resamples for multi-run analysis")
     parser.add_argument("--TR_MSEC", action="store", dest="TR_MSEC",
                         default="None",
                         help="Specify TR in msec for all entries in the input file, overides the TR_MSEC in the TASK files")
@@ -543,7 +549,8 @@ def parse_args_check():
 
     parser.add_argument("--use_prev_processing_for_QC", action="store_true", dest="use_prev_processing_for_QC",
                         default=False,
-                        help="This option enables you to run QC jobs on existing processing generated with older versions of OPPNI.")
+                        help=argparse.SUPPRESS)
+                        # help="This option enables you to run QC jobs on existing processing generated with older versions of OPPNI.")
 
     parser.add_argument("--print_options_in", "--po", action="store", dest="print_options_path",
                         default=None,
@@ -567,11 +574,10 @@ def parse_args_check():
     elif options.val_input_file_path is not None:
         # performing a basic validation
         try:
-            _ = validate_input_file(options.val_input_file_path, validate_only=True)
+            _ = validate_input_file(options.val_input_file_path)
             print " validation succesful."
         except:
             print " validation failed."
-            raise
         sys.exit(0)
     elif options.print_options_path is not None:
         print_options(options.print_options_path)
@@ -625,9 +631,9 @@ def parse_args_check():
             raise ValueError( "Slice-timing correction is turned on - EPI acquisition pattern has not been specified"
                               " or is invalid. \n Must specify one of {}".format(cfg_pronto.SLICE_TIMING_PATTERNS))
 
-    contrast_specified = options.contrast_list_str != 'None'
-    reference_specified = options.reference is not None
-    physio_correction_requested = (1 in options.pipeline_steps['RETROICOR']) or (1 in options.pipeline_steps['PHYPLUS'])
+    contrast_specified = not_unspecified(options.contrast_list_str)
+    reference_specified = not_unspecified(options.reference)
+    physio_correction_requested = (1 in options.pipeline_steps['RETROICOR'])
     custom_mask_requested = 1 in options.pipeline_steps['CUSTOMREG']
     vasc_mask_requested = "1" == options.vasc_mask
 
@@ -650,8 +656,11 @@ def parse_args_check():
 
     # assert a single contrast to ensure QC doesnt fail either
     options.contrast_list_str = options.contrast_list_str.strip()
-    assert '-' in options.contrast_list_str, "Minus not found in the contrast string. Syntax: conditionA-conditionB"
-    cond_names_in_contrast = options.contrast_list_str.split('-')
+    # assert '-' in options.contrast_list_str, "Minus not found in the contrast string. Syntax: conditionA-conditionB"
+    if not_unspecified(options.contrast_list_str):
+        cond_names_in_contrast = reCondNames.findall(options.contrast_list_str)  # options.contrast_list_str.split('-')
+    else:
+        cond_names_in_contrast = None
 
     assert ',' not in options.contrast_list_str, "Multiple contrasts are specified with a comma! Only 1 contrast is allowed for now."
 
@@ -726,9 +735,8 @@ def parse_args_check():
     if not (options.spm.lower() in ["corr", "zscore", "none"]):
         print "WARNING (Deprecated usage): --spm has to be corr or zscore"
 
-    # notice the option name VASC_MASK must be uppercase
     options.model_param_list_str = "keepmean " + options.keepmean \
-                                   + " VASC_MASK " + options.vasc_mask \
+                                   + " vasc_mask " + options.vasc_mask \
                                    + " convolve " + options.convolve \
                                    + " decision_model " + options.decision_model \
                                    + " drf " + options.drf \
@@ -970,7 +978,7 @@ def update_status_and_exit(out_dir):
             if failed_sub_file is not None and failed_spnorm_file is not None:
                 user_confirmation = raw_input("Would you like to resubmit jobs for failed subjects/runs?  y / [N] : ")
                 if user_confirmation.lower() in ['y', 'yes', 'ye']:
-                    print(' Yes. \n Attempting resubmission ... ')
+                    print(' Yes. \n\nAttempting resubmission ... \n')
                     try:
                         reprocess_failed_subjects(prev_proc_status, prev_options, failed_sub_file, failed_spnorm_file,
                                                   prev_input_file_all, all_subjects, out_dir)
@@ -1177,10 +1185,15 @@ def reprocess_failed_subjects(prev_proc_status, prev_options, failed_sub_file, f
 
     if prev_proc_status.spnorm is NOT_DONE:
         failed_sub_spn = validate_input_file(failed_spnorm_file, prev_options, None)
+
         print('Resubmitting spatial normalization jobs .. ')
         sp_norm_step = 0  # both steps 1 and 2
         status_spn, jobs_spn = process_spatial_norm(failed_sub_spn, prev_options, failed_spnorm_file, sp_norm_step,
                                                     garage)
+
+    if prev_proc_status.gmask is NOT_DONE:
+        print('Resubmitting the group mask generation job .. ')
+        status_gm , jobs_gm  = process_group_mask_generation(all_subjects, prev_options, prev_input_file_all, garage)
 
     if prev_proc_status.QC1 is NOT_DONE:
         # rerunning QC
@@ -1572,24 +1585,24 @@ def submit_jobs():
         # so processing can be done only for the unfinished or failed subjects
         # notice the inputs are combined as a list
         print('\n Running a status check on previous processing ...')
-        is_done, rem_input_file, rem_spnorm_file = check_proc_status.run(
+        proc_status, rem_input_file, rem_spnorm_file = check_proc_status.run(
             [input_file, options.pipeline_file, '--skip_validation', '--not_verbose'])
         for step in cfg_pronto.STEPS_PROCESSING_STATUS:
             if step is not 'all_done':
-                if not getattr(is_done, step):
+                if not getattr(proc_status, step):
                     bool_str = 'not done.'
                 else:
                     bool_str = '    done.'
                 print('{:>15} is {}'.format(step, bool_str))
         print ' '
 
-        if is_done.preprocessing and is_done.optimization and is_done.QC1 and is_done.QC2:
+        if proc_status.all_done:
             print "All of preprocessing, optimization and QC seem to be finished already."
             print " if you'd like to force preprocessing, please rename/remove/move the existing outputs and rerun."
             return
     else:
         print('This is just a dry run - generating jobs for all steps regardless of their processing status.')
-        is_done = cfg_pronto.initialize_proc_status()
+        proc_status = cfg_pronto.initialize_proc_status()
         rem_input_file = None
         rem_spnorm_file = None
 
@@ -1602,18 +1615,21 @@ def submit_jobs():
         run_part_one = True
         run_part_two = True
         run_sp_norm = True
+        run_gmask = True
         run_qc1 = True
         run_qc2 = True
     elif options.part is 1:
         run_part_one = True
         run_part_two = False
         run_sp_norm = False
+        run_gmask = False
         run_qc1 = False
         run_qc2 = False
     elif options.part is 2:
         run_part_one = False
         run_part_two = True
         run_sp_norm = False
+        run_gmask = False
         run_qc1 = False
         run_qc2 = False
     elif options.part is 3:
@@ -1622,15 +1638,18 @@ def submit_jobs():
         # run spatial norm only when the reference is specified and exists
         if options.reference_specified:
             run_sp_norm = True
+            run_gmask = True
         else:
             print 'A reference atlas is not specified - skipping spatial normalization..'
             run_sp_norm = False
+            run_gmask = False
         run_qc1 = False
         run_qc2 = False
     elif options.part is 4:
         run_part_one = False
         run_part_two = False
         run_sp_norm = False
+        run_gmask = False
         run_qc1 = True
         run_qc2 = True
 
@@ -1640,7 +1659,7 @@ def submit_jobs():
             print 'A reference atlas is specified although SPNORM is not requested - ignoring the atlas.'
 
     # submitting jobs for preprocessing for all combinations of pipelines
-    if run_part_one and is_done.preprocessing is False:
+    if run_part_one and proc_status.preprocessing is False:
         # running part 1 only on subjects with incomplete processing
         print('Preprocessing:')
         status_p1, job_ids_pOne = run_preprocessing(unique_subjects, options, rem_input_file, cur_garage)
@@ -1660,7 +1679,7 @@ def submit_jobs():
             spnorm_step1_completed = True
 
     # submitting jobs for optimization
-    if run_part_two and options.analysis != "None" and is_done.optimization is False:
+    if run_part_two and options.analysis != "None" and proc_status.optimization is False:
         # optimization is done for ALL the subjects in the input file,
         # even though part 1 may have been rerun just for failed/unfinished subjects
         print('stats and optimization :')
@@ -1680,20 +1699,22 @@ def submit_jobs():
         if options.run_locally is True and (status_sp is False or status_sp is None):
             raise Exception('Spatial normalization - steps 2 and later failed.')
 
+    # group mask
+    if proc_status.gmask is False and run_gmask is True:
         print('group mask generation: Submitting jobs ..')
         status_gm = process_group_mask_generation(unique_subjects, options, input_file, cur_garage)
         if options.run_locally is True and (status_gm is False or status_gm is None):
             raise Exception('Group mask generation failed.')
 
     # generating QC1 if not done already
-    if is_done.QC1 is False and run_qc1 is True:
+    if proc_status.QC1 is False and run_qc1 is True:
         print('QC 1 :')
         status_qc1, job_ids_qc1 = run_qc_part_one(unique_subjects, options, input_file, cur_garage)
         if options.run_locally is True and (status_qc1 is False or status_qc1 is None):
             raise Exception('QC part 1 failed.')
 
     # generating QC2 if not done already
-    if is_done.QC2 is False and run_qc2 is True:
+    if proc_status.QC2 is False and run_qc2 is True:
         print('QC 2 :')
         status_qc2, job_ids_qc2 = run_qc_part_two(unique_subjects, options, input_file, cur_garage)
         if options.run_locally is True and (status_qc2 is False or status_qc2 is None):

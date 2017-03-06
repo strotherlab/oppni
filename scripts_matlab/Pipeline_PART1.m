@@ -99,8 +99,8 @@ function Pipeline_PART1(InputStruct, input_pipeset, analysis_model, modelparam, 
 % CODE_DATE    = '$Date: 2014-12-04 18:33:31 -0500 (Thu, 04 Dec 2014) $';
 % ------------------------------------------------------------------------%
 
-% Check Parameters
-%%
+% CHECKING PARAMETERS, SETTING PATHS & GLOBAL VARIABLES
+
 global NUMBER_OF_CORES
 NUMBER_OF_CORES = str2double(getenv('PIPELINE_NUMBER_OF_CORES'));
 if isnan(NUMBER_OF_CORES)
@@ -112,7 +112,6 @@ if ( ~exist('OCTAVE_VERSION','builtin') && exist('maxNumCompThreads') )
 end
 %setenv('LD_LIBRARY_PATH','/usr/local/ge2011.11/lib/linux-x64:/opt/lib.exported:/opt/lib.exported')
 % In some environment, like HPCVL, AFNI does not run properly since matlab changes library paths, the above line make it run.
-%%
 
 global CODE_PATH AFNI_PATH FSL_PATH MULTI_RUN_INPUTFILE CODE_PROPERTY
 if isempty(CODE_PATH)
@@ -139,37 +138,33 @@ end
 
 read_version;
 
-%% Reading optional input arguments, or giving default assignments to variables
+%% CHECKING OPTIONAL INPUT ARGUMENTS / SETTING DEFAULTS
 
 % check if nifti-output option is specified 
-if nargin<5 || isempty(niiout)
-    niiout=0;
-elseif ischar(niiout)
-    niiout = str2double(niiout);
+if nargin<5 || isempty(niiout) niiout = 0;
+elseif ischar(niiout)          niiout = str2double(niiout);
 end
+% if yes, display warning -- data overhead
 if( niiout >0 ) 
     disp('WARNING: activation maps from all preprocessing pipelines are being created.')
     disp('This is not recommended for large numbers of pipelines, as you will quickly run out of disk space!');
 end
 % check if analysis model is specified
-if isempty(analysis_model)
-    analysis_model = 'NONE';
-end
-if( strcmp(analysis_model,'NONE') )
+if isempty(analysis_model) analysis_model = 'NONE'; end
+% if none, display warning -- data overhead
+if( strcmpi(analysis_model,'NONE') )
     disp('WARNING: no analysis model selected. You will only get preprocessed data in your output');
     disp('This is not recommended for large numbers of pipelines, as you will quickly run out of disk space!');
 end
-% check if task contrast is specified
-if nargin<6 || isempty(contrast_list_str)
-    contrast_list_str = 'NONE';
-end
-% check if spatial normalization is done first
+% check if task contrast is specified -- default = nocontrast
+if nargin<6 || isempty(contrast_list_str)  contrast_list_str = 'NONE';  end
+% check if spatial normalization is done first -- default = do not pre-normalize
 if nargin<7 || isempty(dospnormfirst)
     dospnormfirst = false;
 elseif( ischar(dospnormfirst) )
-    dospnormfirst = str2double(dospnormfirst);   
+    dospnormfirst = str2double(dospnormfirst);
 end
-% check if data needs to be "de-obliqued" (default = off)
+% check if data needs to be "de-obliqued" -- default = off
 if nargin<8 || isempty(DEOBLIQUE)
     DEOBLIQUE = 0;
 elseif strcmpi(DEOBLIQUE,'None')
@@ -183,51 +178,43 @@ if nargin<9
     error('Terminating OPPNI');
 else
     tpatlist={'alt+z','altplus','alt+z2','alt-z','altminus','alt-z2','seq+z','seqplus','seq-z','seqminus','auto_hdr'};
-%     compar=0; 
-%     if( ischar(TPATTERN) )
-%     for(i=1:numel(tpatlist)) 
-%         if(strcmp(TPATTERN,tpatlist{i})) compar=1; end; 
-%     end
-%     end
-%     if( compar == 0 )
-%         fprintf('ERROR: Invalid slice-timing pattern (TPATTERN).\n');
-%         fprintf('TPATTERN options include:\n\t alt+z (or altplus)  = alternating in the plus direction\n\t alt+z2              = alternating, starting at slice #1 instead of #0\n\t alt-z (or altminus) = alternating in the minus direction\n\t alt-z2              = alternating, starting at slice #nz-2 instead of #nz-1\n\t seq+z (or seqplus)  = sequential in the plus direction\n\t seq-z (or seqminus) = sequential in the minus direction\n\n');
-%         error('Terminating OPPNI');
-%     end        
-
-    if ~ischar(TPATTERN) || ~ismember(TPATTERN, tpatlist)
+    compar=0; 
+    if( ischar(TPATTERN) )
+    for(i=1:numel(tpatlist)) 
+        if(strcmp(TPATTERN,tpatlist{i})) compar=1; end; 
+    end
+    end
+    if( compar == 0 )
         fprintf('ERROR: Invalid slice-timing pattern (TPATTERN).\n');
         fprintf('TPATTERN options include:\n\t alt+z (or altplus)  = alternating in the plus direction\n\t alt+z2              = alternating, starting at slice #1 instead of #0\n\t alt-z (or altminus) = alternating in the minus direction\n\t alt-z2              = alternating, starting at slice #nz-2 instead of #nz-1\n\t seq+z (or seqplus)  = sequential in the plus direction\n\t seq-z (or seqminus) = sequential in the minus direction\n\n');
         error('Terminating OPPNI');
-    end
+    end        
 end
-if nargin<10 || isempty(TOFWHM) || ~exist('TOFWHM','var')
-    TOFWHM = 0;
-end
+% check if adaptive smmoothing is selected -- default, "non-adaptive" Gaussian kernel
+if nargin<10 || isempty(TOFWHM)  TOFWHM = 0;  end
 
-if ischar(TOFWHM)
-    TOFWHM = str2double(TOFWHM);
-end
+cstr = contrast_list_str;
+astr = analysis_model;
+if( strcmpi(cstr,'NONE') ) cstr = 'no_contrast'; end
+if( strcmpi(astr,'NONE') ) astr = 'no_analysis'; end
+resultDir = [cstr,'-',astr]; %% subdirectory for specific analysis model/contrast set
 
-if ~ismember(TOFWHM,[0 1])
-    TOFWHM = 0;
-end
+%% NOW PARSING INPUTFILES AND REFORMATTING
 
-% %%========== TEMPORARY: uncomment this option to turn on BlurToFWHM
-% 
-% TOFWHM=1; %% --> this option force on BlurToFWHM smoothing
-% 
-% %%========== TEMPORARY: uncomment this option to turn on BlurToFWHM
+% check if chosen analysis model exists - get back info. about analysis
+% (analysis_model becomes augmented structure)
+analysis_model = check_analysis_model( analysis_model );
 
-%% Read Inputfiles
+% Read input file, store all information for each subject
+% (inputstruct becomes structure of cell arrays)
 if ~isstruct(InputStruct)
     [InputStruct,MULTI_RUN_INPUTFILE] = Read_Input_File(InputStruct);
 end
 
-%% acquire a list of all pipeline choices
+% acquire a list of all pipeline choices
 [pipeset_half, detSet, mprSet, tskSet, phySet, gsSet, lpSet, Nhalf, Nfull] = get_pipe_list(input_pipeset);
 pipeset_full = zeros( Nfull, 10 );
-
+% store whether multi-run data is provided
 if numel(InputStruct(1).run)>1
     MULTI_RUN_INPUTFILE = true;
     aligned_suffix = '_aligned';
@@ -235,36 +222,35 @@ else
     aligned_suffix = '';
 end
     
-%% check whether all specified files exist (func, struct, physio, split_info)
-check_input_file_integrity(InputStruct,max(pipeset_half(:,3)),max(tskSet)); 
-%% now, defining contrasts for analysis
-InputStruct = interpret_contrast_list_str(InputStruct,modelparam,analysis_model,contrast_list_str);             % generate contrast list for each subject and run
+% check whether all specified files exist (func, struct, physio, split_info)
+check_input_file_integrity(InputStruct, contrast_list_str, max(pipeset_half(:,3)),max(tskSet)); 
+% also, modify "number of components" if more than one contrast is specified
+if( ~isempty(strfind(contrast_list_str,',' )) )
+      analysis_model.num_comp = 'multi_component';
+end
 
-%% run all AFNI-based preprocessing steps
+%% PARSE CONTRASTS AND ONSETS FOR ANALYSIS
+InputStruct = interpret_contrast_list_str(InputStruct,modelparam,analysis_model,contrast_list_str); % generate contrast list for each subject and run
+
+%% NOW RUN ALL AFNI-BASED PREPROCESSING
+%
+% entirely called within function below
 Pipeline_PART1_afni_steps(InputStruct, pipeset_half, dospnormfirst,DEOBLIQUE,TPATTERN,TOFWHM );
 
+% does spatial normalization on "noise" ROI if specified
 spatial_normalization_noise_roi(InputStruct); % Transform user defined 
 
-%% save generated split_info files
-for ksub = 1:numel(InputStruct)
-    for krun = 1:numel(InputStruct(ksub).run)
-        mkdir_r([InputStruct(ksub).run(krun).Output_nifti_file_path '/intermediate_processed/split_info']);
-        split_info = InputStruct(ksub).run(krun).split_info;
-        save([InputStruct(ksub).run(krun).Output_nifti_file_path '/intermediate_processed/split_info/' InputStruct(ksub).run(krun).Output_nifti_file_prefix '.mat'],'split_info','CODE_PROPERTY','-v7');
-    end
-end
-clear split_info
-
-%%
+%% NOW RUN REMAINING PREPROCESSING + ANALYSIS
+%
+% iterate through each subject on list
 for ksub = 1:numel(InputStruct)
     
     subjectmask = InputStruct(ksub).run(1).subjectmask;
-    Subject_OutputDirIntermed = [InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_metrics'];
-    Subject_OutputDirOptimize = [InputStruct(ksub).run(1).Output_nifti_file_path '/optimization_results'];
+    Subject_OutputDirIntermed = [InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir];
+    Subject_OutputDirOptimize = [InputStruct(ksub).run(1).Output_nifti_file_path, '/optimization_results/',resultDir];
     subjectprefix = InputStruct(ksub).run(1).subjectprefix;
     mkdir_r([Subject_OutputDirIntermed]);
     mkdir_r([Subject_OutputDirIntermed '/regressors/reg' subjectprefix]);
-    kcount = 0;
     
     %%%% Check if output files already exist %%%%
     suffix='';
@@ -284,12 +270,10 @@ for ksub = 1:numel(InputStruct)
         N_run = numel(InputStruct(ksub).run);
 
         for krun = 1:numel(InputStruct(ksub).run)
-            kcount = kcount + 1;
-            Output_nifti_file_path{kcount}    = InputStruct(ksub).run(krun).Output_nifti_file_path;
-            Output_nifti_file_prefix{kcount}  = InputStruct(ksub).run(krun).Output_nifti_file_prefix;
-            Noise_ROI{kcount}                 = InputStruct(ksub).run(krun).Noise_ROI;
+            Output_nifti_file_path{krun}    = InputStruct(ksub).run(krun).Output_nifti_file_path;
+            Output_nifti_file_prefix{krun}  = InputStruct(ksub).run(krun).Output_nifti_file_prefix;
+            Noise_ROI{krun}                 = InputStruct(ksub).run(krun).Noise_ROI;
         end
-
 
         %% ==== Step 2.2(c): load brain mask, standard fmri data === %%%
         %
@@ -321,24 +305,22 @@ for ksub = 1:numel(InputStruct)
             % load file
             split_info = InputStruct(ksub).run(krun).split_info;
             split_info_set{krun} = split_info;
-            Contrast_List = InputStruct(ksub).run(krun).split_info.Contrast_List;
+            %%Contrast_List =
+            %%InputStruct(ksub).run(krun).split_info.Contrast_List; %TMP
 
             %% GROUP: load an array of split_info files (one per subject)
 
             warning off;
             %% a. create output directories for metrics
             mkdir_r(strcat(Subject_OutputDirIntermed,'/res0_params'));
-            if( ~strcmpi(analysis_model,'NONE') )
+            if( ~strcmpi(analysis_model.model_name,'NONE') )
             mkdir_r(strcat(Subject_OutputDirIntermed,'/res1_spms'));
             mkdir_r(strcat(Subject_OutputDirIntermed,'/res2_temp'));
             mkdir_r(strcat(Subject_OutputDirIntermed,'/res3_stats'));
             end
             %% b. create output directories for optimization results
-            mkdir_r(strcat(Subject_OutputDirOptimize,'/processed'));
-            if( ~strcmpi(analysis_model,'NONE') )
-            mkdir_r(strcat(Subject_OutputDirOptimize,'/spms'));
+            mkdir_r(strcat(Subject_OutputDirOptimize,'/images_unwarped'));
             mkdir_r(strcat(Subject_OutputDirOptimize,'/matfiles'));
-            end
             warning on;
 
             %%% ==== Step 2.2(b): load and prepare motion MPEs === %%%
@@ -348,7 +330,7 @@ for ksub = 1:numel(InputStruct)
             mpe_instring  = strcat(outdir,'/intermediate_processed/mpe/',Output_nifti_file_prefix{krun},'_mpe'    );
             mpe_outstring = strcat(outdir,'/intermediate_processed/mpe/',Output_nifti_file_prefix{krun},'_mpe_PCs');
             %% GROUP: PCA of head motion parameters -- load into cell array
-            motPCs{krun} = motion_to_pcs( mpe_instring, mpe_outstring, 0.85,0 );
+            split_info_set{krun}.motion_pcs = motion_to_pcs( mpe_instring, mpe_outstring, 0.85,0 );
 
             %
             % load "baseproc" (basic preprocessing) dataset for
@@ -360,23 +342,18 @@ for ksub = 1:numel(InputStruct)
             vxmat{krun}   = nifti_to_mat(VX,MM);
             [Nvox Ntime]  = size(vxmat{krun});
 
-            %%% ==== Step 2.2(d): simple task modelling === %%%
-
-            HRFdesign{krun} = split_info.design_mat;
-
             %%% ==== Step 2.2(e): head motion spatial derivative maps ==== %%%
             %
             % used to detect large head motion artifact in brain maps
             % getting spatial derivative maps of brain, for motion artifact detection
             avg3d{krun}         =  mask;
             avg3d{krun}(mask>0) = mean(vxmat{krun},2);
-            [fx fy fz]     = gradient( avg3d{krun} );
+            [fx fy fz]          = gradient( avg3d{krun} );
             % get the vector of derivatives on each axis
             %% GROUP: load into 3d matrix, across subjects
             FXYZ(:,:,krun) = [fx(mask>0) fy(mask>0) fz(mask>0)];
             outdir_stack{krun} = outdir;
         end
-
 
         %%% ==== Step 2.2(f): data-driven tissue segmentation/mapping
 
@@ -409,26 +386,22 @@ for ksub = 1:numel(InputStruct)
         end
         clear vxmat volcel;
 
-        % GROUP: get priors into 2d matrices
+        % Storing fixed spatial priors in cell-1 of split_info
+        %
         split_info_set{1}.NN_weight_avg = outwt.NN_weight;
         split_info_set{1}.WM_weight_avg = outwm.WM_weight;
         split_info_set{1}.NN_mask_avg   = outwt.NN_mask;
         split_info_set{1}.WM_mask_avg   = outwm.WM_mask;
-        split_info_set{1}.FXYZ_avg      = mean( FXYZ, 3 );        
-        
-        Xsignal = HRFdesign;
-        Xnoise  = motPCs;
-
-        for krun = 1:N_run
-            % check if argument for vascular masking exists and is turned off
-            if( isfield(split_info_set{1},'VASC_MASK') && split_info_set{1}.VASC_MASK==0 )
-                 split_info_set{1}.spat_weight = ones(size(split_info_set{1}.NN_weight_avg)); %%replace w/ unit weights
-            else split_info_set{1}.spat_weight = split_info_set{1}.NN_weight_avg;
-            end
-            split_info_set{1}.mask_vol    = mask;
+        split_info_set{1}.FXYZ_avg      = mean( FXYZ, 3 );
+        % required for next analysis steps
+        if( (isfield(split_info_set{1},'VASC_MASK') && split_info_set{1}.VASC_MASK==0) ||...
+            (isfield(split_info_set{1},'vasc_mask') && split_info_set{1}.vasc_mask==0) )
+             split_info_set{1}.spat_weight = ones( size(split_info_set{1}.NN_weight_avg) ); %% replace with unit weights
+        else split_info_set{1}.spat_weight = split_info_set{1}.NN_weight_avg; %% Automated re-weighting of analysis results
         end
+        split_info_set{1}.mask_vol    = mask;
 
-        save([Subject_OutputDirIntermed '/res0_params/params' subjectprefix '.mat'],'split_info_set','Xsignal','Xnoise','modelparam','CODE_PROPERTY','-v7');
+        save([Subject_OutputDirIntermed '/res0_params/params' subjectprefix '.mat'],'split_info_set','modelparam','CODE_PROPERTY','-v7');
 
         % initialize cell array for activation maps, one cell per pipeline
         IMAGE_set_0  = cell( Nfull, 1 );
@@ -462,10 +435,12 @@ for ksub = 1:numel(InputStruct)
             %%%%% II. Second iteration level. Load all subjects for a given
             %%%%%     "pre-made" pipeline -- eg every pipeline made in Step-1
 
+            % pulling contrast from run-1; for multi-run these should be identical!
+            Contrast_List = InputStruct(ksub).run(1).split_info.Contrast_List;
+            
             for krun = 1:N_run
 
-                Contrast_List = InputStruct(ksub).run(krun).split_info.Contrast_List;
-                outdir   =  Output_nifti_file_path{krun};
+                outdir        =  Output_nifti_file_path{krun};
 
                 %%% ==== Step 2.3(a): load fmri volume
                 %
@@ -480,12 +455,16 @@ for ksub = 1:numel(InputStruct)
 
                 % load the nifti files
                 if ~isempty(Noise_ROI{krun})
+                    disp('using user-specified mask for CUSTOMREG.');
                     [tmp,roi_name,ext] = fileparts(Noise_ROI{krun});
                     roi_full_name = [outdir '/intermediate_processed/noise_roi/' roi_name '.nii'];
                     VV = load_untouch_nii(roi_full_name);
                     noise_roi{krun} = nifti_to_mat(VV,MM);
+                elseif( max(gsSet) > 1 ) %% otherwise the default WM mask is used
+                    disp('using default WM mask for CUSTOMREG.');
+                    noise_roi{krun} = 1-split_info_set{1}.WM_mask_avg;
                 else
-                    noise_roi{krun}= [];
+                    noise_roi{krun} = [];
                 end
                 % 
             end
@@ -505,8 +484,8 @@ for ksub = 1:numel(InputStruct)
                             pipeset_full(kall,:) = [pipeset_half(i,:) DET MPR TASK GS LP];
 
                             if N_run>1
-                                  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV);
-                            else  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal{1}, Xnoise{1}, noise_roi{1}, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV);
+                                  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall}] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, noise_roi, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV,resultDir);
+                            else  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall}] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, noise_roi{1}, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV,resultDir);
 
                             end
 
@@ -527,7 +506,7 @@ for ksub = 1:numel(InputStruct)
         elseif( phySet == 1 )    pipeset = [ pipeset_full ones(Nfull,1) ];
         end
 
-        if( ~strcmpi(analysis_model,'NONE') )
+        if( ~strcmpi(analysis_model.model_name,'NONE') )
 
             %% Step 2.4: consolidate results for output
 
@@ -565,10 +544,11 @@ for ksub = 1:numel(InputStruct)
                     [Ao,Bo,rho(p,1)] = canoncorr( IMAGE_set{n}(:,p), split_info_set{1}.FXYZ_avg );
                     %
                 end
+
                 % correlation with spatial derivatives (motion effects)
                 METRIC_set{n}.artifact_prior.MOT_corr = rho;
-                % GROUP: take mask as >50% subjects with declared white matter tissue
-                METRIC_set{n}.artifact_prior.WM_zscor = sum( IMAGE_set{n}( split_info_set{1}.WM_mask_avg > 0.5, : ) > 0 )./ sum( split_info_set{1}.WM_mask_avg > 0.5 )';
+                % average WM z-score (for group, this takes mean when >50 subjects declare WM)
+                METRIC_set{n}.artifact_prior.WM_zscor = mean( IMAGE_set{n}(split_info_set{1}.WM_mask_avg < 0.5, : ) );
                 % fraction of voxels >0 (global signal effects)
                 METRIC_set{n}.artifact_prior.GS_fract = sum( IMAGE_set{n}>0 )./Nvox;
             end
@@ -579,11 +559,11 @@ for ksub = 1:numel(InputStruct)
             if  ~exist('OCTAVE_VERSION','builtin')
                 save(strcat(Subject_OutputDirIntermed,'/res1_spms/spms', subjectprefix,suffix,'.mat'),'IMAGE_set','modelparam','CODE_PROPERTY');
                 save(strcat(Subject_OutputDirIntermed,'/res2_temp/temp', subjectprefix,suffix,'.mat'),'TEMP_set','modelparam','CODE_PROPERTY');
-                save(strcat(Subject_OutputDirIntermed,'/res3_stats/stats',subjectprefix,suffix,'.mat'),'METRIC_set', 'pipechars', 'pipenames', 'pipeset','modeltype','analysis_model','CODE_PROPERTY','modelparam','CODE_PROPERTY');
+                save(strcat(Subject_OutputDirIntermed,'/res3_stats/stats',subjectprefix,suffix,'.mat'),'METRIC_set', 'pipechars', 'pipenames', 'pipeset','analysis_model','CODE_PROPERTY','modelparam','CODE_PROPERTY');
             else
                 save(strcat(Subject_OutputDirIntermed,'/res1_spms/spms', subjectprefix,suffix,'.mat'),'IMAGE_set','modelparam','CODE_PROPERTY','-mat7-binary');
                 save(strcat(Subject_OutputDirIntermed,'/res2_temp/temp', subjectprefix,suffix,'.mat'),'TEMP_set','modelparam','CODE_PROPERTY', '-mat7-binary');
-                save(strcat(Subject_OutputDirIntermed,'/res3_stats/stats',subjectprefix,suffix,'.mat'),'METRIC_set', 'pipechars', 'pipenames', 'pipeset','modeltype','analysis_model','CODE_PROPERTY','modelparam','CODE_PROPERTY', '-mat7-binary');
+                save(strcat(Subject_OutputDirIntermed,'/res3_stats/stats',subjectprefix,suffix,'.mat'),'METRIC_set', 'pipechars', 'pipenames', 'pipeset','analysis_model','CODE_PROPERTY','modelparam','CODE_PROPERTY', '-mat7-binary');
             end
 
             % ------------------------------------------------------------------------------------------------
@@ -593,7 +573,7 @@ for ksub = 1:numel(InputStruct)
 
                 %---------- now, brain maps
 
-                if( strcmp( modeltype, 'one_component') )
+                if( strcmpi( analysis_model.num_comp, 'one_component') )
 
                     disp('Only 1 image per pipeline. Concatenating all NIFTIS into single 4D matrix');
 
@@ -610,7 +590,7 @@ for ksub = 1:numel(InputStruct)
                     nii.hdr.hist = VV.hdr.hist;
                     nii.hdr.dime.dim(5) = Nfull;
                     nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-                    save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/spms/rSPM_',subjectprefix,suffix,'_pipelines_all.nii'));
+                    save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/images_unwarped/rSPM_',subjectprefix,suffix,'_pipelines_all.nii'));
                 else
 
                     disp('Multiple images per pipeline. Producing 4D volume for each pipeline');
@@ -631,7 +611,7 @@ for ksub = 1:numel(InputStruct)
                         nii.hdr.dime.dim(5) = size(IMAGE_set{n},2);
                         pipeline_name = generate_pipeline_name(pipechars,pipeset(n,:));
                         nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-                        save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/spms/rSPM_',subjectprefix,'_pipeline_',num2str(n),'_',num2str(p),'vols.nii'));
+                        save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/images_unwarped/rSPM_',subjectprefix,'_pipeline_',num2str(n),'_',num2str(p),'vols.nii'));
                     end
                 end
             end
@@ -648,12 +628,12 @@ for i = 1:length(pipechars)
     name(i*2) = pipeset(i);
 end
 
-function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix,subjectprefix,Contrast_List,VV)
+function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, noise_roi, split_info_set, analysis_model,OutputDirPrefix,subjectprefix,Contrast_List,VV,resultDir)
 
 global CODE_PROPERTY
 
-Subject_OutputDirIntermed = [OutputDirPrefix '/intermediate_metrics'];
-Subject_OutputDirOptimize = [OutputDirPrefix '/optimization_results'];
+Subject_OutputDirIntermed = [OutputDirPrefix, '/intermediate_metrics/',resultDir];
+Subject_OutputDirOptimize = [OutputDirPrefix, '/optimization_results/',resultDir];
 
 N_run = length(volmat);
 EmptyCell = cell(1,N_run);
@@ -663,11 +643,11 @@ nomen=[PipeHalfList 'd' num2str(DET)];
 %%% ==== Step 2.3(b): regression-based preprocessing ==== %%%
 %
 % add motion parameter timecourse as noise regressor
-if( MPR==1 ) nomen=[nomen 'r1']; Xnoi_curr = Xnoise;
+if( MPR==1 ) nomen=[nomen 'r1']; for(r=1:N_run) Xnoi_curr{r} = split_info_set{r}.motion_pcs; end
 else         nomen=[nomen 'r0']; Xnoi_curr = EmptyCell;
 end
 % add signal timecourse as additional regressor
-if(TASK==1 ) nomen=[nomen 'x1']; Xsig_curr = Xsignal;
+if(TASK==1 ) nomen=[nomen 'x1']; for(r=1:N_run) Xsig_curr{r} = split_info_set{r}.design_mat; end
 else         nomen=[nomen 'x0']; Xsig_curr = EmptyCell;
 end
 %
@@ -690,9 +670,9 @@ nomen=[nomen 'g' num2str(GS)];
 % customreg included (GS=2,3)
 if fix(GS/2)==1
     for( is=1:length(volmat) )
-        ln = find(noise_roi>0);
-        weight = noise_roi(ln)/sum(noise_roi(ln));
-        Regressors{is}.NOISEROI = [Regressors{is}.NOISEROI  mean(bsxfun(@times,out_vol_denoi(ln,:),weight))'];
+        ln = find(noise_roi{is}>0);
+        weight = noise_roi{is}(ln)/sum(noise_roi{is}(ln));
+        Regressors{is}.NOISEROI = [Regressors{is}.NOISEROI  mean(bsxfun(@times,out_vol_denoi{is}(ln,:),weight))'];
     end
     GS = mod(GS,2);
 end
@@ -719,7 +699,7 @@ if( LP == 1 )
     nomen=[nomen 'l1'];
     %filters above 0.10 Hz
     for( is=1:length(volmat) )
-        [ out_vol_filt{is} ] = quick_lopass( out_vol_denoi{is}, (split_info_set{1}.TR_MSEC./1000) );
+        [ out_vol_filt{is} ] = quick_lopass( out_vol_denoi{is}, (split_info_set{is}.TR_MSEC./1000) );
     end
 else
     out_vol_filt = out_vol_denoi;
@@ -730,48 +710,76 @@ end
 %%
 %%% ==== Step 2.3(e): run analysis with multiple contrasts==== %%%
 
-if( ~strcmpi(analysis_model,'NONE') )
+if( ~strcmpi(analysis_model.model_name,'NONE') )
 
-    for contrast_counter = 1:size(Contrast_List,1)
-        if (strcmpi(split_info_set{1}.type,'block') || strcmpi(split_info_set{1}.type,'multitask-block'))
-            for k = 1:length(split_info_set)
-                split_info_set{k}.idx_cond1 = split_info_set{k}.group.idx_cond(contrast_counter,1).sp;
-                split_info_set{k}.idx_cond2 = split_info_set{k}.group.idx_cond(contrast_counter,2).sp;
-            end
-        end
-        if strcmpi(split_info_set{1}.type,'event')
-            for k = 1:length(split_info_set)
-                split_info_set{k}.onsetlist    = split_info_set{k}.cond(max(Contrast_List(contrast_counter,:))).onsetlist;
-            end
-        end
-        output_temp = group_analyses_wrapper( out_vol_filt, split_info_set, analysis_model );
-        if contrast_counter>1
-            output.images = [output.images output_temp.images];
-            output.temp   = [output.temp output_temp.temp];
-            names = fieldnames(output_temp.metrics);
-            for fld_counter = 1:length(names)
-                output.metrics.(names{fld_counter}) = [output.metrics.(names{fld_counter}) output_temp.metrics.(names{fld_counter})];
-            end
-        else
-            output = output_temp;
-        end
+    % reweighting individual matrices before analysis
+    if( strcmpi(analysis_model.model_type,'multivariate') )
+       for(is=1:length(out_vol_filt))
+           out_vol_filt{is} = bsxfun(@times,out_vol_filt{is},split_info_set{1}.spat_weight);
+       end
     end
-    %
-    % determine if single-component or multicomponent
-    modeltype = output.modeltype;
-    if contrast_counter>1
-        modeltype = 'multi_component';
-        output.modeltype = modeltype;
+
+    if( strcmpi(analysis_model.design_type,'regression') ) %%% SPECIAL CASE FOR GLMS ETC.
+
+        % --- generating Resampling indices ---
+        if  isfield(split_info_set{1},'N_resample')
+             [Resampling_Index] = generate_split_half_list(N_run, split_info_set{1}.N_resample );
+        else [Resampling_Index] = generate_split_half_list(N_run, 10 ); %% default of 10 resampling splits
+        end    
+
+        % run analaysis --> ensure code is in path, call it from string
+        addpath( analysis_model.filepath );
+        pfun = str2func( analysis_model.model_name );
+        output = pfun( out_vol_filt, split_info_set,[Resampling_Index] );  
+
+    else %%% OTHER CONTRAST MODELS
+    
+        for contrast_counter = 1:size(Contrast_List,1)
+            if (strcmpi(analysis_model.design_type,'block') || strcmpi(analysis_model.design_type,'multitask-block'))
+                for k = 1:length(split_info_set)
+                    split_info_set{k}.idx_cond1 = split_info_set{k}.group.idx_cond(contrast_counter,1).sp;
+                    split_info_set{k}.idx_cond2 = split_info_set{k}.group.idx_cond(contrast_counter,2).sp;
+                end
+            end
+            if strcmpi(analysis_model.design_type,'event')
+                for k = 1:length(split_info_set)
+                    split_info_set{k}.onsetlist    = split_info_set{k}.cond(max(Contrast_List(contrast_counter,:))).onsetlist;
+                end
+            end
+
+            % --- generating Resampling indices ---
+            if  isfield(split_info_set{1},'N_resample')
+                 [Resampling_Index] = generate_split_half_list(N_run, split_info_set{1}.N_resample );
+            else [Resampling_Index] = generate_split_half_list(N_run, 10 ); %% default of 10 resampling splits
+            end
+            % run analaysis --> ensure code is in path, call it from string
+            addpath( analysis_model.filepath );
+            pfun = str2func( analysis_model.model_name );
+            output_temp = pfun( out_vol_filt, split_info_set,[Resampling_Index] );  
+
+            if contrast_counter>1
+                output.images = [output.images output_temp.images];
+                output.temp   = [output.temp output_temp.temp];
+                names = fieldnames(output_temp.metrics);
+                for fld_counter = 1:length(names)
+                    output.metrics.(names{fld_counter}) = [output.metrics.(names{fld_counter}) output_temp.metrics.(names{fld_counter})];
+                end
+            else
+                output = output_temp;
+            end
+        end
+    
     end
+
     % record optimal eigenimages / metrics
     IMAGE_set_0  = output.images;
     TEMP_set_0   = output.temp;
     METRIC_set_0 = output.metrics;
 else
-    modeltype = [];
+    
     for( is=1:N_run)
         %% save files as full 4D .nii volumes (vol_concat)
-        TMPVOL = zeros( [size(split_info_set{is}.mask_vol), size(out_vol_filt{is},2)] );
+        TMPVOL = zeros( [size(split_info_set{1}.mask_vol), size(out_vol_filt{is},2)] );
         % vascular weighting
         for(p=1:size(out_vol_filt{is},2) )
             tmp=split_info.mask_vol;tmp(tmp>0)= out_vol_filt{is}(:,p) .* split_info_set{1}.spat_weight;
@@ -784,7 +792,7 @@ else
         nii.hdr.hist = VV.hdr.hist;
         nii.hdr.dime.dim(5) = size(vol_concat,2);
         nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-        save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/processed/Proc',subjectprefix,'_run',num2str(is),'_',nomen, 'y0.nii'));
+        save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/images_unwarped/Proc',subjectprefix,'_run',num2str(is),'_',nomen, 'y0.nii'));
 
         %% declare empty datasets
         IMAGE_set_0  = [];
@@ -824,64 +832,99 @@ if( ~isempty(find( phySet == 1 )) ) % perform if PHYCAA+ is being tested
         %
         %filters above 0.10 Hz
         for( is=1:length(volmat) )
-            [ out_vol_filt{is} ] = quick_lopass( volmat_regress{is}, (split_info_set{1}.TR_MSEC./1000) );
+            [ out_vol_filt{is} ] = quick_lopass( volmat_regress{is}, (split_info_set{is}.TR_MSEC./1000) );
         end
     else
         out_vol_filt = volmat_regress;
     end
     
-if( ~strcmpi(analysis_model,'NONE') )
+    if( ~strcmpi(analysis_model.model_name,'NONE') )
 
-    for contrast_counter = 1:size(Contrast_List,1)
-        if isfield(split_info_set{1},'group')
-            for k = 1:length(split_info_set)
-                split_info_set{k}.idx_cond1 = split_info_set{k}.group.idx_cond(contrast_counter,1).sp;
-                split_info_set{k}.idx_cond2 = split_info_set{k}.group.idx_cond(contrast_counter,2).sp;
-            end
+        % reweighting individual matrices before analysis
+        if( strcmpi(analysis_model.model_type,'multivariate') )
+           for(is=1:length(out_vol_filt))
+               out_vol_filt{is} = bsxfun(@times,out_vol_filt{is},split_info_set{1}.spat_weight);
+           end
         end
-        output_temp = group_analyses_wrapper( out_vol_filt, split_info_set, analysis_model );
-        if contrast_counter>1
-            output.images = [output.images output_temp.images];
-            output.temp   = [output.temp output_temp.temp];
-            names = fieldnames(output_temp.metrics);
-            for fld_counter = 1:length(names)
-                output.metrics.(names{fld_counter}) = [output.metrics.(names{fld_counter}) output_temp.metrics.(names{fld_counter})];
+
+        if( strcmpi(analysis_model.design_type,'regression') ) %%% SPECIAL CASE FOR GLMS ETC.
+
+
+            % --- generating Resampling indices ---
+            if  isfield(split_info_set{1},'N_resample')
+                 [Resampling_Index] = generate_split_half_list(N_run, split_info_set{1}.N_resample );
+            else [Resampling_Index] = generate_split_half_list(N_run, 10 ); %% default of 10 resampling splits
+            end    
+
+            % run analaysis --> ensure code is in path, call it from string
+            addpath( analysis_model.filepath );
+            pfun = str2func( analysis_model.model_name );
+            output = pfun( out_vol_filt, split_info_set,[Resampling_Index] );  
+
+        else %%% OTHER CONTRAST MODELS        
+
+            for contrast_counter = 1:size(Contrast_List,1)
+                if isfield(split_info_set{1},'group')
+                    for k = 1:length(split_info_set)
+                        split_info_set{k}.idx_cond1 = split_info_set{k}.group.idx_cond(contrast_counter,1).sp;
+                        split_info_set{k}.idx_cond2 = split_info_set{k}.group.idx_cond(contrast_counter,2).sp;
+                    end
+                end
+
+                % --- generating Resampling indices ---
+                if  isfield(split_info_set{1},'N_resample')
+                     [Resampling_Index] = generate_split_half_list(N_run, split_info_set{1}.N_resample );
+                else [Resampling_Index] = generate_split_half_list(N_run, 10 ); %% default of 10 resampling splits
+                end
+                % run analaysis --> ensure code is in path, call it from string
+                addpath( analysis_model.filepath );
+                pfun = str2func( analysis_model.model_name );
+                output_temp = pfun( out_vol_filt, split_info_set,[Resampling_Index] );  
+
+                if contrast_counter>1
+                    output.images = [output.images output_temp.images];
+                    output.temp   = [output.temp output_temp.temp];
+                    names = fieldnames(output_temp.metrics);
+                    for fld_counter = 1:length(names)
+                        output.metrics.(names{fld_counter}) = [output.metrics.(names{fld_counter}) output_temp.metrics.(names{fld_counter})];
+                    end
+                else
+                    output = output_temp;
+                end
             end
-        else
-            output = output_temp;
+            
+        end
+
+        % record optimal eigenimages / metrics
+        IMAGE_set_y  = output.images;
+        TEMP_set_y   = output.temp;
+        METRIC_set_y = output.metrics;
+
+    else
+
+        for( is=1:N_run)
+            %% save files as full 4D .nii volumes (vol_concat)
+            TMPVOL = zeros( [size(split_info_set{1}.mask_vol), size(out_vol_filt{is},2)] );
+
+            for(p=1:size(out_vol_filt{is},2) )
+                tmp=split_info.mask_vol;tmp(tmp>0)=out_vol_filt{is}(:,p) .* split_info_set{1}.spat_weight;
+                TMPVOL(:,:,:,p) = tmp;
+            end
+
+            nii=VV;
+            nii.img = TMPVOL;
+            nii.hdr.dime.datatype = 16;
+            nii.hdr.hist = VV.hdr.hist;
+            nii.hdr.dime.dim(5) = size(vol_concat,2);
+            nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
+            save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/images_unwarped/Proc',subjectprefix,'_run',num2str(is),'_',nomen, 'y1.nii'));
+
+            %% declare empty datasets
+            IMAGE_set_y  = [];
+            TEMP_set_y   = [];
+            METRIC_set_y = [];
         end
     end
-
-    % record optimal eigenimages / metrics
-    IMAGE_set_y  = output.images;
-    TEMP_set_y   = output.temp;
-    METRIC_set_y = output.metrics;
-    
-else
-    modeltype = [];
-    for( is=1:N_run)
-        %% save files as full 4D .nii volumes (vol_concat)
-        TMPVOL = zeros( [size(split_info_set{is}.mask_vol), size(out_vol_filt{is},2)] );
-
-        for(p=1:size(out_vol_filt{is},2) )
-            tmp=split_info.mask_vol;tmp(tmp>0)=out_vol_filt{is}(:,p) .* split_info_set{1}.spat_weight;
-            TMPVOL(:,:,:,p) = tmp;
-        end
-
-        nii=VV;
-        nii.img = TMPVOL;
-        nii.hdr.dime.datatype = 16;
-        nii.hdr.hist = VV.hdr.hist;
-        nii.hdr.dime.dim(5) = size(vol_concat,2);
-        nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-        save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/processed/Proc',subjectprefix,'_run',num2str(is),'_',nomen, 'y1.nii'));
-
-        %% declare empty datasets
-        IMAGE_set_y  = [];
-        TEMP_set_y   = [];
-        METRIC_set_y = [];
-    end
-end
     save([Subject_OutputDirIntermed '/regressors/reg' subjectprefix '/' nomen 'y1.mat'],'Regressors','CODE_PROPERTY','-v7');
     METRIC_set_y.cond_struc = design_cond(volmat,Regressors);
 else
@@ -890,17 +933,16 @@ else
     METRIC_set_y = [];
 end
 
-function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet,Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix, subjectprefix, Contrast_List,VV)
+function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, noise_roi, split_info_set, analysis_model,OutputDirPrefix, subjectprefix, Contrast_List,VV,resultDir)
 
 % build pipeline prefix name -- and define current noise matrix
 global CODE_PROPERTY
 
-Subject_OutputDirIntermed = [OutputDirPrefix '/intermediate_metrics'];
-Subject_OutputDirOptimize = [OutputDirPrefix '/optimization_results'];
+Subject_OutputDirIntermed = [OutputDirPrefix, '/intermediate_metrics/',resultDir];
+Subject_OutputDirOptimize = [OutputDirPrefix, '/optimization_results/',resultDir];
 
 volmat = volmat{1};
 Ntime = size(volmat,2);
-split_info = split_info_set{1};
 
 % build pipeline prefix name -- and define current noise matrix
 nomen=[PipeHalfList 'd' num2str(DET)];
@@ -910,8 +952,8 @@ nomen=[PipeHalfList 'd' num2str(DET)];
 % add motion parameter timecourse as noise regressor; separated into split-halves
 if( MPR==1 ) 
     nomen=[nomen 'r1']; 
-    Xnoi_sp1 = Xnoise(1:ceil(Ntime/2),:);
-    Xnoi_sp2 = Xnoise(ceil(Ntime/2)+1:end,:);
+    Xnoi_sp1 = split_info_set{1}.motion_pcs(1:ceil(Ntime/2),:);
+    Xnoi_sp2 = split_info_set{1}.motion_pcs(ceil(Ntime/2)+1:end,:);
 else         
     nomen=[nomen 'r0'];
     Xnoi_sp1 = [];
@@ -920,8 +962,8 @@ end
 % add signal timecourse as additional regressor; separated into split-halves
 if(TASK==1 ) 
     nomen=[nomen 'x1']; 
-    Xsig_sp1 = Xsignal(1:ceil(Ntime/2)    ,:);
-    Xsig_sp2 = Xsignal(ceil(Ntime/2)+1:end,:);
+    Xsig_sp1 = split_info_set{1}.design_mat(1:ceil(Ntime/2)    ,:);
+    Xsig_sp2 = split_info_set{1}.design_mat(ceil(Ntime/2)+1:end,:);
     Xsig_sp1(:,std(Xsig_sp1)<(1e-4/Ntime))=[];
     Xsig_sp2(:,std(Xsig_sp2)<(1e-4/Ntime))=[]; 
 else nomen=[nomen 'x0']; Xsig_sp1 = [];
@@ -933,7 +975,6 @@ if ~isempty(Xsig_sp1)
     sr2 = [zeros(size(Xsig_sp1,1),size(Xsig_sp2,2));Xsig_sp2];
     
     Regressors.Signal       = [sr1 sr2];
-    
 else
     Regressors.Signal = [];
 end
@@ -952,7 +993,6 @@ Regressors.NOISEROI= [];
 Regressors.GSPC1   = [];
 Regressors.PHYPLUS = [];
 
-
 %%% ==== Step 2.3(c): global signal removed ==== %%%
 %
 % if Global Signal regression is "on", estimate and regress from data
@@ -970,6 +1010,7 @@ if fix(GS/2)==1
     Regressors.NOISEROI = [nr1 nr2];
     GS = mod(GS,2);
 end
+
 % regression of global effect (GS=1,3)
 if( GS == 1 )
     [out_sp]   = apply_glm(volmat,Regressors);
@@ -977,13 +1018,13 @@ if( GS == 1 )
     out_sp2 = out_sp(:,ceil(size(out_sp,2)/2)+1:end);
     % (SPLIT-1)
     % get PC components on vascular-masked data
-    volmat_temp  = bsxfun(@times,out_sp1,split_info.spat_weight);
+    volmat_temp  = bsxfun(@times,out_sp1,split_info_set{1}.spat_weight);
     [vx sx temp] = svd( volmat_temp'*volmat_temp );
     nr1 = [vx(:,1);zeros(size(out_sp2,2),1)];
     
     % (SPLIT-2)
     % get PC components on vascular-masked data
-    volmat_temp  = bsxfun(@times,out_sp2,split_info.spat_weight);
+    volmat_temp  = bsxfun(@times,out_sp2,split_info_set{1}.spat_weight);
     [vx sx temp] = svd( volmat_temp'*volmat_temp );    
     nr2 = [zeros(size(out_sp1,2),1);vx(:,1)];
     Regressors.GSPC1 = [nr1 nr2];
@@ -1006,48 +1047,61 @@ end
 
 %%% ==== Step 2.3(e): run analysis with multiple contrasts==== %%%
 
-if( ~strcmpi(analysis_model,'NONE') )
+if( ~strcmpi(analysis_model.model_name,'NONE') )
 
-    for contrast_counter = 1:size(Contrast_List,1)
-        if strcmpi(split_info.type,'block') || strcmpi(split_info.type,'multitask-block')
-            split_info.idx_cond1_sp1 = split_info.single.idx_cond(contrast_counter,1).sp1;
-            split_info.idx_cond1_sp2 = split_info.single.idx_cond(contrast_counter,1).sp2;
-            split_info.idx_cond2_sp1 = split_info.single.idx_cond(contrast_counter,2).sp1;
-            split_info.idx_cond2_sp2 = split_info.single.idx_cond(contrast_counter,2).sp2;
-        end
-        if strcmpi(split_info.type,'event')
-            split_info.onsetlist    = split_info.cond(max(Contrast_List(contrast_counter,:))).onsetlist;
-        end
-        output_temp = run_analyses_wrapper( vol_filt, split_info, analysis_model );
-        if contrast_counter>1
-            output.images = [output.images output_temp.images];
-            output.temp   = [output.temp output_temp.temp];
-            names = fieldnames(output_temp.metrics);
-            for fld_counter = 1:length(names)
-                output.metrics.(names{fld_counter}) = [output.metrics.(names{fld_counter}) output_temp.metrics.(names{fld_counter})];
+    % for multivariate models, pre-weight images
+    if( strcmpi(analysis_model.model_type,'multivariate') )
+        vol_filt = bsxfun(@times,vol_filt,split_info_set{1}.spat_weight);       
+    end
+        
+    if( strcmpi(analysis_model.design_type,'regression') ) %%% SPECIAL CASE FOR GLMS ETC.   
+
+        % run analaysis --> ensure code is in path, call it from string
+        addpath( analysis_model.filepath );
+        pfun = str2func( analysis_model.model_name );
+        output = pfun( vol_filt, split_info_set,[] );  
+
+    else %%% OTHER CONTRAST MODELS
+
+        for contrast_counter = 1:size(Contrast_List,1)
+            if strcmpi(analysis_model.design_type,'block') || strcmpi(analysis_model.design_type,'multitask-block')
+                split_info_set{1}.idx_cond1_sp1 = split_info_set{1}.single.idx_cond(contrast_counter,1).sp1;
+                split_info_set{1}.idx_cond1_sp2 = split_info_set{1}.single.idx_cond(contrast_counter,1).sp2;
+                split_info_set{1}.idx_cond2_sp1 = split_info_set{1}.single.idx_cond(contrast_counter,2).sp1;
+                split_info_set{1}.idx_cond2_sp2 = split_info_set{1}.single.idx_cond(contrast_counter,2).sp2;
             end
-        else
-            output = output_temp;
+            if strcmpi(analysis_model.design_type,'event')
+                split_info_set{1}.onsetlist    = split_info_set{1}.cond(max(Contrast_List(contrast_counter,:))).onsetlist;
+            end
+
+            % run analaysis --> ensure code is in path, call it from string
+            addpath( analysis_model.filepath );
+            pfun = str2func( analysis_model.model_name );
+            output_temp = pfun( vol_filt, split_info_set,[] );   
+
+            if contrast_counter>1
+                output.images = [output.images output_temp.images];
+                output.temp   = [output.temp output_temp.temp];
+                names = fieldnames(output_temp.metrics);
+                for fld_counter = 1:length(names)
+                    output.metrics.(names{fld_counter}) = [output.metrics.(names{fld_counter}) output_temp.metrics.(names{fld_counter})];
+                end
+            else
+                output = output_temp;
+            end
         end
     end
 
-    % determine if single-component or multicomponent
-    modeltype = output.modeltype;
-    if contrast_counter>1
-        modeltype = 'multi_component';
-    end
     % record optimal eigenimages / metrics
     IMAGE_set_0  = output.images;
     TEMP_set_0   = output.temp;
     METRIC_set_0 = output.metrics;
-
 else
     %% save files as full 4D .nii volumes (vol_filt)
-    modeltype = [];
-    TMPVOL = zeros( [size(split_info.mask_vol), size(vol_concat,2)] );
+    TMPVOL = zeros( [size(split_info_set{1}.mask_vol), size(vol_concat,2)] );
 
     for(p=1:size(vol_concat,2) )
-        tmp=split_info.mask_vol;tmp(tmp>0)=vol_filt(:,p).*split_info.spat_weight;
+        tmp=split_info_set{1}.mask_vol;tmp(tmp>0)=vol_filt(:,p).*split_info_set{1}.spat_weight;
         TMPVOL(:,:,:,p) = tmp;
     end
     
@@ -1057,7 +1111,7 @@ else
     nii.hdr.hist = VV.hdr.hist;
     nii.hdr.dime.dim(5) = size(vol_filt,2);
     nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-    save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/processed/Proc',subjectprefix,'_',nomen, 'y0.nii'));
+    save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/images_unwarped/Proc',subjectprefix,'_',nomen, 'y0.nii'));
     
     %% declare empty datasets
     IMAGE_set_0  = [];
@@ -1079,7 +1133,7 @@ if( ~isempty(find( phySet == 1 )) ) % perform if PHYCAA+ is being tested
     %%% ==== Step 2.3(f): PHYCAA+ physiological regression ==== %%%
     %
     %==============================================
-    taskInfo.physio_map = split_info.NN_weight_avg;   % include vascular prior
+    taskInfo.physio_map = split_info_set{1}.NN_weight_avg;   % include vascular prior
     taskInfo.task_SPMs  = IMAGE_set_0;     % include reference SPM
     taskInfo.comp_crit  = 0;                 % less conservative threshold for noise components
     taskInfo.out_format =-1;                 % outputs regressed ONLY dataset
@@ -1105,26 +1159,46 @@ if( ~isempty(find( phySet == 1 )) ) % perform if PHYCAA+ is being tested
         vol_filt = vol_concat;
     end    
 
-if( ~strcmpi(analysis_model,'NONE') )
-    
-    for contrast_counter = 1:size(Contrast_List,1)
-        if isfield(split_info,'single')
-            split_info.idx_cond1_sp1 = split_info.single.idx_cond(contrast_counter,1).sp1;
-            split_info.idx_cond1_sp2 = split_info.single.idx_cond(contrast_counter,1).sp2;
-            split_info.idx_cond2_sp1 = split_info.single.idx_cond(contrast_counter,2).sp1;
-            split_info.idx_cond2_sp2 = split_info.single.idx_cond(contrast_counter,2).sp2;
-        end
-        output_temp = run_analyses_wrapper( vol_filt, split_info, analysis_model );
+if( ~strcmpi(analysis_model.model_name,'NONE') )
 
-        if contrast_counter>1
-            output.images = [output.images output_temp.images];
-            output.temp   = [output.temp output_temp.temp];
-            names = fieldnames(output_temp.metrics);
-            for fld_counter = 1:length(names)
-                output.metrics.(names{fld_counter}) = [output.metrics.(names{fld_counter}) output_temp.metrics.(names{fld_counter})];
+    % for multivariate models, pre-weight images
+    if( strcmpi(analysis_model.model_type,'multivariate') )
+        vol_filt = bsxfun(@times,vol_filt,split_info_set{1}.spat_weight);       
+    end
+    
+    if( strcmpi(analysis_model.design_type,'regression') ) %%% SPECIAL CASE FOR GLMS ETC.   
+
+        % run analaysis --> ensure code is in path, call it from string
+        addpath( analysis_model.filepath );
+        pfun = str2func( analysis_model.model_name );
+        output = pfun( vol_filt, split_info_set,[] );  
+
+    else %%% OTHER CONTRAST MODELS
+
+
+        for contrast_counter = 1:size(Contrast_List,1)
+            if isfield(split_info_set{1},'single')
+                split_info_set{1}.idx_cond1_sp1 = split_info_set{1}.single.idx_cond(contrast_counter,1).sp1;
+                split_info_set{1}.idx_cond1_sp2 = split_info_set{1}.single.idx_cond(contrast_counter,1).sp2;
+                split_info_set{1}.idx_cond2_sp1 = split_info_set{1}.single.idx_cond(contrast_counter,2).sp1;
+                split_info_set{1}.idx_cond2_sp2 = split_info_set{1}.single.idx_cond(contrast_counter,2).sp2;
             end
-        else
-            output = output_temp;
+
+            % run analaysis --> ensure code is in path, call it from string
+            addpath( analysis_model.filepath );
+            pfun = str2func( analysis_model.model_name );
+            output_temp = pfun( vol_filt, split_info_set,[] ); 
+
+            if contrast_counter>1
+                output.images = [output.images output_temp.images];
+                output.temp   = [output.temp output_temp.temp];
+                names = fieldnames(output_temp.metrics);
+                for fld_counter = 1:length(names)
+                    output.metrics.(names{fld_counter}) = [output.metrics.(names{fld_counter}) output_temp.metrics.(names{fld_counter})];
+                end
+            else
+                output = output_temp;
+            end
         end
     end
         
@@ -1135,11 +1209,10 @@ if( ~strcmpi(analysis_model,'NONE') )
     
 else
     %% save files as full 4D .nii volumes (vol_filt)
-    modeltype = [];
-    TMPVOL = zeros( [size(split_info.mask_vol), size(vol_filt,2)] );
+    TMPVOL = zeros( [size(split_info_set{1}.mask_vol), size(vol_filt,2)] );
 
     for(p=1:size(vol_filt,2) )
-        tmp=split_info.mask_vol;tmp(tmp>0)=vol_filt(:,p).*split_info.spat_weight;
+        tmp=split_info_set{1}.mask_vol;tmp(tmp>0)=vol_filt(:,p).* split_info_set{1}.spat_weight;
         TMPVOL(:,:,:,p) = tmp;
     end
     
@@ -1149,7 +1222,7 @@ else
     nii.hdr.hist = VV.hdr.hist;
     nii.hdr.dime.dim(5) = size(vol_filt,2);
     nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-    save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/processed/Proc',subjectprefix,'_',nomen, 'y1.nii'));
+    save_untouch_nii(nii,strcat(Subject_OutputDirOptimize,'/images_unwarped/Proc',subjectprefix,'_',nomen, 'y1.nii'));
     
     %% declare empty datasets
     IMAGE_set_y  = [];

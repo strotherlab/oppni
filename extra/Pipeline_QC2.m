@@ -66,63 +66,46 @@ function Pipeline_QC2( inputfile, newmaskname, Npcs )
 % ------------------------------------------------------------------------%
 
 % % add paths
-% addpath_oppni MatFiles;
-% addpath_oppni MatFiles/NIFTI_tools;
+% addpath MatFiles;
+% addpath MatFiles/NIFTI_tools;
 % mkdir QC2_results;
-%%%%%%%%%%%%%%%%%%%%%%%%%addpath_oppni MatFiles/NIFTI_tools;
+%%%%%%%%%%%%%%%%%%%%%%%%%addpath MatFiles/NIFTI_tools;
 
 [pathstr] = which('Pipeline_QC2.m');
 pathstr = fileparts(pathstr);
 pathstr = fileparts(pathstr);
-addpath_oppni([pathstr '/scripts_matlab']);
-addpath_oppni([pathstr '/scripts_matlab/NIFTI_tools']);
+addpath([pathstr '/scripts_matlab']);
+addpath([pathstr '/scripts_matlab/NIFTI_tools']);
 
-% quick open of input file to get directory
-fid = fopen(inputfile);
-% read in first line
-tline = fgetl(fid);
-ksub=0;
-while ischar(tline) && ksub<2 % for every input line in textfile...
-
-    % index #subjects(/datasets)
-    ksub=ksub+1,
-       
-    %% Read in subject paths
-
-    % parse output directory
-    ifile = strfind( tline, 'OUT=' ); ifile = ifile+4;
-    ips   = [strfind( tline, ' ' )-1 length(tline)];
-    ips   = ips(ips>ifile);
-    fullline = tline(ifile:ips(1));
-    isepr    = strfind( fullline, '/' );
-    isepr    = isepr(end);
-    prefix   = fullline(isepr+1:end);
-    outdir   = fullline(1:isepr-1);
-            
-    % --> find optimized results
-    summaryname = [outdir, '/optimization_results/matfiles/optimization_summary.mat'];
-    load(summaryname);
-    % --> create outputs folder
-    QC2_folder= [outdir, '/QC2_results'];
-    mkdir (QC2_folder);
-
-    % name for group masks
-    if( isempty(newmaskname) )
-        %%% create directory + new mask files, in first output dir.
-        newpath = [outdir, '/GroupMasks'];
-        mkdir_r(newpath);
-        newmaskname = [newpath '/group'];                
-    else
-        [apath,aprefix,aext] = fileparts(newmaskname);
-        mkdir_r(apath);
-        %%% make sure mask-name terminates with .nii string
-        newmaskname = [apath,'/',aprefix];
-    end
+if(~exist(inputfile,'file'))
+    error('cannot locate input file - make sure path & name is correct. If it still fails and you are using OSX, replace all "\" with "/".');
 end
-fclose(fid);
 
-if( isempty(Npcs) || Npcs < 2 )
-    disp('# reproducible SVD PCs must be be at least 2. Resetting...');
+[InputStruct, MULTI_RUN_INPUTFILE] = Read_Input_File(inputfile);
+
+outdir = InputStruct(1).run(1).Output_nifti_file_path;
+
+% --> find optimized results
+summaryname = [outdir, '/optimization_results/matfiles/optimization_summary.mat'];
+load(summaryname);
+% --> create outputs folder
+QC2_folder= [outdir, '/QC2_results'];
+mkdir (QC2_folder);
+
+% name for group masks
+if( nargin<2 || isempty(newmaskname) )
+    %%% create directory + new mask files, in first output dir.
+    newpath = [outdir, '/GroupMasks'];
+    mkdir_r(newpath);
+    newmaskname = [newpath '/group'];                
+else
+    [apath,aprefix,aext] = fileparts(newmaskname);
+    mkdir_r(apath);
+    %%% make sure mask-name terminates with .nii string
+    newmaskname = [apath,'/',aprefix];
+end
+if( nargin<3 || isempty(Npcs) || Npcs < 2 )
+    disp('# reproducible SVD PCs should be be at least 2, to interpret mean effect + variability. Resetting...');
     Npcs = 2; 
 end
 
@@ -155,11 +138,10 @@ subplot(1,2,2); imagesc( pipeline_sets.ind',bnd ); colorbar;
     set(gca,'FontSize',11)
     set(findall(gcf,'type','text'),'FontSize',11)    
 
-% savestring = [QC2_folder,'/FIG1_optimized_pipeline_steps.png'];
-% img = getframe(gcf);
-% imwrite(img.cdata, [savestring]);
-print_to_file(gcf, QC2_folder,'FIG1_optimized_pipeline_steps');
-
+savestring = [QC2_folder,'/FIG1_optimized_pipeline_steps.png'];
+img = getframe(gcf);
+imwrite(img.cdata, [savestring]);
+        
 %% 2: optimization metrics
     
 % get list of metrics + number thereof
@@ -187,10 +169,9 @@ for(im=1:N_metric) % iterate through metrics
     if( strcmp(metric_names{im},'R') || strcmp(metric_names{im},'P'))  ylim([0.0 1.0]);    end
 end
 
-% savestring = [QC2_folder,'/FIG2_optimized_performance_metrics.png'];
-% img = getframe(gcf);
-% imwrite(img.cdata, [savestring]);
-print_to_file(gcf, QC2_folder,'FIG2_optimized_performance_metrics');
+savestring = [QC2_folder,'/FIG2_optimized_performance_metrics.png'];
+img = getframe(gcf);
+imwrite(img.cdata, [savestring]);
 
 load([newmaskname,'_spat_norm_qc.mat']);
 
@@ -231,10 +212,9 @@ subplot(2,2,4); plot( volume_stats.WM_distance, 'o-k', 'linewidth',2,'markerface
     xlim( [0.5 length(volume_stats.WM_distance)+0.5] ); ylim([min(volume_stats.WM_distance)-0.05 max(volume_stats.WM_distance)+0.05]);
     text(1.0,volume_stats.WM_outlier_thresh+0.01,'p=.05 outlier threshold','color','r');
 
-% savestring = [QC2_folder,'/FIG3_spatial_norm_statistics.png'];
-% img = getframe(gcf);
-% imwrite(img.cdata, [savestring]);
-print_to_file(gcf, QC2_folder,'FIG3_spatial_norm_statistics');
+savestring = [QC2_folder,'/FIG3_spatial_norm_statistics.png'];
+img = getframe(gcf);
+imwrite(img.cdata, [savestring]);
 
 % 3:
 % load mask; tissue stats
@@ -245,98 +225,105 @@ print_to_file(gcf, QC2_folder,'FIG3_spatial_norm_statistics');
 MM = load_untouch_nii([newmaskname '_consensus_mask.nii']);
 mask = double(MM.img);
 
-    % opens the inputfile (includes subject/dataset names that preprocessing is performed on...
-    fid = fopen(inputfile);
-    % read in first line
-    tline = fgetl(fid);
-    ksub=0;
-    while ischar(tline) % for every input line in textfile...
+for(is=1:numel(InputStruct))
 
-        ksub=ksub+1, % index #subjects(/datasets)
-
-        %% Step 2.2: preparatory steps before pipeline testing
-
-        %%% ==== 2.2(a) Read in output strings + task strings ==== %%%
-
-        % parse output directory
-        ifile = strfind( tline, 'OUT=' ); ifile = ifile+4;
-        ips   = [strfind( tline, ' ' )-1 length(tline)];
-        ips   = ips(ips>ifile);
-        fullline = tline(ifile:ips(1));
-        isepr    = strfind( fullline, '/' );
-        isepr    = isepr(end);
-        prefix   = fullline(isepr+1:end);
-        outdir   = fullline(1:isepr-1);
-        % load in "split_info" structure with information about task onset and
-        % analysis model parameters
-        itask = strfind( tline, 'TASK=' ); itask = itask+5;
-        ips   = [strfind( tline, ' ' )-1 length(tline)];
-        ips   = ips(ips>itask);
-        fullline = tline(itask:ips(1));    
-        % load file
-        [split_info] = Parse_Split_Info(fullline);
-
-        % ------------------------------------------------------------------------------------------------
-        % ------------------------------------------------------------------------------------------------
-
-        VV=load_untouch_nii(strcat(outdir,'/optimization_results/spms/rSPM_',prefix,'_CON_FIX_IND_sNorm.nii'));  
-        
-        spm_set(:,:,ksub) = nifti_to_mat( VV,MM );
-        [p thr_set(:,:,ksub)] = fdr( spm_set(:,:,ksub), 'z', 0.05, 0 );
-        
-        % ------------------------------------------------------------------------------------------------
-        % ------------------------------------------------------------------------------------------------
-
-        % storing as outputs
-        SPM_opt_norm{ksub}.con = spm_set(:,1,ksub);
-        SPM_opt_norm{ksub}.fix = spm_set(:,2,ksub);
-        SPM_opt_norm{ksub}.ind = spm_set(:,3,ksub);
-        
-        % then get next line (subject)...
-        tline = fgetl(fid);
-    end
-    fclose(fid);
-
-    spm_set = permute( spm_set,[1 3 2] );
-    thr_set = permute( thr_set,[1 3 2] );
-
-    for(j=1:3)
-        
-        ctmp = corr( spm_set(:,:,j) );
-        jtmp = jaccard_ovl( thr_set(:,:,j),0 );
-        %
-        cc(:,j) = (sum(ctmp,2)-1)./size(ctmp,2);
-        jj(:,j) = (sum(jtmp,2)-1)./size(jtmp,2);
-        %
-        if    (j==1) spm_corr.con = ctmp; spm_ovl.con = jtmp;
-        elseif(j==2) spm_corr.fix = ctmp; spm_ovl.fix = jtmp;
-        elseif(j==3) spm_corr.ind = ctmp; spm_ovl.ind = jtmp;
-        end
-    end    
+    is,
     
+    % load split_info data for further analysis
+    Subject_OutputDirIntermed = [InputStruct(is).run(1).Output_nifti_file_path '/intermediate_metrics'];
+    subjectprefix = InputStruct(is).run(1).subjectprefix;
+    load([Subject_OutputDirIntermed '/res0_params/params' subjectprefix '.mat']);
+
+    outdir = InputStruct(is).run(1).Output_nifti_file_path;
+    prefix = InputStruct(is).run(1).Output_nifti_file_prefix;
+
+    % ------------------------------------------------------------------------------------------------
+    % ------------------------------------------------------------------------------------------------
+
+    VV=load_untouch_nii(strcat(outdir,'/optimization_results/spms/rSPM_',prefix,'_CON_FIX_IND_sNorm.nii'));  
+    
+    if(is==1)
+       if( rem(size(VV.img,4),3) >0 ) error('does not have equal conditions for CON, FIX, IND'); end
+       Ncont = round( size(VV.img,4)/3 );
+       %-- initialize
+       spm_set = zeros( sum(mask(:)), numel(InputStruct), Ncont, 3 ); % vox x subj x contrast x ppl
+    end
+    
+    tmp = nifti_to_mat( VV,MM ); %% load volumes CON( contr ), FIX( contr ), IND( contr )
+    
+    for(j=1:3)
+    for(i=1:Ncont)
+        spm_set(:,is,i,j) = tmp(:, (j-1)*Ncont + i );
+    end
+    end
+    
+    % ------------------------------------------------------------------------------------------------
+    % ------------------------------------------------------------------------------------------------
+
+    % storing as outputs
+    SPM_opt_norm{is}.con = spm_set(:,:,:,1);
+    SPM_opt_norm{is}.fix = spm_set(:,:,:,2);
+    SPM_opt_norm{is}.ind = spm_set(:,:,:,3);
+end
+
+thr_set = zeros( size(spm_set) );
+for(j=1:3)
+for(i=1:Ncont)
+    [p thr_set(:,:,i,j)] = fdr( spm_set(:,:,i,j), 'z', 0.05, 0 );
+end
+end
+
+for(j=1:3)
+for(i=1:Ncont)
+    ctmp = corr( spm_set(:,:,i,j) );
+    jtmp = jaccard_ovl( thr_set(:,:,i,j),0 );
+    %
+    cc(:,j,i) = (sum(ctmp,2)-1)./size(ctmp,2);
+    jj(:,j,i) = (sum(jtmp,2)-1)./size(jtmp,2);
+    %
+    if    (j==1) spm_corr.con(:,:,i) = ctmp; spm_ovl.con(:,:,i) = jtmp;
+    elseif(j==2) spm_corr.fix(:,:,i) = ctmp; spm_ovl.fix(:,:,i) = jtmp;
+    elseif(j==3) spm_corr.ind(:,:,i) = ctmp; spm_ovl.ind(:,:,i) = jtmp;
+    end
+end
+end    
+
+for(i=1:Ncont)
+
     figure; 
-    subplot(1,2,1); fence_plot( cc, 0, 0.001 );
+    subplot(1,2,1); fence_plot( cc(:,:,i), 0, 0.001 );
         set(gca,'Xtick',1:3,'XTickLabel',{'CON', 'FIX', 'IND'});
-        title('between-subject SPM correlation'); 
-        xlim([0.5 3.5]); ylim([0 max(cc(:))+0.1]);
+        title(['between-subject SPM correlation, Contr',num2str(i)]); 
+        xlim([0.5 3.5]); ylim([0 max(max(cc(:,:,i)))+0.1]);
         set(gca,'FontSize',11)
         set(findall(gcf,'type','text'),'FontSize',11)    
 
-    subplot(1,2,2); fence_plot( jj, 0, 0.001 );    
+    subplot(1,2,2); fence_plot( jj(:,:,i), 0, 0.001 );    
         set(gca,'Xtick',1:3,'XTickLabel',{'CON', 'FIX', 'IND'});
-        title('between-subject SPM overlap (FDR=.05)'); 
-        xlim([0.5 3.5]); ylim([0 max(jj(:))+0.1]);
+        title(['between-subject SPM overlap (FDR=.05), Contr',num2str(i)]); 
+        xlim([0.5 3.5]); ylim([0 max(max(jj(:,:,i)))+0.1]);
         set(gca,'FontSize',11)
         set(findall(gcf,'type','text'),'FontSize',11) 
-        
-% savestring = [QC2_folder,'/FIG4_inter_subject_SPM_similarity.png'];
-% img = getframe(gcf);
-% imwrite(img.cdata, [savestring]);
-print_to_file(gcf, QC2_folder,'FIG4_inter_subject_SPM_similarity');
 
+    savestring = [QC2_folder,'/FIG4_inter_subject_SPM_similarity.png'];
+    img = getframe(gcf);
+    imwrite(img.cdata, [savestring]);
+end
+
+% temporary --- correlations plots
+tmp_spm = spm_set(:,:,:,1); numbar = size(tmp_spm,3);
+figure;
+for(k=1:numbar)
+    subplot(1,numbar,k); imagesc( corr( tmp_spm(:,:,k)));
+end
+% temporary --- correlations plots
+
+
+names = {'CON','FIX','IND'};
 %%---------------- CON
+for(j=1:3)
 
-    [ out ] = rSVD_splithalf( spm_set(:,:,1), Npcs, 50, [] );
+    [ out ] = rSVD_splithalf( reshape( spm_set(:,:,:,j), size(spm_set,1),[]) , Npcs, 50, [] );
     
     %% -------- making plots -------- %%
     for(KPC=1:ceil(Npcs/2))
@@ -362,132 +349,29 @@ print_to_file(gcf, QC2_folder,'FIG4_inter_subject_SPM_similarity');
                 subplot(2,2,1+(k-1));%('position',[0.04 0.42 0.45 0.45]);    
                 imagesc( slcall .* signos, [-3.5 3.5] ); colorbar;
                 set(gca, 'YTick', [], 'XTick', [] );
-                title(['CON:  z-scored eigenimage, PC#',num2str(ns_pc(k))]);
+                title([names{j} ':  z-scored eigenimage, PC#',num2str(ns_pc(k))]);
                 subplot(2,2,3+(k-1));%('position',[0.04 0.09 0.45 0.3]);    
-                plot( out.subj_weights(:,ns_pc(k)).* signos, 'o-k', 'linewidth',2,'markerfacecolor','k');
+                bar( reshape( out.subj_weights(:,ns_pc(k)), [], Ncont ).* signos );% , 'o', 'linewidth',2);%,'markerfacecolor','k');
                 xlabel('dataset #'); ylabel('PC scores');
-                title(['CON:  subject loadings, PC#',num2str(ns_pc(k))]);
+                title([names{j},':  subject loadings, PC#',num2str(ns_pc(k))]);
                     set(gca,'FontSize',11)
                     set(findall(gcf,'type','text'),'FontSize',11) 
             end
         end
-        %savestring = [QC2_folder,'/FIG5_group_pca_CON_PCs',num2str(ns_pc(1)),'-',num2str(ns_pc(2)),'.png'];
-        %img = getframe(gcf);
-        %imwrite(img.cdata, [savestring]);
-        out_fig_name = [ 'FIG5_group_pca_CON_PCs',num2str(ns_pc(1)),'-',num2str(ns_pc(2)) ];
-        print_to_file(gcf, QC2_folder,out_fig_name);
+        savestring = [QC2_folder,'/FIG5_group_pca_',names{j},'_PCs',num2str(ns_pc(1)),'-',num2str(ns_pc(2)),'.png'];
+        img = getframe(gcf);
+        imwrite(img.cdata, [savestring]);
     end
     %% -------- making plots -------- %%
     
     % store results
-    group_pca.con.rSPMZs = out.rSPM_match;
-    group_pca.con.rep    = out.R_match;    
-    group_pca.con.scores = out.subj_weights;
-    group_pca.con.var    = out.Var_match;
+    group_pca.(names{j}).rSPMZs = out.rSPM_match;
+    group_pca.(names{j}).rep    = out.R_match;    
+    group_pca.(names{j}).scores = out.subj_weights;
+    group_pca.(names{j}).var    = out.Var_match;
     
-%%---------------- FIX
-
-    [ out ] = rSVD_splithalf( spm_set(:,:,2), Npcs, 50, [] );
+end
     
-    %% -------- making plots -------- %%
-    for(KPC=1:ceil(Npcs/2))
-        figure;
-        set(gcf, 'Units', 'normalized');
-        set(gcf, 'Position', [0.03 0.1 0.90 0.80]);
-        quind = round( linspace( 1, size(mask,3), 10) );
-        ns_pc = [2*(KPC-1)+1 2*KPC]; %% 2 pcs being plotted in this fig.
-        for(k=1:2)
-            %
-            if( (rem(Npcs,2)>0) && (KPC == ceil(Npcs/2)) && (k==2) )
-                %
-                % skip step --> we've overrun Npcs (odd number), so second panel = empty
-            else
-                %
-                signos = sign( mean(out.subj_weights(:,ns_pc(k))) );
-                tmp=mask;tmp(tmp>0)=out.rSPM_match(:,ns_pc(k));
-                slc1=[]; for(w=1:4) slc1=[slc1 tmp(:,:,quind(w+1))']; end 
-                slc2=[]; for(w=1:4) slc2=[slc2 tmp(:,:,quind(w+5))']; end 
-                slcall = [slc1;slc2];
-                    set(gca,'FontSize',11)
-                    set(findall(gcf,'type','text'),'FontSize',11)    
-                subplot(2,2,1+(k-1));%('position',[0.04 0.42 0.45 0.45]);    
-                imagesc( slcall .* signos, [-3.5 3.5] ); colorbar;
-                set(gca, 'YTick', [], 'XTick', [] );
-                title(['FIX:  z-scored eigenimage, PC#',num2str(ns_pc(k))]);
-                subplot(2,2,3+(k-1));%('position',[0.04 0.09 0.45 0.3]);    
-                plot( out.subj_weights(:,ns_pc(k)).* signos, 'o-k', 'linewidth',2,'markerfacecolor','k');
-                xlabel('dataset #'); ylabel('PC scores');
-                title(['FIX:  subject loadings, PC#',num2str(ns_pc(k))]);
-                    set(gca,'FontSize',11)
-                    set(findall(gcf,'type','text'),'FontSize',11) 
-            end
-        end
-        %         savestring = [QC2_folder,'/FIG6_group_pca_FIX_PCs',num2str(ns_pc(1)),'-',num2str(ns_pc(2)),'.png'];
-        %         img = getframe(gcf);
-        %         imwrite(img.cdata, [savestring]);
-        out_fig_name = [ 'FIG6_group_pca_FIX_PCs',num2str(ns_pc(1)),'-',num2str(ns_pc(2)) ];
-        print_to_file(gcf, QC2_folder,out_fig_name);
-    end
-    %% -------- making plots -------- %%
-    
-    % store results
-    group_pca.fix.rSPMZs = out.rSPM_match;
-    group_pca.fix.rep    = out.R_match;    
-    group_pca.fix.scores = out.subj_weights;
-    group_pca.fix.var    = out.Var_match;    
-    
-%%---------------- IND
-
-    [ out ] = rSVD_splithalf( spm_set(:,:,3), Npcs, 50, [] );
-    
-    %% -------- making plots -------- %%
-    for(KPC=1:ceil(Npcs/2))
-        figure;
-        set(gcf, 'Units', 'normalized');
-        set(gcf, 'Position', [0.03 0.1 0.90 0.80]);
-        quind = round( linspace( 1, size(mask,3), 10) );
-        ns_pc = [2*(KPC-1)+1 2*KPC]; %% 2 pcs being plotted in this fig.
-        for(k=1:2)
-            %
-            if( (rem(Npcs,2)>0) && (KPC == ceil(Npcs/2)) && (k==2) )
-                %
-                % skip step --> we've overrun Npcs (odd number), so second panel = empty
-            else
-                %
-                signos = sign( mean(out.subj_weights(:,ns_pc(k))) );
-                tmp=mask;tmp(tmp>0)=out.rSPM_match(:,ns_pc(k));
-                slc1=[]; for(w=1:4) slc1=[slc1 tmp(:,:,quind(w+1))']; end 
-                slc2=[]; for(w=1:4) slc2=[slc2 tmp(:,:,quind(w+5))']; end 
-                slcall = [slc1;slc2];
-                    set(gca,'FontSize',11)
-                    set(findall(gcf,'type','text'),'FontSize',11)    
-                subplot(2,2,1+(k-1));%('position',[0.04 0.42 0.45 0.45]);    
-                imagesc( slcall .* signos, [-3.5 3.5] ); colorbar;
-                set(gca, 'YTick', [], 'XTick', [] );
-                title(['IND:  z-scored eigenimage, PC#',num2str(ns_pc(k))]);
-                subplot(2,2,3+(k-1));%('position',[0.04 0.09 0.45 0.3]);    
-                plot( out.subj_weights(:,ns_pc(k)).* signos, 'o-k', 'linewidth',2,'markerfacecolor','k');
-                xlabel('dataset #'); ylabel('PC scores');
-                title(['IND:  subject loadings, PC#',num2str(ns_pc(k))]);
-                    set(gca,'FontSize',11)
-                    set(findall(gcf,'type','text'),'FontSize',11) 
-            end
-        end
-        %savestring = [QC2_folder,'/FIG7_group_pca_IND_PCs',num2str(ns_pc(1)),'-',num2str(ns_pc(2)),'.png'];
-        %img = getframe(gcf);
-        %imwrite(img.cdata, [savestring]);
-        out_fig_name = [ 'FIG7_group_pca_IND_PCs',num2str(ns_pc(1)),'-',num2str(ns_pc(2)) ];
-        print_to_file(gcf, QC2_folder, out_fig_name);
-        
-    end
-    %% -------- making plots -------- %%
-    
-    % store results
-    group_pca.ind.rSPMZs = out.rSPM_match;
-    group_pca.ind.rep    = out.R_match;    
-    group_pca.ind.scores = out.subj_weights;
-    group_pca.ind.var    = out.Var_match;
-       
 %% Recording outputs to save:
 
 % re-store metrics

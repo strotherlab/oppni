@@ -1,7 +1,9 @@
 function component_auto_filter( volname, outvolname, maskname, COMP_imag_path, COMP_temp_path )
 %
+% =========================================================================
 % COMPONENT_AUTO_FILTER:  script for component based filtering of motion
 % "spikes". Looks for temporal outliers and outliers in spatial patterns
+% =========================================================================
 %
 % Syntax:
 %           component_auto_filter( volname, outvolname, maskname, icapath )
@@ -15,6 +17,15 @@ function component_auto_filter( volname, outvolname, maskname, COMP_imag_path, C
 %          -creates a new fMRI data volume, with name "outvolname", where
 %           outlier components have been regressed out
 %
+% ------------------------------------------------------------------------%
+% Authors: Nathan Churchill, University of Toronto
+%          email: nathan.churchill@rotman.baycrest.on.ca
+%          Babak Afshin-Pour, Rotman reseach institute
+%          email: bafshinpour@research.baycrest.org
+% ------------------------------------------------------------------------%
+% CODE_VERSION = '$Revision: 158 $';
+% CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+% ------------------------------------------------------------------------%
 
 if( exist('OCTAVE_VERSION','builtin') )
     % load stats packages

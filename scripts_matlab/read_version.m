@@ -25,7 +25,7 @@ if isempty(CODE_PROPERTY)
         CODE_PROPERTY.DATE            = DATE;
         CODE_PROPERTY.REVISION        = REVISION;
         CODE_PROPERTY.DESCRIPTION     = DESCRIPTION;
-        str = ['PRONTO ' sprintf('%.2f',CODE_PROPERTY.VERSION) 'rev' CODE_PROPERTY.REVISION(12:end-2) '-Date:' CODE_PROPERTY.DATE(7:end-2)];
+        str = ['OPPNI ' sprintf('%.2f',CODE_PROPERTY.VERSION) 'rev' CODE_PROPERTY.REVISION(12:end-2) '-Date:' CODE_PROPERTY.DATE(7:end-2)];
         CODE_PROPERTY.NII_HEADER = str;
     catch
         
@@ -33,6 +33,6 @@ if isempty(CODE_PROPERTY)
         CODE_PROPERTY.DATE            = 'unknown';
         CODE_PROPERTY.REVISION        = 'unknown';
         CODE_PROPERTY.DESCRIPTION     = 'unknown';
-        CODE_PROPERTY.NII_HEADER = 'PRONTO unknwon version';
+        CODE_PROPERTY.NII_HEADER = 'OPPNI unknwon version';
     end
 end

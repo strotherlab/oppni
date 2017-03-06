@@ -1,4 +1,4 @@
-function Pipeline_PART2( InputStruct, optimize_metric, mot_gs_control, process_out, keepmean, whichpipes)
+function Pipeline_PART2( InputStruct, analysis_model, contrast_list_str, optimize_metric, mot_gs_control, process_out, keepmean, whichpipes)
 %
 %==========================================================================
 % PIPELINE_PART2 : this step identifies optimal pipelines, and produces
@@ -127,14 +127,19 @@ if ~isempty(FSL_PATH)  && FSL_PATH(end)~='/'
 	FSL_PATH = [FSL_PATH '/'];
 end
 
-
 read_version;
 
-if nargin<7
-    reference_file = '';
+%%
+
+% check if analysis model is specified
+if isempty(analysis_model)
+    analysis_model = 'NONE';
+end
+% check if task contrast is specified
+if nargin<6 || isempty(contrast_list_str)
+    contrast_list_str = 'NONE';
 end
 
-%%
 if ischar(process_out)
     process_out = str2double(process_out);
 end
@@ -153,7 +158,7 @@ if ischar(mot_gs_control)
         mot_gs_control = [1,1];
     end
 end
-if nargin<5
+if nargin<7
     keepmean = 0;
 else
     if ischar(keepmean)
@@ -161,10 +166,9 @@ else
     end
 end
 % choosing optimal pipelines to output
-if  nargin<6 || isempty( whichpipes )
+if  nargin<8 || isempty( whichpipes )
        whichpipes = 'ALL';
-elseif ~ismember(upper(whichpipes),{'CON','FIX', 'IND', 'ALL'})
-    % ~strcmpi(whichpipes,'CON') && ~strcmpi(whichpipes,'FIX') && ~strcmpi(whichpipes,'IND')
+elseif ~strcmpi(whichpipes,'CON') && ~strcmpi(whichpipes,'FIX') && ~strcmpi(whichpipes,'IND')
        error('for "whichpipes" argument, needs to be CON,FIX,IND or ALL (MIN or MAX also available)');
 end
 
@@ -186,6 +190,12 @@ el_list{9} = 'GSPC1';
 el_list{10}= 'Lowpass';
 el_list{11}= 'Phyplus';
 
+cstr = contrast_list_str;
+astr = analysis_model;
+if( strcmpi(cstr,'NONE') ) cstr = 'no_contrast'; end
+if( strcmpi(astr,'NONE') ) astr = 'no_analysis'; end
+resultDir = [cstr,'-',astr]; %% subdirectory for specific analysis model/contrast set
+
 %% Read Inputfiles
 if ~isstruct(InputStruct)
     [InputStruct,MULTI_RUN_INPUTFILE] = Read_Input_File(InputStruct);
@@ -204,7 +214,7 @@ for ksub = 1:Nsubject
 end
 
 %% check for multiple pipelines - load first subject
-load(strcat(InputStruct(1).run(1).Output_nifti_file_path, '/intermediate_metrics/res3_stats/stats',InputStruct(1).run(1).subjectprefix,'.mat'));
+load(strcat(InputStruct(1).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/res3_stats/stats',InputStruct(ksub).run(1).subjectprefix,'.mat'));
 metric_names = fieldnames( METRIC_set{1} );
 
 if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization...
@@ -217,7 +227,7 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
     for ksub=1:Nsubject
 
         %% ----- load STATS only ----- %%
-        load(strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/res3_stats/stats',InputStruct(ksub).run(1).subjectprefix,'.mat'));
+        load(strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/res3_stats/stats',InputStruct(ksub).run(1).subjectprefix,'.mat'));
 
         for i = 1:length(METRIC_set)
             for j = 1:length(metric_names)
@@ -235,13 +245,13 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
         if( ksub==1 )
 
             % must be single-component analysis, otherwise terminate
-            if( ~strcmp( modeltype, 'one_component') )
+            if( ~strcmp( analysis_model.num_comp, 'one_component') )
                 warning('Multi-component analysis currently not supported!');
             end
             %
             % get the list of available metrics
             metric_names = fieldnames( METRIC_set{1} );
-            % drop out the "artifact priors" entry
+            % drop out the "artifact priors" / "cond_struct" entry
             metric_names(strcmp(metric_names,'artifact_prior'))=[];
             metric_names(strcmp(metric_names,'cond_struc'))=[];
 
@@ -279,6 +289,7 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
 
     % useful info: TR and number of timepoints
     [split_info] = Parse_Split_Info(InputStruct(1).run(1).split_info_file);
+    % NB: currently assumes most runs have similar TR/Ntime ratios!!
     TR_MSEC = split_info.TR_MSEC;
     Ntime = get_numvols([InputStruct(1).run(1).Output_nifti_file_path '/intermediate_processed/afni_processed/' InputStruct(1).run(1).Output_nifti_file_prefix '_baseproc.nii']);
 
@@ -537,11 +548,14 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
 
         for ksub = 1:Nsubject
 
+            mkdir_r([InputStruct(ksub).run(1).Output_nifti_file_path, '/optimization_results/',resultDir,'/matfiles']);
+            mkdir_r([InputStruct(ksub).run(1).Output_nifti_file_path, '/optimization_results/',resultDir,'/images_unwarped']);
+
             % Read the subject directory
             MM = load_untouch_nii( InputStruct(ksub).run(1).subjectmask );
-            load([InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/res0_params/params' InputStruct(ksub).run(1).subjectprefix '.mat']);        
-            load(strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/res1_spms/spms', InputStruct(ksub).run(1).subjectprefix ,'.mat')); %IMAGE_set
-            load(strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/res2_temp/temp', InputStruct(ksub).run(1).subjectprefix,'.mat')); %TEMP_set
+            load([InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/res0_params/params' InputStruct(ksub).run(1).subjectprefix '.mat']);        
+            load(strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/res1_spms/spms', InputStruct(ksub).run(1).subjectprefix ,'.mat')); %IMAGE_set
+            load(strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/res2_temp/temp', InputStruct(ksub).run(1).subjectprefix,'.mat')); %TEMP_set
 
             % load optimal data (spms+timeseries) into cell arrays
             SPM_opt{ksub}.con = IMAGE_set{ibase     };
@@ -577,7 +591,7 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
             nii.hdr.dime.datatype = 16;
             nii.hdr.dime.dim([1 5]) = [4 nvol];
             nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-            save_untouch_nii(nii,strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/optimization_results/spms/rSPM',InputStruct(ksub).run(1).subjectprefix,'_',spmnames,'.nii'));
+            save_untouch_nii(nii,strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/optimization_results/',resultDir,'/images_unwarped/rSPM',InputStruct(ksub).run(1).subjectprefix,'_',spmnames,'.nii'));
             
                 
             %% select additional preprocessing choices (Step2) for current pipeline
@@ -603,8 +617,8 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
             SV.TEMP_opt = TEMP_opt{ksub};
             SV.nii_mask = MM;
             SV.ksub     = ksub;
-            save([InputStruct(ksub).run(1).Output_nifti_file_path,'/optimization_results/matfiles/opt_' optimize_metric InputStruct(ksub).run(1).subjectprefix '.mat'],'-struct','SV','-v7');
-            save([InputStruct(ksub).run(1).Output_nifti_file_path,'/optimization_results/matfiles/opt_' optimize_metric InputStruct(ksub).run(1).subjectprefix '.mat'],'CODE_PROPERTY','-append');
+            save([InputStruct(ksub).run(1).Output_nifti_file_path, '/optimization_results/',resultDir,'/matfiles/opt_' optimize_metric InputStruct(ksub).run(1).subjectprefix '.mat'],'-struct','SV','-v7');
+            save([InputStruct(ksub).run(1).Output_nifti_file_path, '/optimization_results/',resultDir,'/matfiles/opt_' optimize_metric InputStruct(ksub).run(1).subjectprefix '.mat'],'CODE_PROPERTY','-append');
 
             % what preprocessed datasets to create
             if     strcmpi(whichpipes,'ALL') iklist = 1:size(pipe_temp,1)-2; %% only con, fix and ind files are generated
@@ -616,7 +630,7 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
             for ik = iklist   % go through pipelines
                 Invol_name = ['m',num2str(pipe_temp(ik,1)),'c',num2str(pipe_temp(ik,2)),'p',num2str(pipe_temp(ik,3)),'t',num2str(pipe_temp(ik,4)),'s',num2str(pipe_temp(ik,5))];
                 nomem = sprintf('m%dc%dp%dt%ds%dd%dr%dx%dg%dl%dy%d',pipe_temp(ik,:));
-                NR = load(sprintf('%s/intermediate_metrics/regressors/reg%s/m%dc%dp%dt%ds%dd%dr%dx%dg%dl%dy%d.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).subjectprefix,pipe_temp(ik,:)));
+                NR = load(sprintf('%s/intermediate_metrics/%s/regressors/reg%s/m%dc%dp%dt%ds%dd%dr%dx%dg%dl%dy%d.mat',InputStruct(ksub).run(1).Output_nifti_file_path,resultDir,InputStruct(ksub).run(1).subjectprefix,pipe_temp(ik,:)));
 
                 for krun = 1:Nrun(ksub)
 
@@ -646,7 +660,7 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
                     if( pipe_temp(ik,end-1) == 1 ) % check for lowpass filtering option
                         %
                         %filters above 0.10 Hz
-                        [ volmat ] = quick_lopass( volmat, (TR_MSEC./1000) );
+                        [ volmat ] = quick_lopass( volmat, (split_info_set{1}.TR_MSEC./1000) );
                     end    
 
                     volmat  = bsxfun(@times,volmat,split_info_set{1}.spat_weight);
@@ -667,7 +681,7 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
                     end
                     nii.hdr.dime.datatype = 16;
                     nii.hdr.dime.dim([1 5]) = [4 nvol];
-                    output_nii_path        = strcat(InputStruct(ksub).run(1).Output_nifti_file_path,'/optimization_results/processed');
+                    output_nii_path        = strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/optimization_results/',resultDir,'/images_unwarped');
                     output_nii_file        = strcat(output_nii_path,'/Proc_',InputStruct(ksub).run(krun).Output_nifti_file_prefix,'_',optType{ik},'.nii');
                     mkdir_r(output_nii_path)
                     %normalized_output_file =  strcat(InputStruct(ksub).run(1).Output_nifti_file_path,'/niftis_',InputStruct(ksub).run(krun).Output_nifti_file_prefix,'/',dataoutfix,'_opt_',optimize_metric,'_',InputStruct(ksub).run(krun).Output_nifti_file_prefix,'_',optType{ik},'_sNorm.nii');
@@ -675,7 +689,7 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
                 end
             end
         end
-        save(strcat(InputStruct(1).run(1).Output_nifti_file_path,'/optimization_results/matfiles/optimization_summary.mat'),'SPM_opt','TEMP_opt', 'METRIC_opt','pipeline_sets','CODE_PROPERTY','-v7');
+        save(strcat(InputStruct(1).run(1).Output_nifti_file_path,'/optimization_results/',resultDir,'/matfiles/optimization_summary.mat'),'SPM_opt','TEMP_opt', 'METRIC_opt','pipeline_sets','CODE_PROPERTY','-v7');
     end
 
 else %% If only 1 pipeline being tested, this becomes the default output
@@ -694,10 +708,10 @@ else %% If only 1 pipeline being tested, this becomes the default output
 
             % Read the subject directory
             MM = load_untouch_nii( InputStruct(ksub).run(1).subjectmask );
-            load([InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/res0_params/params' InputStruct(ksub).run(1).subjectprefix '.mat']);        
-            load(strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/res1_spms/spms', InputStruct(ksub).run(1).subjectprefix ,'.mat')); %IMAGE_set
-            load(strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/res2_temp/temp', InputStruct(ksub).run(1).subjectprefix,'.mat')); %TEMP_set
-            load(strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/res3_stats/stats',InputStruct(ksub).run(1).subjectprefix,'.mat')); %METRIC_set        
+            load([InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/res0_params/params' InputStruct(ksub).run(1).subjectprefix '.mat']);        
+            load(strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/res1_spms/spms', InputStruct(ksub).run(1).subjectprefix ,'.mat')); %IMAGE_set
+            load(strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/res2_temp/temp', InputStruct(ksub).run(1).subjectprefix,'.mat')); %TEMP_set
+            load(strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/intermediate_metrics/',resultDir,'/res3_stats/stats',InputStruct(ksub).run(1).subjectprefix,'.mat')); %METRIC_set        
 
             if( (length(IMAGE_set)>1) || (length(TEMP_set)>1) || (size(pipeset,1)>1) ) error('number of images/timeseries/pipelines does not match metrics'); end
             
@@ -718,7 +732,7 @@ else %% If only 1 pipeline being tested, this becomes the default output
             nii.hdr.dime.datatype = 16;
             nii.hdr.dime.dim([1 5]) = [4 nvol];
             nii.hdr.hist.descrip = CODE_PROPERTY.NII_HEADER;
-            save_untouch_nii(nii,strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/optimization_results/spms/rSPM',InputStruct(ksub).run(1).subjectprefix,'_PIPE1.nii'));
+            save_untouch_nii(nii,strcat(InputStruct(ksub).run(1).Output_nifti_file_path, '/optimization_results/',resultDir,'/images_unwarped/rSPM',InputStruct(ksub).run(1).subjectprefix,'_PIPE1.nii'));
 
             %% select additional preprocessing choices (Step2) for current pipeline
             pipe_temp = [pipeline_sets.pipe1];
@@ -730,14 +744,14 @@ else %% If only 1 pipeline being tested, this becomes the default output
             
             SV.nii_mask = MM;
             SV.ksub     = ksub;
-            save([InputStruct(ksub).run(1).Output_nifti_file_path,'/optimization_results/matfiles/opt_' optimize_metric InputStruct(ksub).run(1).subjectprefix '.mat'],'-struct','SV','-v7');
-            save([InputStruct(ksub).run(1).Output_nifti_file_path,'/optimization_results/matfiles/opt_' optimize_metric InputStruct(ksub).run(1).subjectprefix '.mat'],'CODE_PROPERTY','-append');
+            save([InputStruct(ksub).run(1).Output_nifti_file_path, '/optimization_results/',resultDir,'/matfiles/opt_' optimize_metric InputStruct(ksub).run(1).subjectprefix '.mat'],'-struct','SV','-v7');
+            save([InputStruct(ksub).run(1).Output_nifti_file_path, '/optimization_results/',resultDir,'/matfiles/opt_' optimize_metric InputStruct(ksub).run(1).subjectprefix '.mat'],'CODE_PROPERTY','-append');
 
             for ik = 1   % Only pipe1 files are generated
                 Invol_name = ['m',num2str(pipe_temp(ik,1)),'c',num2str(pipe_temp(ik,2)),'p',num2str(pipe_temp(ik,3)),'t',num2str(pipe_temp(ik,4)),'s',num2str(pipe_temp(ik,5))];
                 nomem = sprintf('m%dc%dp%dt%ds%dd%dr%dx%dg%dl%dy%d',pipe_temp(ik,:));
-                NR = load(sprintf('%s/intermediate_metrics/regressors/reg%s/m%dc%dp%dt%ds%dd%dr%dx%dg%dl%dy%d.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).subjectprefix,pipe_temp(ik,:)));
-
+                NR = load(sprintf('%s/intermediate_metrics/%s/regressors/reg%s/m%dc%dp%dt%ds%dd%dr%dx%dg%dl%dy%d.mat',InputStruct(ksub).run(1).Output_nifti_file_path,resultDir,InputStruct(ksub).run(1).subjectprefix,pipe_temp(ik,:)));
+                
                 for krun = 1:Nrun(ksub)
 
                     aligned_suffix_alt = '_aligned';
@@ -766,7 +780,7 @@ else %% If only 1 pipeline being tested, this becomes the default output
                     if( pipe_temp(ik,end-1) == 1 ) % check for lowpass filtering option
                         %
                         %filters above 0.10 Hz
-                        [ volmat ] = quick_lopass( volmat, (TR_MSEC./1000) );
+                        [ volmat ] = quick_lopass( volmat, (split_info_set{krun}.TR_MSEC./1000) );
                     end    
 
                     volmat  = bsxfun(@times,volmat,split_info_set{1}.spat_weight);
@@ -787,15 +801,15 @@ else %% If only 1 pipeline being tested, this becomes the default output
                     end
                     nii.hdr.dime.datatype = 16;
                     nii.hdr.dime.dim([1 5]) = [4 nvol];
-                    output_nii_path        = strcat(InputStruct(ksub).run(1).Output_nifti_file_path,'/optimization_results/processed');
-                    output_nii_file        = strcat(output_nii_path,'/Proc_',InputStruct(ksub).run(krun).Output_nifti_file_prefix,'_',optType{ik},'.nii');
+                    output_nii_path        = strcat(InputStruct(ksub).run(1).Output_nifti_file_path,'/optimization_results/',resultDir,'/images_unwarped');
+                    output_nii_file        = strcat(output_nii_path, '/Proc_',InputStruct(ksub).run(krun).Output_nifti_file_prefix,'_',optType{ik},'.nii');
                     mkdir_r(output_nii_path)
                     %normalized_output_file =  strcat(InputStruct(ksub).run(1).Output_nifti_file_path,'/niftis_',InputStruct(ksub).run(krun).Output_nifti_file_prefix,'/',dataoutfix,'_opt_',optimize_metric,'_',InputStruct(ksub).run(krun).Output_nifti_file_prefix,'_',optType{ik},'_sNorm.nii');
                     save_untouch_nii(nii,output_nii_file);
                 end
             end
         end
-        save(strcat(InputStruct(1).run(1).Output_nifti_file_path,'/optimization_results/matfiles/optimization_summary.mat'),'SPM_opt','TEMP_opt', 'METRIC_opt','pipeline_sets','CODE_PROPERTY','-v7');
+        save(strcat(InputStruct(1).run(1).Output_nifti_file_path, '/optimization_results/',resultDir,'/matfiles/optimization_summary.mat'),'SPM_opt','TEMP_opt', 'METRIC_opt','pipeline_sets','CODE_PROPERTY','-v7');
     else
         disp('You ran 1 pipeline, and chose not to create outputs? Why are you running this step again?');    
     end

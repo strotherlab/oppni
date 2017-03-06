@@ -71,13 +71,16 @@ end
 %
 % pre-initializing par. values
 %
-par.lambda =  0.9; % - blood/tissue water partition coefficient %*100*60;   %0.9 mL/g
-par.BloodT1= 1664; % - T1 for blood (msec); ref Lu 04 and Cavusoglu 09 MRI. This is B0 dependent! (BloodT1=1200 at 1.5T...originally BloodT1=1490 at 3.0T / Wang 03)
-par.TR     = 2500; % - repetition time. This is default...may need to adjust
-par.TI1    =  700; % - Tagging bolus duration in ms, for the QUIPSS II. This is the default value...may need to adjust
-par.TI2    = 1800; % - second inversion time; delay time for labeled spin to enter the imaging slice. This is the default value...may need to adjust
-par.labeff = 0.95; % - labeling efficiency, 0.95 for PASL, 0.68 for CASL, 0.85 for pCASL, this should be measured for onsite scanner
-par.qTI    = 0.85; % - close to unit, and is set to 0.85 in Warmuth 05
+par.TR      = 2500;  % - repetition time. This is default...may need to adjust
+par.TE      =   12;  % - echo time. This is default...may need to adjust
+par.TI1     =  700;  % - Tagging bolus duration in ms, for the QUIPSS II. This is the default value...may need to adjust
+par.TI2     = 1800;  % - second inversion time; delay time for labeled spin to enter the imaging slice. This is the default value...may need to adjust
+par.BloodT1 = 1600;  % - T1 for blood (msec); ref Lu 04 and Cavusoglu 09 MRI. This is B0 dependent! (BloodT1=1200 at 1.5T...originally BloodT1=1490 at 3.0T / Wang 03)
+par.BloodT2s=   34;  % - T2s for capillary arterial blood
+par.lambda  = 0.98;  % - blood/tissue water partition coefficient %*100*60;   %0.9 mL/g
+par.lRat    = 0.98;  % - proton density ratio blood/gm
+par.labeff  = 0.95;  % - labeling efficiency, 0.95 for PASL
+par.qTI     = 0.85;  % - close to unit, and is set to 0.85 in Warmuth 05
 
 % now modifying according to user
 if( (nargin >= 5) && ~isempty(dataInfo) )
@@ -96,9 +99,9 @@ end
 % Slice timing array
 %
 % offset in acq. per slice (min-TR - labeltime - delaytime)/#slices
-Slicetime   = (par.TR - par.TI1 - par.TI2)/voldims(3);
+Slicetime   = (par.TR - par.TI2)/voldims(3);
 % get per-slice adjustments
-tmp         = bsxfun(@times, mask, permute(0:voldims(3)-1,[3 1 2]) ); %% scale voxel values by slice order (start at zero)
+tmp         = bsxfun(@times, mask, permute(1:voldims(3),[3 1 2]) ); %% scale voxel values by slice order (start at zero)
 slc_timevct = tmp(mask>0) .* Slicetime; %% vectorized, scaled by slice timing
 
 
@@ -160,18 +163,22 @@ clear delM_init; %% clear initialized
 
 % adjusted TI2, based on TI2 (delay time) & slice-specific delay
 TI_adj= (par.TI2) + slc_timevct;
+% equilibrium magnetization of arterial blood
+M0a   = (par.lRat * exp(-par.TE/par.BloodT2s)) .* m0vct;
 % using the ASLtbx formulation of TCBF (ml/100g/ms) --> (ml/100g/min):
-TCBF = 6000*1000 * bsxfun(@rdivide, (par.lambda*PERF), (2*m0vct.*exp(-TI_adj./par.BloodT1)*par.TI1*par.labeff*par.qTI) );
+aCBF = 6000*1000 * bsxfun(@rdivide, par.lambda.*PERF , (2*par.labeff*par.TI1*par.qTI).*M0a.*exp(-TI_adj./par.BloodT1) );
+% fractional CBF, adjusted only for slice-dependent transit delay times
+fCBF = bsxfun(@rdivide, PERF, m0vct.*exp(-TI_adj./par.BloodT1) );
 
 % Storing outputs
-out.TCBF = TCBF;
-out.PERF = PERF;
+out.aCBF = aCBF;
+out.fCBF = fCBF;
 out.BOLD = BOLD;
 % averages too
-out.tcbf_mean = mean(TCBF,2);
-out.perf_mean = mean(PERF,2);
-out.bold_mean = mean(BOLD,2);
-out.m0        = m0vct;
+out.aCBF_mean = mean(aCBF,2);
+out.fCBF_mean = mean(fCBF,2);
+out.BOLD_mean = mean(BOLD,2);
+out.M0        = m0vct;
 
 if( format~=0 )
     
@@ -194,18 +201,18 @@ if( format~=0 )
     nii.hdr.dime.dim(5) = size(TMPVOL,4);
     % --tcbf--
     for(t=1:round(Ntime/2)) 
-        tmp=mask;tmp(tmp>0)=out.TCBF(:,t); 
+        tmp=mask;tmp(tmp>0)=out.aCBF(:,t); 
         TMPVOL(:,:,:,t) = tmp; 
     end
     nii.img = TMPVOL;
-    save_untouch_nii(nii,[outname,'_TCBF.nii']);
+    save_untouch_nii(nii,[outname,'_aCBF.nii']);
     % --perfusion--
     for(t=1:round(Ntime/2)) 
-        tmp=mask;tmp(tmp>0)=out.PERF(:,t); 
+        tmp=mask;tmp(tmp>0)=out.fCBF(:,t); 
         TMPVOL(:,:,:,t) = tmp; 
     end
     nii.img = TMPVOL;
-    save_untouch_nii(nii,[outname,'_PERF.nii']);
+    save_untouch_nii(nii,[outname,'_fCBF.nii']);
     % --bold--
     for(t=1:round(Ntime/2)) 
         tmp=mask;tmp(tmp>0)=out.BOLD(:,t); 
@@ -217,16 +224,16 @@ if( format~=0 )
     % --------------------- saving average volumes ---------------------
     nii.hdr.dime.dim(5) = 1;
     % --mean:tcbf--
-    TMPVOL=mask;TMPVOL(TMPVOL>0)=out.tcbf_mean;
+    TMPVOL=mask;TMPVOL(TMPVOL>0)=out.aCBF_mean;
     nii.img = TMPVOL;
-    save_untouch_nii(nii,[outname,'_TCBF_avg.nii']);
+    save_untouch_nii(nii,[outname,'_aCBF_avg.nii']);
     nii.img = TMPVOL;
     % --mean:perfusion--
-    TMPVOL=mask;TMPVOL(TMPVOL>0)=out.perf_mean;
+    TMPVOL=mask;TMPVOL(TMPVOL>0)=out.fCBF_mean;
     nii.img = TMPVOL;
-    save_untouch_nii(nii,[outname,'_PERF_avg.nii']);
+    save_untouch_nii(nii,[outname,'_fCBF_avg.nii']);
     % --mean:bold--
-    TMPVOL=mask;TMPVOL(TMPVOL>0)=out.bold_mean;
+    TMPVOL=mask;TMPVOL(TMPVOL>0)=out.BOLD_mean;
     nii.img = TMPVOL;
     save_untouch_nii(nii,[outname,'_BOLD_avg.nii']);
 end

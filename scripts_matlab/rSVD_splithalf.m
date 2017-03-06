@@ -103,7 +103,7 @@ for( i=1:Niters )
       U1(:,k) = U1(:,k) .* sign( corr( U1(:,k), Uref(:,k) ) );
       U2(:,k) = U2(:,k) .* sign( corr( U2(:,k), Uref(:,k) ) );       
    end
-   svar(:,i) = ( s11(:) + s22(:) )./2;
+   svar(:,i) = ( s11(1:Npc) + s22(1:Npc) )./2;
    
    % estimate reproducible SPM for each component dimension:
    for(k=1:Npc)

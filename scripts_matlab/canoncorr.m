@@ -1,4 +1,7 @@
 function [A,B,r,U,V,stats] = canoncorr(X,Y,signif_cutoff)
+%
+%.adapted from Mathworks toolbox
+%
 %CANONCORR Canonical correlation analysis.
 %   [A,B] = CANONCORR(X,Y) computes the sample canonical coefficients for
 %   the N-by-P1 and N-by-P2 data matrices X and Y.  X and Y must have the

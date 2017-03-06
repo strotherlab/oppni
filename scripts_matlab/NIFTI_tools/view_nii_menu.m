@@ -51,8 +51,6 @@ function menu_hdl = view_nii_menu(fig, varargin)
       editvox;
    case 'img_info'
       img_info;
-   case 'img_hist'
-      img_hist;
    case 'save_disp'
       save_disp;
    end
@@ -135,19 +133,11 @@ function menu_hdl = init(fig)
       nii_menu.Mview_info = uimenu('Parent',nii_menu.Mview, ...
    	   'Label','Image Information', ...
            'Callback','view_nii_menu(''img_info'');');
-
-      nii_menu.Mview_info = uimenu('Parent',nii_menu.Mview, ...
-   	   'Label','Volume Histogram', ...
-           'Callback','view_nii_menu(''img_hist'');');
    else
       nii_menu.Mview_info = uimenu('Parent',nii_menu.Mview, ...
    	   'Label','Image Information', ...
            'separator','on', ...
            'Callback','view_nii_menu(''img_info'');');
-
-      nii_menu.Mview_info = uimenu('Parent',nii_menu.Mview, ...
-   	   'Label','Volume Histogram', ...
-           'Callback','view_nii_menu(''img_hist'');');
    end
 
    nii_menu.Mzoom = rri_zoom_menu(fig);
@@ -459,22 +449,4 @@ function save_disp
    set(gcbf,'Pointer',old_pointer);
 
    return;					% save_disp
-
-
-%----------------------------------------------------------------
-function img_hist
-
-   nii_view = getappdata(gcbf, 'nii_view');
-   N = hist(double(nii_view.nii.img(:)),256);
-   x = linspace(double(min(nii_view.nii.img(:))), double(max(nii_view.nii.img(:))), 256);
-   figure;bar(x,N);
-   set(gcf, 'number', 'off', 'name', 'Volume Histogram');
-   set(gcf, 'windowstyle', 'modal');	% no zoom ...
-
-   xspan = max(x) - min(x) + 1;
-   yspan = max(N) + 1;
-   set(gca, 'xlim', [min(x)-xspan/20, max(x)+xspan/20]);
-   set(gca, 'ylim', [-yspan/20, max(N)+yspan/20]);
-
-   return;					% img_hist
 

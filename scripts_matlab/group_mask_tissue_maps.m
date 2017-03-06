@@ -1,4 +1,4 @@
-function group_mask_tissue_maps( inputfile, newmaskname )
+function group_mask_tissue_maps( inputfile, newmaskname, reference_file, WARP_TYPE )
 %
 %==========================================================================
 % GROUP_MASK_TISSUE_MAPS: second part of spatial normalization process,
@@ -44,7 +44,7 @@ if( exist('OCTAVE_VERSION','builtin') )
     pkg load statistics;
     pkg load optim; 
 end
-  
+   
 global CODE_PATH AFNI_PATH FSL_PATH
 if isempty(CODE_PATH)
     CODE_PATH = fileparts(which('group_mask_tissue_maps.m'));
@@ -53,97 +53,66 @@ if isempty(CODE_PATH)
     end
 end
 if ~isdeployed
-    addpath_oppni(CODE_PATH);
-    addpath_oppni([CODE_PATH 'NIFTI_tools']);
-    addpath_oppni([CODE_PATH 'toolbox'])
+    addpath(CODE_PATH);
+    addpath([CODE_PATH 'NIFTI_tools']);
+    addpath([CODE_PATH 'toolbox'])
 end
 
 if nargin < 2
      newmaskname = [];
 end
 
+[~, reference_prefix, ~]=fileparts( reference_file );
+
 %% Load individual masks
 
-% opens the inputfile (includes subject/dataset names that preprocessing is performed on...
-fid   = fopen(inputfile);
-tline = fgetl(fid);
-ksub  = 0;
-while ischar(tline) % for every input line in textfile...
+[InputStruct, MULTI_RUN_INPUTFILE] = Read_Input_File(inputfile);
 
-    ksub=ksub+1; % index #subjects(/datasets)
-
-    % parse output directory
-    ifile = strfind( tline, 'OUT=' ); ifile = ifile+4;
-    ips   = [strfind( tline, ' ' )-1 length(tline)];
-    ips   = ips(ips>ifile);
-    fullline = tline(ifile:ips(1));
-    isepr    = strfind( fullline, '/' );
-    isepr    = isepr(end);
-    prefix   = fullline(isepr+1:end);
-    outdir   = fullline(1:isepr-1);
-    
-    if( ksub==1 ) %% check masks, load in "split_info" structure to get TR
-
-        if( isempty(newmaskname) )
-            %%% create directory + new mask files, in first output dir.
-            newpath = [outdir, '/GroupMasks'];
-            mkdir_r(newpath);
-            newmaskname = [newpath '/group'];                
-        else
-            [apath,aprefix,aext] = fileparts(newmaskname);
-            mkdir_r(apath);
-            %%% make sure mask-name terminates with .nii string
-            newmaskname = [apath,'/',aprefix];
-        end
-        
-        itask = strfind( tline, 'TASK=' ); itask = itask+5;
-        ips   = [strfind( tline, ' ' )-1 length(tline)];
-        ips   = ips(ips>itask);
-        fullline = tline(itask:ips(1));    
-        % load file
-        [split_info] = Parse_Split_Info(fullline);
-        TR_MSEC = split_info.TR_MSEC; %% get TR
-        clear split_info; %% remove the rest of structure
-    end
-    
-    xbase_string  = strcat(outdir,'/intermediate_processed/spat_norm/',prefix,'_mask_sNorm.nii');
-    MX     = load_untouch_nii(  xbase_string );
-    % save into 4D matrix
-    maskSet(:,:,:,ksub) = double(MX.img);
-    % quick define of matrix dimensions
-    if(ksub==1) [Nx Ny Nz] = size(MX.img); end
-    
-    % then get next line (subject)...
-    tline = fgetl(fid);
+% check if multi-run -- aligned appended
+if MULTI_RUN_INPUTFILE
+   aligned_suffix= '_aligned';
+else
+    aligned_suffix = [];
+end
+% group mask directory
+if( isempty(newmaskname) )
+    %%% create directory + new mask files, in first output dir.
+    newpath = [InputStruct(1).run(1).Output_nifti_file_path, '/GroupMasks',reference_prefix,'-',WARP_TYPE];
+    mkdir_r(newpath);
+    newmaskname = [newpath '/group'];                
+else
+    [apath,aprefix,aext] = fileparts(newmaskname);
+    apath = [apath,'_',reference_prefix,'-',WARP_TYPE];
+    mkdir_r(apath);
+    %%% make sure mask-name terminates with .nii string
+    newmaskname = [apath,'/',aprefix];
 end
 
-fclose(fid);
+for(is=1:numel(InputStruct))
+    % based on run-1 of each subject, load the mask
+    xbase_string = [InputStruct(is).run(1).Output_nifti_file_path '/intermediate_processed/spat_norm/',reference_prefix,'-',WARP_TYPE,'/', InputStruct(is).run(1).Output_nifti_file_prefix '_mask_sNorm.nii'];
+    MX           = load_untouch_nii(  xbase_string );
+    % save into 4D matrix
+    maskSet(:,:,:,is) = double(MX.img);
+    maskVct(:,is)     = double(MX.img(:)); %% vectorizing to compare
+end
 
 %% Estimate consensus mask
 
-N_subject = ksub;
-%
-for(w=1:N_subject) 
-    vol          = maskSet(:,:,:,w);
-    maskvct(:,w) = vol(:);
-end
-%
-J = jaccard_ovl( maskvct, 0 );
-for(w=1:N_subject) 
-    %fc
+J = jaccard_ovl( maskVct, 0 );
+for(w=1:size(maskVct,2)) 
+    % dropping self-overlap for each mask
     Jtmp    = J(w,:);
     Jtmp(w) = [];
     J2(w,:) = Jtmp;
 end
-
 % median overlap, converted to distance
-jmed_dist       = 1-median(J2,2);
-[thr_j] = quick_gamma_test( jmed_dist );
+jmed_dist = 1-median(J2,2);
+[thr_j]   = quick_gamma_test( jmed_dist );
 % index within-threshold maps
 cens_j  = (jmed_dist < thr_j);
 % get fraction of subjects included in mask, after discarding outliers
-N_adjust  = sum(cens_j>0);
-maskFract = sum(maskSet(:,:,:,cens_j),4)./N_adjust;
+maskFract = sum(maskSet(:,:,:,cens_j),4)./sum(cens_j>0);
 
 % get threshold --> more than 50% of subjects must include
 consensus_mask = double( maskFract > 0.50 );
@@ -156,64 +125,45 @@ nii.hdr.dime.dim(5) = 1; % adjust for #timepoints
 save_untouch_nii(nii,[newmaskname '_consensus_mask.nii']);  
 
 %% Load transformed data
-   
-% opens the inputfile (includes subject/dataset names that preprocessing is performed on...
-fid   = fopen(inputfile);
-tline = fgetl(fid);
-ksub  = 0;
-while ischar(tline) % for every input line in textfile...
 
-    ksub=ksub+1; % index #subjects(/datasets)
-       
-    % parse output directory
-    ifile = strfind( tline, 'OUT=' ); ifile = ifile+4;
-    ips   = [strfind( tline, ' ' )-1 length(tline)];
-    ips   = ips(ips>ifile);
-    fullline = tline(ifile:ips(1));
-    isepr    = strfind( fullline, '/' );
-    isepr    = isepr(end);
-    prefix   = fullline(isepr+1:end);
-    outdir   = fullline(1:isepr-1);
-    
-    xbase_string  = strcat(outdir,'/intermediate_processed/afni_processed/',prefix,'_baseproc_sNorm.nii');
+for(is=1:numel(InputStruct))
+
+    xbase_string  = [InputStruct(is).run(1).Output_nifti_file_path '/intermediate_processed/spat_norm/',reference_prefix,'-',WARP_TYPE,'/afni_processed/' InputStruct(is).run(1).Output_nifti_file_prefix '_baseproc' aligned_suffix '_sNorm.nii'];
     VX     = load_untouch_nii(  xbase_string );
     vxmat  = nifti_to_mat(VX,nii);
-    [Nvox Ntime] = size(vxmat);
-    %
-    meanset(:,ksub) = mean(vxmat,  2);
+
+    % collecting mean volume
+    meanset(:,is) = mean(vxmat,2);
+
+    % formatting for tissue estimation in new normalized space....
+    out = GLM_model_fmri( vxmat, 1,[],[], 'econ' ); % just noise
+    volcell{1}    = out.vol_denoi(:,1:ceil(size(vxmat,2)/2));
+    volcell{2}    = out.vol_denoi(:,ceil(size(vxmat,2)/2)+1:end);
 
     % ------------------------------------------------------------------------------------------------
     % ------------------------------------------------------------------------------------------------
 
     % re-computation of tissue priors
-
-    % INFO: for physiological (vascular) downweighting maps
-    dataInfo.TR            = (TR_MSEC./1000);
+    
+    % INFO: for physiological (vascular) downweighting maps --> need TRs
+    [split_info_struct] = Parse_Split_Info(InputStruct(is).run(1).split_info_file);
+    %
+    dataInfo.TR            = split_info_struct.TR_MSEC/1000;
     dataInfo.FreqCut       = 0.10;
     dataInfo.thresh_method = 'noprior';
     dataInfo.out_format    = 0; %% don't make output volumes
-    % remove mean/linear signal
-    out   = GLM_model_fmri( vxmat, 1,[],[], 'econ' ); % just noise
-    % cell formatting
-    volcell{1} = out.vol_denoi(:,1:ceil(Ntime/2));
-    volcell{2} = out.vol_denoi(:,ceil(Ntime/2)+1:end);
     % estimate vascular map
     outwt = PHYCAA_plus_step1( volcell, dataInfo );
     %white matter tissue mask
     outwm = WM_weight( volcell, dataInfo );
 
     % GROUP: get priors into 2d matrices
-    NN_weight_set(:,ksub) = outwt.NN_weight;
-    WM_weight_set(:,ksub) = outwm.WM_weight;    
+    NN_weight_set(:,is) = outwt.NN_weight;
+    WM_weight_set(:,is) = outwm.WM_weight;    
     
     % ------------------------------------------------------------------------------------------------
     % ------------------------------------------------------------------------------------------------
-    
-    % then get next line (subject)...
-    tline = fgetl(fid);
 end
-
-fclose(fid);
 
 %% Summary statistics on transformed data
 
@@ -221,7 +171,7 @@ fclose(fid);
 
 % MEAN: correlations
 C = corr( meanset );
-for(w=1:N_subject) 
+for(w=1:numel(InputStruct)) 
     %
     Ctmp    = C(w,:);
     Ctmp(w) = [];
@@ -233,7 +183,7 @@ cmed_mean       = 1-median(C2,2);
 
 % NN: correlations
 C = corr( NN_weight_set );
-for(w=1:N_subject) 
+for(w=1:numel(InputStruct)) 
     %
     Ctmp    = C(w,:);
     Ctmp(w) = [];
@@ -245,7 +195,7 @@ cmed_nn          = 1-median(C2,2);
 
 % WM: correlations
 C = corr( WM_weight_set );
-for(w=1:N_subject) 
+for(w=1:numel(InputStruct)) 
     %
     Ctmp    = C(w,:);
     Ctmp(w) = [];

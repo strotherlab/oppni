@@ -13,16 +13,7 @@ function [nii, orient, pattern] = rri_orient(nii, varargin)
       pattern = [];
    end
 
-   if(nargin > 2)
-       orient = varargin{2};
-       if(length(find(orient>6)) || length(find(orient<1))) %value checking
-           orient=[1 2 3]; %set  to default if bogus values set
-       end
-   else
-       orient = [1 2 3];
-   end
-   
-   
+   orient = [1 2 3];
    dim = double(nii.hdr.dime.dim([2:4]));
 
    if ~isempty(pattern) & ~isequal(length(pattern), prod(dim))
@@ -31,10 +22,8 @@ function [nii, orient, pattern] = rri_orient(nii, varargin)
 
    %  get orient of the current image
    %
-   if isequal(orient, [1 2 3])
-    orient = rri_orient_ui;
-    pause(.1);
-   end
+   orient = rri_orient_ui;
+   pause(.1);
 
    %  no need for conversion
    %

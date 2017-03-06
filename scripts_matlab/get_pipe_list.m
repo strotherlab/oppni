@@ -157,18 +157,18 @@ K=10;
 %
 if( ~isempty( strfind(substr{K},'0') ) ) 
     if( ~isempty( strfind(substr{K+1},'0') ) )
-        gsSet     =[0];
+        gsSet     =[gsSet, 0];
     end
     if( ~isempty( strfind(substr{K+1},'1') ) )
-        gsSet     =[gsSet 2];
+        gsSet     =[gsSet, 2];
     end
 end
 if( ~isempty( strfind(substr{K},'1') ) )
     if( ~isempty( strfind(substr{K+1},'0') ) )
-        gsSet     =[gsSet 1];
+        gsSet     =[gsSet, 1];
     end
     if( ~isempty( strfind(substr{K+1},'1') ) )
-        gsSet     =[gsSet 3];
+        gsSet     =[gsSet, 3];
     end
 end
 

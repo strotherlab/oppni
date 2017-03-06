@@ -1,9 +1,11 @@
 function [out] = ercva_optimization( DATA, List, opt_crit )
 %
+% =========================================================================
 % ERCVA_OPTIMIZATION:  hybrid event-related Canonical Variates Analysis (CVA).
 % This is a multivariate analysis model that takes in a set of time-windowed
 % data blocks, then performs CVA analysis to identify event-related components.
-%
+% =========================================================================
+% 
 % Syntax:
 %            out = ercva_optimization( DATA, List, opt_crit )
 %

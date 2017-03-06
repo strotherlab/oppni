@@ -34,7 +34,7 @@ while ischar(tline)
     InputStruct(ksub).run(1).Input_nifti_file_prefix           = Input_nifti_file_prefix;
     InputStruct(ksub).run(1).Output_nifti_file_path            = Output_nifti_file_path;
     InputStruct(ksub).run(1).Output_nifti_file_prefix          = Output_nifti_file_prefix;
-    InputStruct(ksub).run(1).MULTI_RUN_HARDI                   = length(Input_nifti_file_prefix) > 1;
+    InputStruct(ksub).run(1).MULTI_RUN_NODDI                   = length(Input_nifti_file_prefix) > 1;
  
     tline = fgetl(fid);
     if isempty(tline)

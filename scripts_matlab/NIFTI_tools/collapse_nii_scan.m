@@ -27,36 +27,8 @@ function collapse_nii_scan(scan_pattern, fileprefix, scan_path)
    file_lst = dir(pnfn);
    flist = {file_lst.name};
    flist = flist(:);
-   filename = flist{1};
 
-   v = version;
-
-   %  Check file extension. If .gz, unpack it into temp folder
-   %
-   if length(filename) > 2 & strcmp(filename(end-2:end), '.gz')
-
-      if ~strcmp(filename(end-6:end), '.img.gz') & ...
-	 ~strcmp(filename(end-6:end), '.hdr.gz') & ...
-	 ~strcmp(filename(end-6:end), '.nii.gz')
-
-         error('Please check filename.');
-      end
-
-      if str2num(v(1:3)) < 7.1 | ~usejava('jvm')
-         error('Please use MATLAB 7.1 (with java) and above, or run gunzip outside MATLAB.');
-      else
-         gzFile = 1;
-      end
-   else
-      if ~strcmp(filename(end-3:end), '.img') & ...
-	 ~strcmp(filename(end-3:end), '.hdr') & ...
-	 ~strcmp(filename(end-3:end), '.nii')
-
-         error('Please check filename.');
-      end
-   end
-
-   nii = load_untouch_nii(fullfile(scan_path,filename));
+   nii = load_untouch_nii(flist{1});
    nii.hdr.dime.dim(5) = length(flist);
 
    if nii.hdr.dime.dim(1) < 4
@@ -172,7 +144,7 @@ function collapse_nii_scan(scan_pattern, fileprefix, scan_path)
    glmin = inf;
 
    for i = 1:length(flist)
-      nii = load_untouch_nii(fullfile(scan_path,flist{i}));
+      nii = load_untouch_nii(flist{i});
 
       if double(hdr.dime.datatype) == 128
 
@@ -241,20 +213,6 @@ function collapse_nii_scan(scan_pattern, fileprefix, scan_path)
    end
 
    fclose(fid);
-
-   %  gzip output file if requested
-   %
-   if exist('gzFile', 'var')
-      if filetype == 1
-         gzip([fileprefix, '.img']);
-         delete([fileprefix, '.img']);
-         gzip([fileprefix, '.hdr']);
-         delete([fileprefix, '.hdr']);
-      elseif filetype == 2
-         gzip([fileprefix, '.nii']);
-         delete([fileprefix, '.nii']);
-      end;
-   end;
 
    return;					% collapse_nii_scan
 

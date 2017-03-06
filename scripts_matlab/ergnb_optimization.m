@@ -1,8 +1,24 @@
 function result_set = ergnb_optimization( data_all, spatial_prior )
 % 
-%  Performs event related GNB-NPAIRS analysis
+% =========================================================================
+% ERGNB_OPTIMIZATION:  Performs event related GNB-NPAIRS analysis
+% =========================================================================
 %
-%  res = gnb_optimization( data_trn, data_tst, design_trn, design_tst, decision_model, spatial_prior )
+% Syntax:
+%
+%           result_set = ergnb_optimization( data_all, spatial_prior )
+%
+% Input:
+%           data_all: 3D matrix of time-windowed data blocks, of size (voxel x timelag x splits)
+%      spatial_prior: (optional) spatial weighting prior applied before computing SPMs
+%
+% Output:
+%
+%       result_set.R_global    = global spatial reproducibility
+%       result_set.P_class     = classification accuracy
+%       result_set.P_rms       = prediction (rms error)
+%       result_set.sens_global = global sensitivity map
+%       result_set.pmap        = prediction accuracy map
 %
 % ------------------------------------------------------------------------%
 % Authors: Nathan Churchill, University of Toronto

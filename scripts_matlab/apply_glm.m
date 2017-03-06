@@ -1,5 +1,25 @@
 function [denoised_data] = apply_glm(data,Regressors)
-
+%
+% =========================================================================
+% APPLY_GLM: run general linear model regression, taking a set of formatted
+% regressor arguments on fMRI data
+% =========================================================================
+%
+% Syntax:
+%         denoised_data = apply_glm(data,Regressors)
+%
+% Input:
+%               data: voxels x time data matrix
+%         Regressors: formatted struct. containing nuisance regressors
+%                     signal covariates and other stuff
+%
+% Output:  
+%
+%      denoised_data: voxels x time matrix of regressed data
+%
+% .internal script that takes 2D matrix "data" and regresses out
+% "Regressors" from data. Returns "denoised_data" matrix
+%
 % ------------------------------------------------------------------------%
 % Authors: Nathan Churchill, University of Toronto
 %          email: nathan.churchill@rotman.baycrest.on.ca
@@ -104,7 +124,7 @@ else % use when we are running group analysis or multi-run, no spliting
             noi_estim   = BetaWeights(:,idxNoise) * Xall(:,idxNoise)';
             denoised_data{run_counter}   = denoised_data{run_counter} - noi_estim;
         end
-        
+           
         if ~isempty(Regressors{run_counter}.GSPC1)
             Xn   = [Regressors{run_counter}.GSPC1];
             Xall = [Xn Regressors{run_counter}.Signal];

@@ -1714,14 +1714,14 @@ class Files(Frame):
        
       
     def AboutMe(self):
-        tkMessageBox.showinfo("About OPPNI", "This GUI runs OPPNI (PReprocessing OptimizatioN TOolkit),which does fast optimization of preprocessing pipelines for BOLD fMRI (Blood Oxygenation Level Dependent functional MRI).This software package identifies the set of preprocessing steps ('pipeline') specific to each dataset, which optimizes quality metrics of Prediction and Reproducibility for post-processing analysis results (Strother et al., 2002). This procedure has been shown to significantly improve signal detection, reliability of brain activations, and sensitivity to brain-behaviour correlations (Churchill et al., 2012a, 2012b). The pipeline software can also be used for simple automated batch-processing of fMRI datasets, if no appropriate analysis model is currently available to do optimization (e.g. some resting-state connectivity studies). \n\n\n OPPNI GUI designed by Babak Afshin-Pour (bafshinpour@research.baycrest.org), 2015 \n Rotman Research Institue, Baycrest")
+        tkMessageBox.showinfo("About OPPNI", "This GUI runs OPPNI(Optimization of Preprocessing Pipelines for NeuroImaging),which does fast optimization of preprocessing pipelines for BOLD fMRI (Blood Oxygenation Level Dependent functional MRI).This software package identifies the set of preprocessing steps ('pipeline') specific to each dataset, which optimizes quality metrics of Prediction and Reproducibility for post-processing analysis results (Strother et al., 2002). This procedure has been shown to significantly improve signal detection, reliability of brain activations, and sensitivity to brain-behaviour correlations (Churchill et al., 2012a, 2012b). The pipeline software can also be used for simple automated batch-processing of fMRI datasets, if no appropriate analysis model is currently available to do optimization (e.g. some resting-state connectivity studies). \n\n\n OPPNI GUI designed by Babak Afshin-Pour (bafshinpour@research.baycrest.org), 2015 \n Rotman Research Institue, Baycrest")
         
 
 if __name__ == "__main__": 
     
     root = Tk()
     root.geometry('{0}x{1}'.format(1250, 400))
-    root.title("OPPNI (Optimization of Preprocessing Pipelines for NeuroImaging)")
+    root.title("OPPNI (Preprocessing optimization toolkit)")
     Files(master=root)
   #  main = Files(root)
     root.mainloop()

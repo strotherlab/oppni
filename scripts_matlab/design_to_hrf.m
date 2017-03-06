@@ -1,10 +1,12 @@
 function [ bold_hrf ] = design_to_hrf( design, TR, PSET )
 %
+% =========================================================================
 % DESIGN_TO_HRF:  This function convolves your (binary) task-design matrix with AFNI's 
 % standard gamma-variate basis function 'SPMG1' - the 1-parameter estimated function.
+% =========================================================================
 %
 % Syntax:
-%                  [ bold_hrf ] = design_to_hrf( design, TR, PSET )
+%               [ bold_hrf ] = design_to_hrf( design, TR, PSET )
 %
 % Input:
 %       design: a (time x K) matrix, where K= number of different stimulus types

@@ -1,0 +1,170 @@
+
+----------------------------------------------
+Frequently-Asked Questions for non-fMRI users.
+----------------------------------------------
+
+This document provides basic instructions on how to use OPPNI to run
+analyses of non-fMRI data. At the moment, this includes:
+
+    - Arterial spin labelling (ASL)
+    - Diffusion tensor imaging (DTI)
+    - Voxel-based morphometric (VBM)
+
+optimization capabilities are currently limited, but the pipeline allows for
+efficient batch processing of these datasets. Instructions specific to each
+MRI modality are given below.
+
+___________________________________________________________________________
+===========================================================================
+1. Arterial Spin Labelling
+
+1.1 General requirements
+
+ > 4D ASL dataset per subject. Volume #1 *must* be the M0 reference volume 
+   and it is assumed alternating tag-control (or control-tag) volumes afterwards.
+   Also assumed that there are an equal number of tags and controls.
+   *** ASL automatically finds the correct tag-control ordering.
+ > T1-weighted MRI volume. Required for group-level co-registration
+ > T1-weighted group template volume. For example MNI or ICBM atlas,
+   required for reference target during group-level coregistration
+ > A subject textfile, giving the location of input data and output paths
+
+1.2 File preparation
+
+> you must create a .txt file, with entries specifying your input files and
+  names of output files. For example, consider a case where we have 4 subjects
+  with ASL and T1 data. You may create a file "input_asl.txt" with contents:
+
+    IN=mydir/subj01/asl_run.nii OUT=processed/subj01 STRUCT=mydir/subj_01/T1_MPRAGE.nii
+    IN=mydir/subj02/asl_run.nii OUT=processed/subj02 STRUCT=mydir/subj_02/T1_MPRAGE.nii
+    IN=mydir/subj03/asl_run.nii OUT=processed/subj03 STRUCT=mydir/subj_03/T1_MPRAGE.nii
+    IN=mydir/subj04/asl_run.nii OUT=processed/subj04 STRUCT=mydir/subj_04/T1_MPRAGE.nii
+
+  where "mydir/subj01/asl_run.nii" is the location and name of subject 1's data, etc.
+  "processed/subj01" is the location and prefix for processed data, and
+  "mydir/subj_01/T1_MPRAGE.nii" is the name of that subject's T1 anatomical image
+
+1.3 Running ASL analysis
+
+> If you wanted to run analysis, have created a file "input_asl.txt", and
+  have have a template volume "MNI152.nii", you would submit the command:
+
+        Run_ASL_noSGE( 'input_asl.txt', 'MNI152.nii', [2 2 2], 1 );
+
+  Here, [2 2 2] refers to the x,y,z dimensions of voxels, created by final image
+  and the 1 refers to DEOBLIQUE.
+
+> outputs will include:
+
+        processed/asl_processed/subj01_BOLD.nii %% BOLD fMRI data timeseries
+        processed/asl_processed/subj01_PERF.nii %% relative perfusion timeseries (tag - control)
+        processed/asl_processed/subj01_TCBF.nii %% quantitative cbf timeseries
+
+        processed/asl_processed/subj01_BOLD_avg.nii %% mean BOLD fMRI map
+        processed/asl_processed/subj01_PERF_avg.nii %% mean relative perfusion map
+        processed/asl_processed/subj01_TCBF_avg.nii %% mean quantitative cbf
+
+> NB: relative differences are based on surround subtraction model of CBF
+
+___________________________________________________________________________
+===========================================================================
+2. Diffusion Tensor Imaging
+
+2.1 General requirements
+
+ > one (or more) 4D DTI datasets per subject. Standard DTI metrics (FA,MD) 
+   are only estimated on the first dataset. If >1 supplied, it is assumed 
+   the multi-shell NODDI analysis is to be run.
+ > a corresponding set of .bvec and .bval files
+ > A subject textfile, giving the location of input data and output paths
+
+2.2 File preparation
+
+> you must create a .txt file, with entries specifying your input files and
+  names of output files. For example, consider a case where we have 4 subjects
+  with 2 DTI files each. You may create a file "input_dti.txt" with contents:
+
+    IN=mydir/subj01/dti_30dir.nii,dti_64dir.nii OUT=processed/subj01
+    IN=mydir/subj02/dti_30dir.nii,dti_64dir.nii OUT=processed/subj02
+    IN=mydir/subj03/dti_30dir.nii,dti_64dir.nii OUT=processed/subj03
+    IN=mydir/subj04/dti_30dir.nii,dti_64dir.nii OUT=processed/subj04
+
+  where "mydir/subj01/dti_30dir.nii" is the location and name of subject 1's first file, etc.
+  "processed/subj01" is the location and prefix for processed data
+
+2.3 Running DTI analysis
+
+> If you wanted to run analysis, have created a file "input_dti.txt", 
+  you would submit the command:
+
+        Run_DTI_noSGE( 'input_dti.txt', [], [], 1, 0)
+
+  Here, the 1 refers to DEOBLIQUE.
+
+> outputs will include:
+
+        processed/dti_processed/subj01/spat_norm/DTI_fit_FA_to_T3.nii  %% fractional anisotropy
+        processed/dti_processed/subj01/spat_norm/DTI_fit_MD_to_T3.nii  %% mean diffusivity
+        processed/dti_processed/subj01/spat_norm/DTI_fit_ADx_to_T3.nii %% axial diffusivity
+        processed/dti_processed/subj01/spat_norm/DTI_fit_RDx_to_T3.nii %% radial diffusivity
+
+        processed/dti_processed/subj01/DTI_fit_L1.nii  %% 1 eigenval
+        processed/dti_processed/subj01/DTI_fit_L2.nii  %% 2 eigenval
+        processed/dti_processed/subj01/DTI_fit_L3.nii  %% 3 eigenval
+
+        processed/dti_processed/subj01/DTI_fit_V1.nii  %% 1 eigenvec
+        processed/dti_processed/subj01/DTI_fit_V2.nii  %% 2 eigenvec
+        processed/dti_processed/subj01/DTI_fit_V3.nii  %% 3 eigenvec
+
+2.4 Running NODDI analysis
+
+> If you had multiple DTI shells per subject and wanted to run NODDI, you
+  would follow the steps in 2.3, then run:
+
+        Run_DTI_noSGE( 'input_dti.txt', [], [], 1, 1)
+
+  Where the 1 at the end means run NODDI.
+
+> outputs will include:
+
+        processed/dti_processed/subj01/spat_norm/NODDI_fit_odi.nii   %% orientation dispersion
+        processed/dti_processed/subj01/spat_norm/NODDI_fit_fiso.nii  %% isotropic water fraction (extracell)
+        processed/dti_processed/subj01/spat_norm/NODDI_fit_ficvf.nii %% cellular volume fraction
+
+___________________________________________________________________________
+===========================================================================
+3. Voxel based morphometry
+
+3.1 General requirements
+
+ > T1-weighted MRI volume. Required for group-level co-registration
+ > A subject textfile, giving the location of input data and output paths
+
+3.2 File preparation
+
+> you must create a .txt file, with entries specifying your input files and
+  names of output files. For example, consider a case where we have 4 subjects
+  with 2 DTI files each. You may create a file "input_vbm.txt" with contents:
+
+    IN=mydir/subj_01/T1_MPRAGE.nii OUT=processed/subj01
+    IN=mydir/subj_02/T1_MPRAGE.nii OUT=processed/subj02
+    IN=mydir/subj_03/T1_MPRAGE.nii OUT=processed/subj03
+    IN=mydir/subj_04/T1_MPRAGE.nii OUT=processed/subj04
+
+  where "mydir/subj_01/T1_MPRAGE.nii" is the location and name of subject 1's file, etc.
+  "processed/subj01" is the location and prefix for processed data
+
+3.3 Running VBM analysis
+
+> If you wanted to run analysis, have created a file "input_vbm.txt", 
+  you would submit the command:
+
+        struct_vbm_noSGE( 'input_dti.txt', 1, 'T1' )
+
+  Here, the 1 refers to DEOBLIQUE.
+
+> outputs will include:
+
+        processed/struct_vbm/CSF_warp/subj01_to_T3_mod.nii %% modulus-weighted CSF prob.
+        processed/struct_vbm/GM_warp/subj01_to_T3_mod.nii  %% modulus-weighted GM  prob.
+        processed/struct_vbm/WM_warp/subj01_to_T3_mod.nii  %% modulus-weighted WM  prob.

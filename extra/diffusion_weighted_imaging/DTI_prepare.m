@@ -13,114 +13,144 @@ for ksub = 1:numel(InputStruct)
         outname = [InputStruct(ksub).run(1).Output_nifti_file_path,'/dti_processed/',InputStruct(ksub).run(1).Output_nifti_file_prefix];
         mkdir_r(outname)
 
-%%      OPTION 1: multi-run DWI acquisition --> concatenate for HARDI analysis
-        if( InputStruct(ksub).run(1).MULTI_RUN_HARDI )
-            
-            inname_30dir = [InputStruct(ksub).run(1).Input_nifti_file_path,'/',InputStruct(ksub).run(1).Input_nifti_file_prefix{1}];
-            inname_64dir = [InputStruct(ksub).run(1).Input_nifti_file_path,'/',InputStruct(ksub).run(1).Input_nifti_file_prefix{2}];
-            
-            disp('HARDI image analysis.');
+        %% ---- STANDARD DTI ACQUISITION, PROCESSING AND ANALYSIS ---- %%
+        
+        inname_30dir = [InputStruct(ksub).run(1).Input_nifti_file_path,'/',InputStruct(ksub).run(1).Input_nifti_file_prefix{1}];
 
-            if ~exist([outname, '/HARDI_concat.nii.gz'],'file') || ~exist([outname,'/HARDI_cat.bvec'],'file')        
-            
-                disp('concatenating data...');
+        disp('DTI image analysis');
 
-                % concat functional data
-                unix(['fslmerge -t ', outname, '/HARDI_concat.nii ', inname_30dir, '.nii ', inname_64dir,'.nii']);
+        % recopying data data
+        unix(['cp ',inname_30dir, '.nii ', outname, '/DTI_rawdat.nii']);
+        unix(['cp ',inname_30dir, '.bval ', outname, '/DTI_ec.bval']);
+        unix(['cp ',inname_30dir, '.bvec ', outname, '/DTI_raw.bvec']);
 
-                % concat bval
-                fid30  = fopen([inname_30dir, '.bval'],'rt');
-                fid64  = fopen([inname_64dir, '.bval'],'rt');
-                fidOUT = fopen([outname,'/HARDI_ec.bval'],'wt'); % create bval
-                tline30 = fgetl(fid30);
-                tline64 = fgetl(fid64);
-                while ischar(tline30) 
-                    tline30_64 = [tline30 tline64];
-                    fprintf(fidOUT, '%s\n', tline30_64);
-                    tline30 = fgetl(fid30);
-                    tline64 = fgetl(fid64);
-                end
-                fclose(fid30); 
-                fclose(fid64);
-                fclose(fidOUT);
-
-                % concat bvec
-                fid30  = fopen([inname_30dir, '.bvec'],'rt');
-                fid64  = fopen([inname_64dir, '.bvec'],'rt');
-                fidOUT = fopen([outname,'/HARDI_cat.bvec'],'wt'); % create bvec
-                tline30 = fgetl(fid30);
-                tline64 = fgetl(fid64);
-                while ischar(tline30) 
-                    tline30_64 = [tline30 tline64];
-                    fprintf(fidOUT, '%s\n', tline30_64);
-                    tline30 = fgetl(fid30);
-                    tline64 = fgetl(fid64);
-                end
-                fclose(fid30); 
-                fclose(fid64);
-                fclose(fidOUT);
-
-                disp('done concatenating.');
-            
-            end
-            if ~exist([outname, '/HARDI_ec.nii.gz'],'file') || ~exist([outname,'/HARDI_ec.ecclog'],'file')        
-
-                disp('running motion+eddy correction...');
-                % run eddy corrections
-                unix(['eddy_correct ', outname, '/HARDI_concat.nii.gz ', outname, '/HARDI_ec.nii 0']); % create eddy corrected
-                % rotate bvec directions as well (this overwrites the unrotated bvec)
-                unix(['fdt_rotate_bvecs ', outname,'/HARDI_cat.bvec ',outname,'/HARDI_ec.bvec ',outname,'/HARDI_ec.ecclog']); % update + duplicated
-                disp('done corrections.');
-            end
-            % catch when multiple files
-            if( exist([outname, '/HARDI_ec.nii'],'file') && exist([outname, '/HARDI_ec.nii.gz'],'file') )
-                unix(['rm ',outname, '/HARDI_ec.nii']);
-            end
-            
-            % quick brain mask
-            unix(['bet2 ',outname,'/HARDI_ec.nii.gz ',outname,'/HARDI_bet_Dil -f 0.4 -m']); % create mask
-            unix(['fslmaths ',outname,'/HARDI_bet_Dil_mask.nii.gz -ero ',outname,'/HARDI_bet_mask']); % create mask
-            unix(['rm ',outname,'/HARDI_bet_Dil.nii.gz ',outname,'/HARDI_bet_Dil_mask.nii.gz']); % create mask
-           
-            if ~exist([outname, '/HARDI_fit_V1.nii.gz'],'file') || ~exist([outname, '/HARDI_fit_V2.nii.gz'],'file') || ~exist([outname, '/HARDI_fit_V3.nii.gz'],'file')   
-            
-                disp('running DTI fitting...');
-                % running dti parameter fits
-                unix(['dtifit -k ',outname,'/HARDI_ec.nii.gz -o ',outname,'/HARDI_fit -m ',outname,'/HARDI_bet_mask.nii.gz -r ',outname,'/HARDI_ec.bvec -b ',outname,'/HARDI_ec.bval']); %create output parameters
-                disp('done fitting');
-            end
-            
-
-%%      OPTION 2: single-run DWI acquisition --> perform standard DTI analysis
-        else
-            
-            inname_30dir = [InputStruct(ksub).run(1).Input_nifti_file_path,'/',InputStruct(ksub).run(1).Input_nifti_file_prefix{1}];
-
-            disp('DTI image analysis');
-
-            % recopying data data
-            unix(['cp ',inname_30dir, '.nii ', outname, '/DTI_rawdat.nii']);
-            unix(['cp ',inname_30dir, '.bval ', outname, '/DTI_ec.bval']);
-            unix(['cp ',inname_30dir, '.bvec ', outname, '/DTI_raw.bvec']);
-
-            disp('done concatenating.')
-
+        if( ~exist([outname, '/DTI_ec.nii'],'file' ) && ~exist([outname, '/DTI_ec.nii.gz'],'file') )
             disp('running motion+eddy correction...');
             % run eddy corrections
             unix(['eddy_correct ', outname, '/DTI_rawdat.nii.gz ', outname, '/DTI_ec.nii 0']); % create eddy corrected
             % rotate bvec directions as well (this overwrites the unrotated bvec)
             unix(['fdt_rotate_bvecs ', outname,'/DTI_raw.bvec ',outname,'/DTI_ec.bvec ',outname,'/DTI_ec.ecclog']); % update + duplicated
             disp('done corrections.');
+        else
+            disp('skipping EC');
+        end
 
+        if( ~exist([outname,'/DTI_fit_FA.nii'],'file' ) && ~exist([outname,'/DTI_fit_FA.nii.gz'],'file' ) )
             disp('running DTI fitting...');
             % quick brain mask
             unix(['bet2 ',outname,'/DTI_ec.nii.gz ',outname,'/DTI_bet -m']); % create mask
             % running dti parameter fits
-            unix(['dtifit -k ',outname,'/DTI_ec.nii.gz -o ',outname,'/DTI_fit -m ',outname,'/DTI_bet_mask.nii.gz -r ',outname,'/DTI_ec.bvec -b ',outname,'/DTI_ec.bval']); %create output parameters
-
-            disp('done fitting');
+            unix(['dtifit -k ',outname,'/DTI_ec.nii.gz -o ',outname,'/DTI_fit -m ',outname,'/DTI_bet_mask.nii.gz -r ',outname,'/DTI_ec.bvec -b ',outname,'/DTI_ec.bval']); %create output parameters            
+        else
+            disp('skipping DTI param. fitting 1');
         end
+        % unzipping files...
+        if( exist([outname,'/DTI_fit_FA.nii.gz'],'file' ) || exist([outname,'/DTI_fit_S0.nii.gz'],'file' ) )
+           unix(['gunzip ', outname,'/DTI_fit_*.nii.gz']); 
+        end
+        
+        %-- generating additional diffusivity parameters
+        if( ~exist([outname,'/DTI_fit_RDx.nii'],'file' ) && ~exist([outname,'/DTI_fit_RDx.nii.gz'],'file' ) )
+            
+            disp('generating additional DTI measures...');
+            
+            L1=load_untouch_nii([outname,'/DTI_fit_L1.nii']);
+            L2=load_untouch_nii([outname,'/DTI_fit_L2.nii']);
+            L3=load_untouch_nii([outname,'/DTI_fit_L3.nii']);
+            VV=L1;
+            % additional measures of axial diffusivity and radial diffusivity
+            VV.img = L1.img;
+            save_untouch_nii(VV,[outname,'/DTI_fit_ADx.nii']);
+            VV.img = (L2.img + L3.img)./2;
+            save_untouch_nii(VV,[outname,'/DTI_fit_RDx.nii']);
+        else
+            disp('skipping DTI param. fitting 2');
+        end
+        
+%%
+        if( InputStruct(ksub).run(1).MULTI_RUN_NODDI )
+            
+            disp('Multiple DTI acqusitions...preparing for (optional) noddi analysis');
 
+            % path to dti data
+            dti_path = [InputStruct(ksub).run(1).Output_nifti_file_path '/dti_processed/',InputStruct(ksub).run(1).Output_nifti_file_prefix];   
+            % noddi output directory
+            mkdir_r([dti_path,'/noddi_out']);
+
+            
+            N_runs = length(InputStruct(ksub).run(1).Input_nifti_file_prefix);
+            
+            % collecting catlist for functional data
+            catlist = [];
+            for(i=1:N_runs)
+                inname_multi_list{i} = [InputStruct(ksub).run(1).Input_nifti_file_path,'/',InputStruct(ksub).run(1).Input_nifti_file_prefix{i}];
+                catlist = [catlist, ' ', inname_multi_list{i},'.nii'];
+            end
+            
+            % --- checking on concatt'd data
+            if ~exist([outname, '/noddi_out/DTI_Multi_cat.nii.gz'],'file') || ~exist([outname,'/noddi_out/DTI_Multi_ec.bval'],'file')  || ~exist([outname,'/noddi_out/DTI_Multi_cat.bvec'],'file')       
+
+                disp('concatenating data...');
+                % concat functional data
+                unix(['fslmerge -t ', outname, '/noddi_out/DTI_Multi_cat.nii ', catlist]);
+
+                % concat the bval files now (automatically "EC'd"
+                bvcat=cell(1);
+                for(i=1:N_runs)
+                    fidbv  = fopen([inname_multi_list{i}, '.bval'],'rt'); % open file
+                    tline  = fgetl(fidbv); kq=0; % get 1st line
+                    while ischar(tline) 
+                        kq=kq+1;
+                        bvcat{kq} = [bvcat{kq} tline]; % read in lines, concat to cells (resp each. line)
+                        tline     = fgetl(fidbv);
+                    end
+                    fclose(fidbv);
+                end
+                % store to concatt'd file
+                fidOUT = fopen([outname,'/noddi_out/DTI_Multi_ec.bval'],'wt'); % create bval
+                for(i=1:length(bvcat))
+                    fprintf(fidOUT, '%s\n', bvcat{i});
+                end
+                fclose(fidOUT);
+
+                % concat the bvec files now (need to EC)
+                bvcat=cell(3);
+                for(i=1:N_runs) 
+                    fidbv  = fopen([inname_multi_list{i}, '.bvec'],'rt'); % open file
+                    tline  = fgetl(fidbv); kq=0; % get 1st line
+                    while ischar(tline) 
+                        kq=kq+1;
+                        bvcat{kq} = [bvcat{kq} tline]; % read in lines, concat to cells (resp each. line)
+                        tline     = fgetl(fidbv);
+                    end
+                    fclose(fidbv);
+                end            
+                % store to concatt'd file
+                fidOUT = fopen([outname,'/noddi_out/DTI_Multi_cat.bvec'],'wt'); % create bval
+                for(i=1:length(bvcat))
+                    fprintf(fidOUT, '%s\n', bvcat{i});
+                end
+                fclose(fidOUT);
+            
+            end
+            
+            % --- checking on EC'd data
+            if ~exist([outname, '/noddi_out/DTI_Multi_ec.nii'],'file') && ~exist([outname, '/noddi_out/DTI_Multi_ec.nii.gz'],'file')      
+
+                disp('running motion+eddy correction...');
+                % run eddy corrections
+                unix(['eddy_correct ', outname, '/noddi_out/DTI_Multi_cat.nii.gz ', outname, '/noddi_out/DTI_Multi_ec.nii 0']); % create eddy corrected
+                % rotate bvec directions as well (this overwrites the unrotated bvec)
+                unix(['fdt_rotate_bvecs ', outname,'/noddi_out/DTI_Multi_cat.bvec ',outname,'/noddi_out/DTI_Multi_ec.bvec ',outname,'/noddi_out/DTI_Multi_ec.ecclog']); % update + duplicated
+                disp('done corrections.');
+            end
+            % catch when multiple files
+            if( exist([outname, '/noddi_out/DTI_Multi_ec.nii'],'file') && exist([outname, '/noddi_out/DTI_Multi_ec.nii.gz'],'file') )
+                unix(['rm ',outname, '/noddi_out/DTI_Multi_ec.nii']);
+            end
+        else
+            disp('single DTI run, initial processing complete.');
+        end 
 end
 
 %%

@@ -1,0 +1,38 @@
+
+1. Hidden analysis modules (works in progress):
+
+	Discriminant Partial Least Squares (dPLS):  2-class discriminant 
+	  analysis assuming isotropic within-class covariance
+	
+	General Linear Model (GLM): standard ordinary least squares with
+	  hrf-convolved design matrix
+	
+	Fractional amplitude of low-frequency fluctuations (fALFF): measure
+	  of BOLD temporal variability in 0.015< x <0.08 Hz band, relative 
+	  to total variance
+
+	Reproducible Principal Component Analysis (rPCA): principal components
+	  in split-half cross-validation framework
+
+	Hurst exponent (Hurst): estimate of monofractal scaling exponent, 
+	  based on detrended fluctuations analysis
+
+	Support vector machines (SVM): 2-class discriminant model, fitted on
+	  a linear kernel, with optimization of box constraint
+
+	Global functional connectivity (gConn): measure of average connectivity
+	  at each voxel, relative to all others. ** high compute time! **
+
+2. New pipeline options (in branch, need to migrate to trunk):
+
+	Multi-run optimization:  allows user to optimize results in cases 
+	  of multiple task runs, if you want to generate a single SPM and
+	  pipeline. Now includes compatibility with GLMs too.
+
+	Post-hoc testing:  protocol to automatically submit optimized SPMs into
+	  group-level analyses. Includes t-tests, bootstrap estimation and
+	  ANOVAs (1-way, 2-way, repeated measures)
+
+	Completely modularized analysis code:  minimized the number of within
+	  script dependencies, allowing for the rapid prototyping of new
+	  analysis techniques

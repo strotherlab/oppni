@@ -16,91 +16,41 @@
 %
 %  - Jimmy Shen (jimmy@rotman-baycrest.on.ca)
 %
-function ext = load_nii_ext(filename)
+function ext = load_nii_ext(fileprefix)
 
-   if ~exist('filename','var'),
+%   warning('off', 'Octave:possible-matlab-short-circuit-operator' );
+   if ~exist('fileprefix','var'),
       error('Usage: ext = load_nii_ext(filename)');
-   end
-
-
-   v = version;
-
-   %  Check file extension. If .gz, unpack it into temp folder
-   %
-   if length(filename) > 2 & strcmp(filename(end-2:end), '.gz')
-
-      if ~strcmp(filename(end-6:end), '.img.gz') & ...
-	 ~strcmp(filename(end-6:end), '.hdr.gz') & ...
-	 ~strcmp(filename(end-6:end), '.nii.gz')
-
-         error('Please check filename.');
-      end
-
-      if str2num(v(1:3)) < 7.1 | ~usejava('jvm')
-         error('Please use MATLAB 7.1 (with java) and above, or run gunzip outside MATLAB.');
-      elseif strcmp(filename(end-6:end), '.img.gz')
-         filename1 = filename;
-         filename2 = filename;
-         filename2(end-6:end) = '';
-         filename2 = [filename2, '.hdr.gz'];
-
-         tmpDir = tempname;
-         mkdir(tmpDir);
-         gzFileName = filename;
-
-         filename1 = gunzip(filename1, tmpDir);
-         filename2 = gunzip(filename2, tmpDir);
-         filename = char(filename1);	% convert from cell to string
-      elseif strcmp(filename(end-6:end), '.hdr.gz')
-         filename1 = filename;
-         filename2 = filename;
-         filename2(end-6:end) = '';
-         filename2 = [filename2, '.img.gz'];
-
-         tmpDir = tempname;
-         mkdir(tmpDir);
-         gzFileName = filename;
-
-         filename1 = gunzip(filename1, tmpDir);
-         filename2 = gunzip(filename2, tmpDir);
-         filename = char(filename1);	% convert from cell to string
-      elseif strcmp(filename(end-6:end), '.nii.gz')
-         tmpDir = tempname;
-         mkdir(tmpDir);
-         gzFileName = filename;
-         filename = gunzip(filename, tmpDir);
-         filename = char(filename);	% convert from cell to string
-      end
    end
 
    machine = 'ieee-le';
    new_ext = 0;
 
-   if findstr('.nii',filename) & strcmp(filename(end-3:end), '.nii')
+   if findstr('.nii',fileprefix)
       new_ext = 1;
-      filename(end-3:end)='';
+      fileprefix = strrep(fileprefix,'.nii','');
    end
 
-   if findstr('.hdr',filename) & strcmp(filename(end-3:end), '.hdr')
-      filename(end-3:end)='';
+   if findstr('.hdr',fileprefix)
+      fileprefix = strrep(fileprefix,'.hdr','');
    end
 
-   if findstr('.img',filename) & strcmp(filename(end-3:end), '.img')
-      filename(end-3:end)='';
+   if findstr('.img',fileprefix)
+      fileprefix = strrep(fileprefix,'.img','');
    end
 
    if new_ext
-      fn = sprintf('%s.nii',filename);
+      fn = sprintf('%s.nii',fileprefix);
 
       if ~exist(fn)
-         msg = sprintf('Cannot find file "%s.nii".', filename);
+         msg = sprintf('Cannot find file "%s.nii".', fileprefix);
          error(msg);
       end
    else
-      fn = sprintf('%s.hdr',filename);
+      fn = sprintf('%s.hdr',fileprefix);
 
       if ~exist(fn)
-         msg = sprintf('Cannot find file "%s.hdr".', filename);
+         msg = sprintf('Cannot find file "%s.hdr".', fileprefix);
          error(msg);
       end
    end
@@ -159,14 +109,6 @@ function ext = load_nii_ext(filename)
       end
    end
 
-
-   %  Clean up after gunzip
-   %
-   if exist('gzFileName', 'var')
-      rmdir(tmpDir,'s');
-   end
-
-
    return                                       % load_nii_ext
 
 
@@ -187,7 +129,7 @@ function ext = read_extension(fid, vox_offset)
       ext.extension = fread(fid,4)';
    end
 
-   if isempty(ext) | ext.extension(1) == 0
+   if isempty(ext) || ext.extension(1) == 0
       ext = [];
       return;
    end

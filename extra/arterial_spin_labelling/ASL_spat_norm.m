@@ -20,10 +20,10 @@ end
 if isempty(AFNI_PATH) || isempty(FSL_PATH)
     read_settings;
 end
-if AFNI_PATH(end)~='/'
+if ~isempty(AFNI_PATH) && AFNI_PATH(end)~='/'
 	AFNI_PATH = [AFNI_PATH '/'];
 end
-if FSL_PATH(end)~='/'
+if ~isempty(FSL_PATH)  && FSL_PATH(end)~='/'
 	FSL_PATH = [FSL_PATH '/'];
 end
 
@@ -181,7 +181,7 @@ end
     disp('NOTE: we use bold run to construct the reference!');
     disp('...all other runs then have transform applied to it');
 
-    typelist = {'TCBF','PERF','BOLD','TCBF_avg','PERF_avg','BOLD_avg'};
+    typelist={'aCBF','fCBF','BOLD','aCBF_avg','fCBF_avg','BOLD_avg'};
     
     % go through list of subjects
     for ksub = 1:numel(InputStruct)
@@ -191,7 +191,10 @@ end
         [tmp,STRUCT_Name,ext] = fileparts(InputStruct(ksub).run(1).STRUCT_File);
         outstr  = [InputStruct(ksub).run(1).Output_nifti_file_path,'/asl_processed/',InputStruct(ksub).run(1).Output_nifti_file_prefix{1}];
         
-        unix([FSL_PATH sprintf('fslmaths %s/proc_BOLD_avg.nii -mul %s/bold_mask.nii %s/proc_BOLD_strip.nii',outstr,outstr,outstr)]);
+        if(DEOBLIQUE==1)
+                unix([FSL_PATH sprintf('fslmaths %s/proc_BOLD_avg_deob.nii -mul %s/bold_mask.nii %s/proc_BOLD_strip.nii',outstr,outstr,outstr)]);
+        else    unix([FSL_PATH sprintf('fslmaths %s/proc_BOLD_avg.nii -mul %s/bold_mask.nii %s/proc_BOLD_strip.nii',outstr,outstr,outstr)]);
+        end
         
         if ~exist(sprintf('%s/asl_processed/spat_norm/Transmat_ASLtoT1_%s.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix{1}),'file')
         % spatial norm - transform mean epi volume to match stripped T1; create transform matrix
@@ -209,7 +212,10 @@ end
         transform               = sprintf('%s/asl_processed/spat_norm/Transmat_ASLtoREF_%s.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix{1});
         
         for(i=1:length(typelist))
-            input_nifti_file   = [outstr,'/proc_',typelist{i},'.nii'];
+            if(DEOBLIQUE==1)
+                 input_nifti_file   = [outstr,'/proc_',typelist{i},'_deob.nii'];
+            else input_nifti_file   = [outstr,'/proc_',typelist{i},'.nii'];
+            end
             output_nifti_file  = [outstr,'/proc_',typelist{i},'_sNorm.nii'];
 
             if ~exist(output_nifti_file,'file')

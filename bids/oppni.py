@@ -54,7 +54,7 @@ def parse_args_check():
     return args
 
 
-def run_part_one(bids_dir, subject_label, task_name, output_dir, analysis_level):
+def run_part_one(bids_dir, subject_label, task_name, output_dir):
     """Runs unit-level computation on a given list of subjects/runs."""
 
     anat_file = 'None'
@@ -82,20 +82,14 @@ def run_part_one(bids_dir, subject_label, task_name, output_dir, analysis_level)
     #                                                          events_tsv)
 
     output_dir_sub = os.path.join(output_dir,"sub-%s" % subject_label)
-    # cmd = "run_oppni.sh %s PART1 %s %s %s %s %d %d %s %s" % (mcr_path, epi_list[0],
-    #                                                             output_dir_sub, anat_file_list[0],
-    #                                                             physio_file, drop_beg, drop_end, task_json,
-    #                                                             events_tsv)
-
-    # new requirements for the matlab entry wrapper Oct 12, 2016
-    cmd = "run_oppni.sh %s %s %s %s %s %s %s %s %s %s" % (mcr_path, bids_dir, output_dir_sub, analysis_level,
-                                                    "--participant", subject_label,
-                                                    "--run_name", task_name,
-                                                    "--task_design", "event")
+    cmd = "run_oppni.sh %s PART1 %s %s %s %s %d %d %s %s" % (mcr_path, epi_list[0],
+                                                                output_dir_sub, anat_file_list[0],
+                                                                physio_file, drop_beg, drop_end, task_json,
+                                                                events_tsv)
 
     print(cmd)
     try:
-        txt_out = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
+        txt_out = subprocess.check_output(cmd, shell=True)
         print txt_out
     except:
         print("Unexpected error:", sys.exc_info()[0])
@@ -123,7 +117,7 @@ def run_oppni():
     if args.analysis_level in [ "participant", "participant1"]:
 
         assert args.participant_label not in [None, ''], "Subject label must be non-empty."
-        run_part_one(args.bids_dir, args.participant_label, task_group, args.output_dir, args.analysis_level )
+        run_part_one(args.bids_dir, args.participant_label, task_group, args.output_dir )
 
         # # TODO generate an error when the processing is not successful
         # input_file = os.path.join(args.output_dir, 'input_files',args.participant_label+'.txt')

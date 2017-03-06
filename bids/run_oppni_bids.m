@@ -1,77 +1,114 @@
-function run_oppni_bids( in_dir, out_dir, level, varargin )
-%
-% RUN_OPPNI_BIDS: wrapper script to execute oppni jobs in BIDS framework.
-%
-%  Syntax:
-%
-%     run_oppni_bids( in_dir, out_dir, level, varargin )
-%
+function run_oppni_bids(proc,varargin)
 
-% number of supplementary arguments
-numvars = round(numel(varargin)/2);
-% ensure there is an even number of supplemental arguments
-if( mod(numel(varargin),2) ~=0 ) error('supplementary arguments must come in name/value pairs'); end
-% ensure there arent too many supplementayl args (7 max)
-if(numvars>7) error('too many arguments. full list: {--run_name, --task_design, --participant, --contrast, --analysis_model, --ndrop, --atlasfile}'); end
-% ensure there are minimum number (at least 2 required
-if(numvars<2) error('not enough supplementary arguments. Need to at least specify {--run_name, --task_design}'); end
+% varargins:
+%
+% 1 IN path
+% 2 OUT path
+% 3 STRUCT path
+% 4 PHYSIO path
+% 5 DROP value1
+% 6 DROP value2
+% 7 TASK JSON (BIDS)
+% 8 EVENTS TSV
+% 9 ATLAS PATH
 
-% start with empty supplemental fields
-run_name       =[];
-task_design    =[];
-participant    =[];
-contrast       =[];
-analysis_model =[];
-ndrop          =[];
-atlasfile      =[];
+%% some early value checks
+if( nargin < 9 )
+    error('too few input arguments (1=IN,2=OUT,3=STRUCT,4=PHYSIO,5=DROP1,6=DROP2,7=TASK,8=EVENTS,9=ATLAS)');
+end
+if( isempty(varargin{1}) || ~exist(varargin{1},'file') ) error(strcat('input file: ',varargin{1},' does not exist')); end
+if( isempty(varargin{3}) || ~exist(varargin{3},'file') ) error(strcat('structural file: ',varargin{3},' does not exist')); end
+if( isempty(varargin{4}) )
+    warning(strcat('physio file not specified for: ',varargin{1},'. Cannot do RETROICOR'));
+    varargin{4}='None';
+elseif(~exist(varargin{4},'file') && (~exist([varargin{4},'.resp.1D'],'file') && ~exist([varargin{4},'.card.1D'],'file'))  ) 
+    warning(strcat('physio file: ',varargin{4},' does not exist. Cannot do RETROICOR'));
+    varargin{4}='None';
+end
+if( isempty(varargin{5}) || (isnumeric(varargin{5}) && varargin{5}==0) ) 
+    varargin{5}=0;
+    warning(strcat('No scans dropped from start of: ',varargin{1},'.Is this OK?'));
+elseif( all(ismember(varargin{5},'0123456789 ')) )
+    varargin{5} = str2num(varargin{5});
+elseif( ~isnumeric(varargin{5}))
+    error(strcat('Invalid DROP(1) value: ',varargin{5}))
+end
+if( isempty(varargin{6}) || (isnumeric(varargin{6}) && varargin{6}==0) ) 
+    varargin{6}=0;
+    warning(strcat('No scans dropped from end of: ',varargin{1},'.Is this OK?'));
+elseif( all(ismember(varargin{6},'0123456789 ')) )
+    varargin{6} = str2num(varargin{6});
+elseif( ~isnumeric(varargin{6}))
+    error(strcat('Invalid DROP(2) value: ',varargin{6}))
+end
+if( isempty(varargin{7}) || ~exist(varargin{7},'file') ) error(strcat('Task .json file: ',varargin{7},' does not exist')); end
+if( isempty(varargin{8}) || ~exist(varargin{8},'file') ) error(strcat('Event .tsv file: ',varargin{8},' does not exist')); end
 
-for(i=1:numvars) %% go through each supplemental field
+%% now setting parameter defaults
+
+% setting defaults, part1
+task_type         = 'BLOCK';
+analysis_model    = 'LDA';
+modelparam        =[];
+contrast_list_str =[];
+dospnormfirst     =0;
+DEOBLIQUE         =0;
+TPATTERN          ='auto_hdr';
+TOFWHM            =0;
+niiout            =0;
+% setting defaults, part2
+optimize_metric   ='dPR';
+mot_gs_control    =[1 0];
+process_out       =1;
+keepmean          =0;
+whichpipes        ='ALL';
+% setting defaults, spatnorm
+input_voxelsize   =[];
+flag_step         =0;
+
+if( nargin >9 )
+    reference_file=varargin{9};
+else
+    reference_file=[];
+end
+
+[outpath,prefix,~] = fileparts( varargin{2} );
+mkdir_r(outpath);
+mkdir( fullfile( outpath, 'task_files') );
+mkdir( fullfile( outpath, 'input_files') );
+
+% populate pipeline file
+newpipefile = fullfile( outpath, 'pipeline_combinations.txt');
+if ~exist(newpipefile,'file')
+    make_pipeline_file( newpipefile );
+end
+% create task file
+newtaskfile = fullfile( outpath, 'task_files', strcat(prefix,'.txt') );
+bids_to_oppni_task(varargin{7}, varargin{8}, task_type, newtaskfile);
+% create input file
+newinputfile = fullfile( outpath, 'input_files', strcat(prefix,'.txt') );
+make_input_file( newinputfile, varargin(1:6), newtaskfile );
+
+if strcmpi(proc,'PART1')
+
+    Pipeline_PART1(newinputfile,newpipefile, analysis_model, modelparam, niiout, contrast_list_str, dospnormfirst, DEOBLIQUE,  TPATTERN,   TOFWHM);
+
+elseif strcmpi(proc,'PART2')
+
+	Pipeline_PART2(newinputfile, optimize_metric, mot_gs_control, process_out, keepmean,   whichpipes)
     
-   valpairs{1} = varargin{ (i-1)*2+1 }; 
-   valpairs{2} = varargin{ (i-1)*2+2 };
-   
-   if( isempty(strfind(valpairs{1},'--'))) error(['out of order. expected ', valpairs{1} ' to be an argument name']);  end
-   if(~isempty(strfind(valpairs{2},'--'))) error(['out of order. expected ', valpairs{2} ' to be an argument value']); end
-   
-   % check mandatory fields
-   if( strcmpi(valpairs{1},'--run_name')       ) run_name       = valpairs{2}; end
-   if( strcmpi(valpairs{1},'--task_design')    ) task_design    = valpairs{2}; end
-   % check optional fields
-   if( strcmpi(valpairs{1},'--participant')    ) participant    = valpairs{2}; end
-   if( strcmpi(valpairs{1},'--contrast')       ) contrast       = valpairs{2}; end
-   if( strcmpi(valpairs{1},'--analysis_model') ) analysis_model = valpairs{2}; end
-   if( strcmpi(valpairs{1},'--ndrop')          ) ndrop          = valpairs{2}; end
-   if( strcmpi(valpairs{1},'--atlasfile')      ) atlasfile      = valpairs{2}; end
-end
+elseif strcmpi(proc,'SPNORM')
 
-%% checks on settings
+    spatial_normalization(newinputfile,reference_file,input_voxelsize,flag_step,DEOBLIQUE)
+    
+elseif strcmpi(proc,'GMASK') 
 
-if(isempty(run_name)   ) error('need to specify a --run_name argument'); end
-if(isempty(task_design)) error('need to specify a --task_design argument'); end
+    group_mask_tissue_maps(newinputfile,'');
+    
+elseif strcmpi(proc,'QC1') || strcmpi(proc,'QC2')
 
-if(isempty(participant))
-    disp('WARNING: all subjects are submitted as single job');
+    group_mask_tissue_maps(newinputfile,'');
+    QC_wrapper(flag_step,newinputfile, [], 2);
+else
+    error('Unrecognized part name: must be one of PART1, PART2, SPNORM, GMASK, QC1 and QC2.');
 end
-if(isempty(contrast))
-    disp('WARNING: no contrast is specified. By default, will run all task conditions vs. baseline');
-end
-if(isempty(analysis_model))
-    disp('WARNING: no analysis specified. Using default model selection');
-    if    (strcmpi(task_design,'block'))      analysis_model='LDA';
-    elseif(strcmpi(task_design,'event'))      analysis_model='erCVA';
-    elseif(strcmpi(task_design,'nocontrast')) analysis_model='falff';
-    else error('the --task_design value is not valid. Needs to be either "block", "event" or "nocontrast"');
-    end
-end
-if(isempty(ndrop)) 
-    disp('WARNING: the --ndrop field is empty. The default is setting ndrop=0 (no non-equilibrium scans dropped)');
-    ndrop=0; 
-end
-if(isempty(atlasfile))
-    disp('WARNING: the --atlasfile field is empty. No spatial normalization is possible');
-end
-
-%% run files
-bids_parsejobs( in_dir, out_dir, level, participant, run_name, contrast, task_design, analysis_model, ndrop, atlasfile );
-
-

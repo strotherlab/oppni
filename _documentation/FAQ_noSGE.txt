@@ -1,0 +1,136 @@
+
+---------------------------------------------
+Frequently-Asked Questions for non-SGE users.
+---------------------------------------------
+
+This document provides some general information for users of OPPNI software
+who do not have access to sungrid engine (SGE) servers. This means you are
+running OPPNI locally, without the advantage of a distributed grid computing 
+environment (which SGE is used to interface with). This is ok! 
+You can still generate optimized pipelines and analyze your data - it will just 
+be a slower -- how slow depends on a number of factors, including
+(a) number of subjects, (b) data size (number of timepoints x voxel resolution),
+(c) number of pipelines you want to test, and (d) local computing power...
+see below for more on these issues and recommendations.
+
+1. What you need to run OPPNI:
+
+    You will need access to a Unix-based environment, where you have installed Matlab 
+    and two freeware packages for preprocessing fMRI: AFNI (https://afni.nimh.nih.gov/afni)
+    and FSL (www.fmrib.ox.ac.uk/fsl). See the manual appendices for tips on downloading
+    and installing these packages.
+
+2. How to run OPPNI locally:
+
+    First of all, you will need to figure out where all of your fMRI and 
+    T1 data are located, along with the specific task contrasts you want to investigate.
+    
+    Next, you will need to create 2 formatted textfiles: and "input" file
+    defining the name/location of your filesm and a "pipeline" file defining which
+    pipeline steps you want to test. You will also need to create a series of formatted
+    "task" textfiles defining task condition names, onsets and durations; you will require
+    one per dataset. Use the pipeline manual to guide you in creating these files;
+    the only difference is in how you execute OPPNI afterwards.
+    
+    Without the SGE, you will not have access to the wrapper interface to run OPPNI.
+    Instead you will be making calls to "run_oppni_local.m".
+
+3. Preprocessing and analyzing your data
+
+    The full syntax for running analysis is:
+
+      run_oppni_local( <input file>, <pipeline file>, <analysis_model>, <TR_MSEC>, <task contrasts>, ...
+                       <TEMPLATE_VOL>, <VOXDIMS>, <DEOBLIQUE>, <TPATTERN>, <TOFWHM>, <opt_metric> )
+
+    but for most analyses you will only require the following argments:
+
+      run_oppni_local( <input file>, <pipeline file>, <analysis_model>, <TR_MSEC>, <task contrasts>, <TEMPLATE_VOL> );
+
+    where <input file>, <pipeline file>, <analysis_model>, <task contrasts> are formatted strings specifying
+    (respectively) your input textfile, your pipeline textfile, the analysis model you want to use, the 
+    inter-scan interval (TR) in msec., and your task contrasts of interest. Specific inputs will depend
+    on the type of data (blocked, event or no-contrast), preferred analysis method, and specific contrasts of interest.
+
+
+    Below we will show some case examples for specific situations; see the "sample files" folder
+    for scripts these are based on:
+
+------------------------------------------------------------------------------------------------------------------------------
+    (a) Block-design task, 3 conditions (task_A, task_B, task_C), one analysis of interest (task_B vs task_A),
+        one run per subject, univariate analysis. Here you would submit:
+
+            run_oppni_local( 'input_sample1.txt', 'pipeline_sample1.txt', 'GNB', 2000, 'task_B-task_A', 'MNI152.nii' );
+    
+        here, you are running "GNB" (univariate) analysis, contrasting task B vs task A, have a TR=2000 msec., and 
+        are co-registering optimized data to an MNI-152 template. This will produce optimally preprocessed data
+        and SPMs per subject, reflecting a task_B - task_A contrast
+
+------------------------------------------------------------------------------------------------------------------------------
+    (b) Block-design dataset as in (a), but you are interested in multiple contrasts of interest 
+        (task_A vs baseline, task_C vs task_B) for a multivariate analysis model. You would submit:
+
+            run_oppni_local( 'input_sample1.txt', 'pipeline_sample1.txt', 'LDA', 2000, 'task_A-baseline,task_C-task_B', 'MNI152.nii' );
+
+        this will find the pipelines that simultaneously optimize task_A-baseline and task_C-task_B contrasts,
+        producing 2 sets of optimized SPMs per subject.
+
+        --> NB: make sure to carefully check your results after, sometimes this approach will prefer pipelines that improve one
+                contrast, at the expense of another. Unless you are running lots of contrasts, probably safer to analyze them separately!
+
+------------------------------------------------------------------------------------------------------------------------------
+    (c) Block-design as in (a), but you have 2 runs per subject (run1.nii and run2.nii).
+        you want to combine to get a single analysis result. You would submit: 
+
+            run_oppni_local( 'input_sample2.txt', 'pipeline_sample1.txt', 'GNB', 2000, 'task_B-task_A', 'MNI152.nii' );
+
+        where each entry in input_sample2.txt contains 2 files (corresponding to runs), separated by commas.
+        Check the file for syntax.
+
+        --> NB1: if your input files and output files are all in the same directory, you will get the same results by
+            running the following:
+
+            run_oppni_local( 'input_sample3.txt', 'pipeline_sample1.txt', 'GNB', 2000, 'task_B-task_A', 'MNI152.nii' );
+
+        This is just a more efficient way of writing it - as you will see in input_sample3.txt, you only 
+        need to specify the path once per entry.
+
+        --> NB2: you will definitely want to use this method if you have >1 run, but only a few onsets per run,
+            e.g. all of your onsets of interest are in the first/last half of the run, or you have >4 onsets per run
+            in an event-related design.
+
+------------------------------------------------------------------------------------------------------------------------------
+    (d) event-related task, 3 conditions (task_A, task_B, task_C), one event-related response of interest (task_C),
+        one run per subject, multivariate analysis. Here you would submit:
+
+            run_oppni_local( 'input_sample1.txt', 'pipeline_sample1.txt', 'erCVA', 2000, 'task_C-baseline', 'MNI152.nii' );
+
+        note that you are running "erCVA" (event-related, multivariate model), and contrasting task_C vs baseline.
+        The special arguments for running multiple contrasts (in (b)) and multiple runs (in (c)) also apply to
+        event-related data.
+
+        --> NB: for event related analysis, you can ONLY contrast task vs baseline -- this is telling OPPNI
+            to estimate the specific HRF of interest. For multiple conditions, you would write (for example)
+            'task_A-baseline,task_B-baseline,task_C-baseline'
+
+------------------------------------------------------------------------------------------------------------------------------
+    (e) resting-state data, and you want to measure BOLD variability. You would submit:
+
+            run_oppni_local( 'input_sample1.txt', 'pipeline_sample1.txt', 'falff', 2000, [], 'MNI152.nii');
+
+        note that your contrast list is now empty (replaced with "[]"). This is because there is no
+        task contrast being run.
+        
+        --> NB: nocontrast analyses will automatically optimize using reproducibility 'R',
+            instead of a combination of prediction and reproducibiltiy 'dPR' -- prediction metric (P) is only
+            available for task-based fMRI analysis, where we know the "true" brain state (i.e. experimental condition).
+       
+------------------------------------------------------------------------------------------------------------------------------
+    (f) no analysis model, you just want to preprocess your data (for some non-OPPNI analyses). In this case you 
+        would select a single pipeline of interest (see pipeline_sample2.txt) and submit:
+
+            run_oppni_local( 'input_sample1.txt', 'pipeline_sample2.txt', 'NONE', 2000, [], 'MNI152.nii');
+
+        --> NB: only use if there is 1 pipeline (or a couple) you are interested in. Otherwise, this procedure
+            will generate all (un-analyzed) pipelines listed in pipeline_sample2.txt. If you have specificed a lot,
+            this will quickly fill up your disk space!
+

@@ -1,16 +1,40 @@
-function run_oppni_local( subject_inputs, pipelines, analysis_model, TR_MSEC, contrast_list, TEMPLATE_VOL, VOXDIMS, DEOBLIQUE, TPATTERN, TOFWHM, opt_metric )
+function run_oppni_local( subject_inputs, pipelines, analysis_model, TR_MSEC, contrast_list, TEMPLATE_VOL, VOXDIMS, DEOBLIQUE, TPATTERN, TOFWHM, opt_metric, WARP_TYPE )
 %
+% =========================================================================
 % RUN_OPPNI_LOCAL: script for running pipelines directly in matlab, for
 % instance where SGE system is not available.
+% =========================================================================
 %
 %  Syntax:
 %
-%     run_oppni_local( subject_inputs, pipelines, analysis_model, TR_MSEC, contrast_list, TEMPLATE_VOL, VOXDIMS, DEOBLIQUE, TPATTERN )
+%     run_oppni_local( subject_inputs, pipelines, analysis_model, TR_MSEC, (contrast_list, TEMPLATE_VOL, VOXDIMS, DEOBLIQUE, TPATTERN, TOFWHM, opt_metric) )
+%
+%  Input:
+%
+%        subject_inputs: string specifying path/name of "input" textfile
+%        piplines:       string specifying path/name of "pipeline" textfile
+%        analysis_model: string specifying analysis method being optimized
+%                        e.g. 'LDA' = linear discriminant, 'GNB' = gauss naive bayes, etc.
+%                        see manual for full list
+%        TR_MSEC:        integer denoting inter-scan interal (TR) in milliseconds
+%        contrast_list:  (optional) string specifying task conditions being analyzed
+%                        for task-based analysis. Only omit of you are doing non-task analysis
+%        TEMPLATE_VOL:   (optional) string denoting path/name of T1 anatomical template 
+%                        used for coregistration. If omitted, no spatial normalization is done
+%        VOXDIMS:        (optional) vector argument giving voxel dimensions after
+%                        spatial normalization
+%        DEOBLIQUE:      (optional) binary argument; 1=always correct for oblique
+%                        scans using 3dWarp; 0=do not correct (Default)
+%        TPATTERN:       (optional) string argument specifying inter-slice timing
+%                        when doing slice-timing correction
+%        TOFWHM:         (optional) binary argument specifying if adaptive smoothing
+%                        is done via 3dBlurToFWHM -- important for mult-site studies (Default=0)
+%        opt_metric:     (optional) string specifying which cross-validation metric to optimize 
+%                        based on (Default='dPR')
 %
 %
-
 CODE_VERSION = '$Revision: 158 $';
-CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
+CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (                                         Tue, 02 Dec 2014) $';
 
 addpath scripts_matlab;
 addpath scripts_matlab/optimization;
@@ -33,9 +57,12 @@ end
 if nargin<10
     TOFWHM = 0; 
 end
-if nargin<11
+if nargin<11 && ~isempty(contrast_list)
     def_flag   = 1;
     opt_metric = 'dPR';
+elseif nargin<11
+    def_flag   = 1;
+    opt_metric = 'R';
 else
     def_flag   = 0;
 end
@@ -58,15 +85,15 @@ end
 % run preprocessing pipeline
 Pipeline_PART1(subject_inputs,pipelines,analysis_model,[],0,contrast_list,false,DEOBLIQUE,TPATTERN);
 % run optimization, if analysis model included
-if( ~strcmp(analysis_model ,'NONE') )
-    if(def_flag>0) disp('WARNING: pipeline optimization uses default metric of dPR'); end
-    Pipeline_PART2(subject_inputs,opt_metric,[1 0],1,0);
+if( ~strcmp(analysis_model ,'NONE') && ~isempty(analysis_model) )
+    if(def_flag>0) disp(['WARNING: pipeline optimization uses default metric of ', opt_metric]); end
+    Pipeline_PART2(subject_inputs,analysis_model,contrast_list,opt_metric,[1 0],1,0);
 end
 
 % run spatial normalization
 if(normflag)
-    spatial_normalization(subject_inputs,TEMPLATE_VOL,VOXDIMS,0,DEOBLIQUE);
-    group_mask_tissue_maps( subject_inputs, [] );
+    spatial_normalization(subject_inputs,analysis_model,contrast_list,TEMPLATE_VOL,VOXDIMS,0,DEOBLIQUE);
+    group_mask_tissue_maps( subject_inputs, [],TEMPLATE_VOL,WARP_TYPE );
 end
 
 %%

@@ -1,7 +1,7 @@
 VERSION     = 1.2            % This is the major version number.
 DATE        = '$Date: 2014-12-17 10:53:34 -0500 (Wed, 17 Dec 2014) $'       % do not edit this line, it will be automatically updated
 REVISION    = '$Revision: 171 $'   % do not edit this line, it will be automatically updated
-DESCRIPTION ='OPPNI with LOWPASS, more de-spiking options, and DEOBLIQUE, TPATTERN Options'
+DESCRIPTION ='PRONTO with LOWPASS, more de-spiking options, and DEOBLIQUE, TPATTERN Options'
 % END - The above lines are written in Matlab/Octave format, and they will be evaluated in matlab or octave.
 
 ====================================================================================
@@ -21,40 +21,83 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 Overview Change Log:
 ------------------------------------------------------------------------------------
 
-> reverted from previous changes - nonlinear spatial normalization in branch
+[UPDATES 2017/03/06] by Nathan
 
-[UPDATES 2016/11/17] by Nathan
+>> official start of new git branch!
 
-* made fixes to correctly disable vascular masking if specified by users
+[UPDATES 2016/11/30] by Nathan
+* further fixes to nonlinear spatial normalization module
+
+spatial_normalization.m
+> created dilated mask of reference volume (ln.126-134)
+> changed fnirt to use this as --refmask (ln.241)
+
+[UPDATES 2016/11/27] by Nathan --- lines may have shifted in transfer(!)
+
+* overall: made modifications allowing for different types of spatial normalization
+           plus different contrasts/analyses run on the same "base" dataset
+
+run_oppni_local.m
+    > changed input to allow WARP_TYPE argument (ln.1)
+    > accounted for modified input format to Pipeline_PART2, spatial_normalization, group_mask_tissue_maps (ln.63,68,69)
+
 Pipeline_PART1.m
-    > now store both a "spat_weight" and "NN_weight_avg" mask as fields of split_info_set -- the former used
-      for vascular masking, the latter used as spatial prior for phycaa+ (ln.412-431)
-    > apply_regression_step functions changed - no separate NN_weight_avg field, since it's
-      already stored in split_info_set passed to these functions(ln.508,509, 651,893)
-    > call spat_weight field during analysis, which is set to =1 if VASC_MASK is off (ln.706,777,867,980,986,1050,1142)
+    > specify results sub-directory (ln.222)
+    > change path to include results sub-directory (ln.253,255,264,265,508,509,634,651,655-656,893,898,899)
+    > change path to reflect reorganization of optimization_results folder (ln.339,613,787,877,1060,1152)
+    * small change, making VASC_MASK argument case insensitive (ln.423)
+
 Pipeline_PART2.m
-    > now spat_weight is used to mask optimized outputs too (ln.652,772)
+    > now takes "analysis_model, contrast_list_str" as positional arguments 2,3 (ln.1)
+    > check on analysis and contrast inputs (ln.134-141)
+    > correct for "nargin" position of old args (ln.161,169)
+    > define results sub-directory (ln.194)
+    > change path to include results sub-directory (ln.214,227,547-8,552-4,590,616-7,629,680,688,707-10,731,743-4,749,800,808)
 
-[UPDATES 2016/10/07] by Nathan
+group_mask_tissue_maps.m
+    > now takes "reference_file, WARP_TYPE" as positional args. 3,4 (ln.1)
+    > define results sub-directory (ln.65)
+    > create groupmask path that includes ref.file + transform type (ln.91)
+    > change path to account for new mask directory (ln.112,181)
 
-* extensive revision of the "bids" folder, to allow full use of OPPNI pipelines
-  for bids-formatted data
-* for get_numvols, replace load_nii with load_untouch_nii
-  for oblique compatibility [chg]
-* interpret_contrast_list_str (ln.70-80) [chg]
-* add bids textfile to documentation
-* comment out "interpret_contrast_list_str" ln.125
+interpret_contrast_list_str.m
+    * minor bug-fix, allowing users to run no-contrast analyses (ln.74)
+
+spatial_normalization.m
+    > now takes "analysis_model, contrast_list_str" as positional arguments 2,3 (ln.1)
+    > check on analysis and contrast inputs (ln.69-77)
+    > correct for "nargin" position of old args (ln.79,88)
+    > check on WARP_TYPE (ln.91-96)
+    > define results sub-directory (ln.114-116)
+    > now create subdirectory of spat_norm with registration type+ ref. file(ln.118-123)
+    > account for new spat_norm sub-directory (ln.217,219,222,223,237,252,255-7,260-2,290-2,306-8,313-20)
+    > add nonlinear warp step (T1 to ref) (ln.226-235)
+    > apply affine OR nonliear warp (ln.323-36,362-368)
+    > account for change in optimization_results directory (ln.346-48,351,357-8)
 
 [UPDATES 2016/09/12] by Nathan
 
+posthoc_analysis.m
+	> added option for single-pipeline post-hoc analysis
+          using "PIPE1" flag
+	  accepts PIPE1 as pipeline type (ln.141)
+	  in case of single pipeline, adds switch
+          to correctly take in + interpret (ln.196-243)
+
 GLM_model_fmri.m
 	> replace matrix inversion w backslash operator for stability (ln.33)
-apply_glm.m
+apply_glm.m]
 	> replace matrix inversion w backslash operator for stability (throughout)
 
 design_cond.m
 	> unit-normalize predictor matrix before checking condition #,
           to ensure we are properly checking collinearity (ln.94,130)
+
+interpret_contrast_list_str.m
+	> only load head of nifti file if unzipped (ln.21-23)
+	> fixed bug where contrasts without explicit 'baseline' in design file
+          but included in contrast were crashing (ln.54, 58-60)
+
 
 [UPDATES 2016/09/05] by Nathan
 
@@ -63,15 +106,18 @@ OPPNI_version_check.m
 	> deleted within-script calls to (deprecated versions of) Parse_Input_File, Parse_Split_Info, Read_Input_File (ln.456-)
 
 Pipeline_PART1.m
-	> bug fix in calls to AFNI_PATH, FSLPATH; if empty, do not add a trailing slash (ln.133,136)
-	> added calls to design_cond for non-group analysis (ln. 1077,1169)
+	> bug fix in calls to AFNI_PATH, FSLPATH; if empty, do not add a trailing slash (ln.132,135)
+	> fixed error in vascular mask switch (was turned off as default) (ln.395-396)
+	> added calls to design_cond for non-group analysis (ln. 1119,1230)
 
 Pipeline_PART1_afni_steps.m
 	> bug fix in calls to AFNI_PATH, FSLPATH; if empty, do not add a trailing slash (ln.33,36) 
+	> loading .gzip files to read header - uses "untouch" option so oblique scans can be read (ln.505)
 
 Pipeline_PART2.m
 	> bug fix in calls to AFNI_PATH, FSLPATH; if empty, do not add a trailing slash (ln.123,126)
-	> changes to handle special "cond_struc" field of pipeline metrics (ln. 224,232,246,272,594)
+	> convert "whichpipes" string argument to be uppercase (ln.170)
+	> changes to handle special "cond_struc" field of pipeline metrics (ln. 223,231,245,271,593)
 	> loading .gzip files to read header - uses "untouch" option so oblique scans can be read (ln.811)
 	> changes to FIX/IND optimization to exclude pipelines w/ bad condition #s 
 	  ...and to FIX, exclude pipelines with significant motion artifact, instead of just forcing MOTCOR on 
@@ -81,10 +127,10 @@ design_cond.m
 	> extensive revisions
 
 interpret_contrast_list_str.m
-	> loading .gzip files to read header - uses "untouch" option so oblique scans can be read (ln.39)
-	> fixed error in checks for block length <1TR, moved to correct spot in code (ln.226-234)
-	> fixed part that skips "contrast creation" step if a no-contrast analysis is specified (ln.274)
-    > fixed code to produce "empty" contrast list for NOCONTRAST analysis (ln.323-324)
+	> loading .gzip files to read header - uses "untouch" option so oblique scans can be read (ln.22)
+	> turned off option that blocked users from specifying "baseline" condition (ln.39)
+	> fixed error in checks for block length <1TR (ln.202-205)
+	> fixed part that skips "contrast creation" step if a no-contrast analysis is specified (ln.259)
 
 spatial_normalization.m
 	> bug fix in calls to AFNI_PATH, FSLPATH; if empty, do not add a trailing slash (ln.45,48)
@@ -108,8 +154,8 @@ Pipeline_PART1.m
 [UPDATES 2016/08/17] by Nathan
 
 interpret_contrast_list_str.m 
-	> check whether durations are too short if block design selected (ln.224-234)
-	> allow of "1-condition" analysis in er models (ln. 274,287) / comment out (ln. 325-340)
+	> check whether durations are too short if block design selected (ln.199-210)
+	> allow of "1-condition" analysis in er models (ln. 259,274)
 
 [UPDATES 2016/08/15] by Nathan
 
@@ -132,9 +178,6 @@ interpret_contrast_list_str.m
     (Pipeline_PART1_afni_steps.m, ln.498-501; Pipeline_PART2.m, ln.884-888;
      interpret_contrast_list_str.m, ln.38-41))
 
-[Parse_Input_File.m]
-	> no longer strips off/re-adds .nii suffix, allowing .gzipped files (ln 20-21,136)
-
 > created files for reading in BIDS-formatted data (in "bids" directory):
     * oppni_bids.m to run
     * bids_to_oppni_task.m created
@@ -142,22 +185,160 @@ interpret_contrast_list_str.m
 > p_json.m downloaded from (http://www.mathworks.com/matlabcentral/fileexchange/25713-highly-portable-json-input-parser)
   to parse .json files
 
----------------------------------------------------------------------------
+[UPDATES 2016/08/04] by Nathan
+
+.modification for more robust parameter specification, using .json files
+[p_json.m] 
+    > added new file for parsing json-style formats
+[parse_modelparam_config.m]
+    > created file for interpreting json strings / files
+[interpret_contrast_list_str.m]
+    > removed old modelparam parsing, added new method (ln. 74-77)
+
+[UPDATES 2016/06/14] by Nathan
+
+.minor fix to multi-run analysis
+[interpret_contrast_list_str.m]
+    > correctly counts number of runs (ln. 218)
 
 [UPDATES 2016/06/08] by Nathan
 
 .expert-user option allowing 3dTshift to read from header, with 'auto_hdr' argument
 [Pipeline_PART1.m]
-    > recognizes 'auto_hdr' during initial check (ln.178)
+    > recognizes 'auto_hdr' during initial check (ln.173)
 [Pipeline_PART1_afni_steps.m]
     > in case of 'auto_hdr' does not supply tpattern argument (ln.324)
+
 
 [UPDATES 2016/06/04] by Nathan
 
 [Pipeline_PART1.m]
-    > code now forces users to select a (valid) slice-timing pattern TPATTERN (ln. 171-190)
+    > code now forces users to select a (valid) slice-timing pattern TPATTERN (ln. 166-185)
 [Pipeline_PART2.m]
     > fixed error where optimally processed EPI data don't include TRs in header (ln. 721)
+
+[GLM.m]
+    > modified module to correctly account for combined contrasts (ln. 34-65, 88-99, 163-174)
+[interpret_contrast_list_str.m]
+    > put in a check for duplicate conditions during combined contrasts, to avoid redundancy
+      in the contrast lists (ln. 334-339)
+
+[UPDATES 2016/05/25] by Nathan
+
+[interpret_contrast_list_str.m]: fixed minor error when indexing block designs (line 218)
+
+[UPDATES 2016/05/03] by Nathan
+
+> An extensive set of edits to improve code robustness and remove redundancies. Includes:
+
+--- significant modifications, not related to "core" PRONTO optimization code for fMRI data ---
+
+. the extra/diffusion_weighted_imaging folder includes completely revised code, now with automated running
+  of DTI analysis along with NODDI for multi-shell DTI data.
+
+.significantly revised scripts for running post-hoc analysis on the optimized SPMs (e.g. t-tests, ANOVAS, bootstrapping)
+.code is now integrated with PRONTO input files, and is highly modular
+	> replaced contents of extra/posthoc_testing with extra/posthoc_modules, including
+	   Ttest (t-testing), Bootstrap (bootstrapped mean differences), ANOVA1 (1-way ANOVA), ANOVA1rep 
+      (1-way ANOVA, repeated measures), ANOVA2 (2-way ANOVA)
+	> created "posthoc_analysis.m" script to automatically read in and analyzed optimized SPM data
+	> added "clust_up.m" script which can do automated cluster-size thresholding
+
+. Pipeline_QC1 and Pipeline_QC2 completely revised in order to successfully generate outputs for multi-run fMRI data
+  (extensive revisions throughout)
+
+--- significant modification of "core" PRONTO optimization code for fMRI data ---
+
+.major change #1: made analysis models truly "modular" -- PRONTO originally required user to 
+ define features of analysis model, and analysis jobs were sent to intermediate "run_analyses_wrapper.m" 
+ which stored redundant information. Also required separate scripts to run individual and group-level modules,
+ which was highly redundant. Now analysis modules "store" relevant information. Specific changes:
+	> deleted run_analyses_wrapper.m and group_analyses_wrapper.m
+	> modules are now all stored in scripts_matlab/analysis_modules (significantly revised)
+	  they now have standard I/O, taking in (datamat, split_info, Resampling_Index).
+	  if these fields are missing, a call to module just returns model attributes
+	> created "check_analysis_model.m" script, which checks if analysis model of interest exists
+	  called in Pipeline_PART1.m (line 187). Produces an "analysis_model" structure containing 
+      attributes of analysis model (model_name, design_type, model_type, num_comp)
+	> Pipeline_PART1.m checks if multi-contrast, and adds num_comp field ='multi_component' (lines 209-211)
+	> modified lines querying "analysis_model", which are now sub-field of analysis_model
+      .model_name structure (lines 299, 306, 319 of Pipeline_PART1.m)
+	> now does vascular reweighting of brain maps for multivarite analysis, prior to calling anlaysis module (lines 695-700, 822-843)
+	> generate resampling indices before calling analysis modules (lines 730-738, 854-862)
+	> now directly calls analysis module instead of going through "run_analysis_wrapper.m" script (ln. 736-738, 859-862, 1056-1059, 1166-1168)
+	> references to analysis model fields (Pipeline_PART2.m, ln. 227,717,720,837,840)
+
+.major changes #2: modifications for better compatibility with multi-run analysis
+	> define a single Contrast_List across runs, to ensure consistency (ln. 421 of Pipeline_PART1.m)
+	> separate approach for multi-run GLM (regression model) vs. other models (lines 702-714, 830-842)
+	> same approach for single-run GLM for consistency (lines 1036-1042, 1147-1152)
+	> fixed error in run indexing (Pipeline_PART1_afni_steps, ln. 469)
+	> fixed init-file used as reference for dospnormfirst transform (Pipeline_PART1_afni_steps, ln.481)
+	> extensive revision of group_mask_tissue_maps.m to allow multi-run data
+		.now reads in InputStruct file, same as in Pipeline_PART1 etc.
+		.if multi-run, bases comparison of run-1 of each dataset
+	> fixed error with run indexing (spatial_normalization.m, ln.68)
+	> task conditions are reordered alphabetically to make sure they are consistent across runs (necessary) 
+      and subjects (convenient) (interpret_contrast_list_str.m, ln.78-83)
+	> interpret_contrast_list_str.m: in cases where there is not enough data for within-run 
+      splitting, function "split_half" checks if multi-run -- only throws error if single run (ln.362,410-442)
+    > fixed error with using multi-run noise_rois (Pipeline_PART1.m, ln.655-656)
+
+.major changes #3: revised the input file parsing
+	> deleted Parse_Input_File.m, moved relevant calls into Read_Input_File.m (ln.37-144),
+	  now does more efficient looping through list of input fields
+	> change in check_input_file_integrity.m (ln.27)
+	> changes in Pipeline_PART1_afni_steps (ln.103,112,115)
+	> removed checks for old ".mat" style of split_info file (Parse_Split_Info.m, ln.9)
+	> analysis and TASK regression now *ONLY* includes contrasts specified in "contrast_list_str"
+	  this is done by finding the list of (unique) conditions out of all specified contrasts (ln.41-49, interpret_contrast_list_str.m)
+	  and dropping conditions of "no interest" that are not present in any contrasts (ln.52-61)
+	  checks if all conditions specified in contrasts are defined in task file (ln.64-68)
+	  all have onsets and durations (ln.72-77)
+	  removed checks for compatibility with old PRONTO (throughout) and unnecessary checks for analysis model fields (ln.>472)
+	  
+miscellaneous:
+
+.now does automatic white matter denoising without requiring a user-supplied volume.
+ only one VERY simple modification!!
+	> if no CUSTOMREG= field in subject input file, and CUSTOMREG=[1] or [0,1] then
+	  noise_roi volume given by split_info_set{1}.WM_mask (lines 444-445, Pipeline_PART1.m)
+
+.if no contrast specified, pipelines are now automatically optimized using 'R' instead of 
+ 'dPR' (contrast_list is empty) as non-task analyses do not usually have prediction metric 
+	> Run_Pipelines_noSGE.m: checks if "contrast_list" field is empty and no metric is specified (lines 60-68)
+
+.we no longer store a copy of split_info files in "intermediate_processed/split_info", 
+ as this is redundant - this structure is never used, as InputStruct(ksub).run(krun).split_info 
+ serves same purpose (deleted lines at ln.229, Pipeline_PART1.m). now stored in /res0_params/params...mat files
+ (Pipeline_PART1.m, lines 386)
+
+.parsing of "modelparam" assumes fields are comma-separated now (instead of whitespace) 
+ (interpret_contrast_list_str.m, ln.15-21), changes how inputs are parsed (ln.86-99)
+
+.check for duplication task condition names (Parse_Split_Info.m, ln.29,53,86-88)
+
+.for task design file, no longer takes optional arguments for analysis models (e.g. CONN_METRIC, SPM).
+ now can only be specified through "modelparam" input to Pipeline_PART1.m
+
+.removed redundant "kcount" index (deleted lines at ln.236, 256 of Pipeline_PART1.m)
+
+.removed redundant "TaskType" field (check_input_file_integrity.m, ln. 33) and this 
+ script now takes contrast_list_str as input (ln.1) to check if task regression is permitted (ln.54-59)
+
+.commented out eigenimage output of diagnostic_fmri_pca.m (ln.446), to reduce storage overhead
+
+.added header descriptions to a lot of files,including...
+	apply_glm.m,axial_plot,canoncorr,component_auto_filter,design_to_hrf,ercva_optimization,ergnb_optimization
+
+.now all tissue masks are stored to split_info_set{1}, for easier functional notation
+(Pipeline_PART1.m, lines 377-384)
+.no longer duplicate tissue masks across runs (e.g. cell entries of split_info_set{krun}), instead just stored in cell {1} to reduce data overhead (lines 383-384, Pipeline_PART1.m)
+.calls to apply_regression_step_group and apply_regression_step now simplified, as Xsignal, Xnoise, NN_weight_avg, all stored in split_info_set (lines 479-480)
+.Xsignal replaced with split_info_set{r}.design_mat and Xnoise replaced with split_info_set{r}.motion_pcs (lines 626,630, 934-935, 944-945, Pipeline_PART1.m)
+.no longer create HRFdesign{krun}, as this is redundant (Pipeline_PART1.m, line 330)
+.motion parameter estimates stored in split_info_set{krun}.motion_pcs instead of motPCs{krun} (Pipeline_PART1.m, ln. 319)
+
 
 [UPDATES 2016/04/20] by Nathan
 

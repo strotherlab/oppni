@@ -1,16 +1,18 @@
 function axial_plot( data, mask, Nsq, bound, transp )
 %
+% =========================================================================
 % AXIAL_PLOT: simple script to plot brain images as axial slices
-% 
-% Syntax:
-%              axial_plot( data, mask, Nsq, bound )
+% ========================================================================= 
 %
-% where: 
-%              data  = image, as single vector
-%              mask  = 3d binary image volume
-%              Nsq   = plots Nsq x Nsq image slices
-%              bound = 2d vector specifying [min max] colourmap bounds
-%              transp= transpose image slices
+% Syntax:
+%              axial_plot( data, mask, Nsq, bound, transp )
+%
+% Inputs: 
+%              data   = image, as single vector
+%              mask   = 3d binary image volume
+%              Nsq    = plots consist of Nsq x Nsq image slices
+%              bound  = 2d vector specifying [min max] colourmap bounds
+%              transp = transpose image slices (flip between vertical/horizontal orient.)
 %
 % ------------------------------------------------------------------------%
 % Author: Nathan Churchill, University of Toronto

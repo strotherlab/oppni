@@ -20,10 +20,10 @@ end
 if isempty(AFNI_PATH) || isempty(FSL_PATH)
     read_settings;
 end
-if AFNI_PATH(end)~='/'
+if ~isempty(AFNI_PATH) && AFNI_PATH(end)~='/'
 	AFNI_PATH = [AFNI_PATH '/'];
 end
-if FSL_PATH(end)~='/'
+if ~isempty(FSL_PATH)  && FSL_PATH(end)~='/'
 	FSL_PATH = [FSL_PATH '/'];
 end
 
@@ -46,21 +46,26 @@ for ksub = 1:numel(InputStruct)
     
     mkdir_r(outstr)
 
+    % first, smooth file:
+    unix([AFNI_PATH '3dmerge -prefix ' outstr '/raw_smo6.nii -doall -1blur_fwhm 6 ' inname]);   
+    % generate perfusion estimates
+    asl_perfusion_est( [outstr '/raw_smo6.nii'],  1, [], 2, [], -1, [outstr,'/proc'] ); %% v. crude mask approx
+    
+    typelist={'aCBF','fCBF','BOLD'};
     if( DEOBLIQUE>0 )
-        % deobliqueing
-        unix([AFNI_PATH '3dWarp -oblique2card -prefix ' outstr '/deob.nii -cubic ' inname]);
-        % smooth file:
-        unix([AFNI_PATH '3dmerge -prefix ' outstr '/deob_smo6.nii -doall -1blur_fwhm 6 ' outstr '/deob.nii']);
-        % generate perfusion estimates
-        asl_perfusion_est( [outstr '/deob_smo6.nii'], 1, [], 2, [], -1, [outstr,'/proc'] ); %% v. crude mask approx
-    else
-        % first, smooth file:
-        unix([AFNI_PATH '3dmerge -prefix ' outstr '/raw_smo6.nii -doall -1blur_fwhm 6 ' inname]);   
-        % generate perfusion estimates
-        asl_perfusion_est( [outstr '/raw_smo6.nii'],  1, [], 2, [], -1, [outstr,'/proc'] ); %% v. crude mask approx
+        for(i=1:numel(typelist))
+            % deobliqueing
+            unix([AFNI_PATH '3dWarp -oblique2card -prefix ' outstr '/proc_',typelist{i},'_deob.nii -cubic ' outstr '/proc_',typelist{i},'.nii']);
+            unix([AFNI_PATH '3dWarp -oblique2card -prefix ' outstr '/proc_',typelist{i},'_avg_deob.nii -cubic ' outstr '/proc_',typelist{i},'_avg.nii']);
+            delete([outstr '/proc_',typelist{i},'.nii']);
+            delete([outstr '/proc_',typelist{i},'_avg.nii']);
+        end
+        % masking the volume
+        unix([AFNI_PATH '3dAutomask -prefix ' outstr '/bold_mask.nii ' outstr,'/proc_BOLD_deob.nii']);
+    else   
+        % masking the volume
+        unix([AFNI_PATH '3dAutomask -prefix ' outstr '/bold_mask.nii ' outstr,'/proc_BOLD.nii']);
     end
 
-    % masking the volume
-    unix([AFNI_PATH '3dAutomask -prefix ' outstr '/bold_mask.nii ' outstr,'/proc_BOLD.nii']);
 end
 

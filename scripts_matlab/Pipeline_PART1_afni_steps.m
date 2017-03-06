@@ -107,7 +107,7 @@ for subject_counter = 1:N_Subject
         mkdir_r([OUTstr_sub1 '/diagnostic']);
         mkdir_r([OUTstr_sub1 '/mpe']);
         
-        num_vol = get_numvols([InputStruct(subject_counter).run(run_counter).Input_nifti_file_path '/' InputStruct(subject_counter).run(run_counter).Input_nifti_file_prefix]);
+        num_vol = get_numvols( InputStruct(subject_counter).run(run_counter).Input_nifti_filename );
         
         newSTART = InputStruct(subject_counter).run(run_counter).DROP_first;
         newEND = num_vol - InputStruct(subject_counter).run(run_counter).DROP_last - 1;
@@ -116,10 +116,10 @@ for subject_counter = 1:N_Subject
         
         if(DEOBLIQUE==1)
             disp('deobliquing...');
-            unix([AFNI_PATH '3dWarp -oblique2card -prefix ' OUTstr '_deob.nii -cubic ' InputStruct(subject_counter).run(run_counter).Input_nifti_file_path '/' InputStruct(subject_counter).run(run_counter).Input_nifti_file_prefix]);
+            unix([AFNI_PATH '3dWarp -oblique2card -prefix ' OUTstr '_deob.nii -cubic ' InputStruct(subject_counter).run(run_counter).Input_nifti_filename]);
             unix([AFNI_PATH '3dTcat -prefix ' OUTstr '_drop.nii ''' OUTstr '_deob.nii[' num2str(newSTART) '..' num2str(newEND) ']''']);
         else
-            unix([AFNI_PATH '3dTcat -prefix ' OUTstr '_drop.nii ''' InputStruct(subject_counter).run(run_counter).Input_nifti_file_path '/' InputStruct(subject_counter).run(run_counter).Input_nifti_file_prefix '[' num2str(newSTART) '..' num2str(newEND) ']''']);
+            unix([AFNI_PATH '3dTcat -prefix ' OUTstr '_drop.nii ''' InputStruct(subject_counter).run(run_counter).Input_nifti_filename '[' num2str(newSTART) '..' num2str(newEND) ']''']);
         end
                 
         unix([AFNI_PATH '3dmerge -prefix ' OUTstr '_tempsmo.nii -doall -1blur_fwhm 6 ' OUTstr '_drop.nii']);
@@ -473,7 +473,10 @@ if MULTI_RUN_INPUTFILE && ~dospnormfirst  % If the spatial normalization has not
                 continue;
             end
             display(sprintf('Run 3dvolreg subject=%d,run=%d',ksub,krun))
-            unix(sprintf('%sflirt -out %s/intermediate_processed/align_multirun/reg_mean_%s_unmasked.nii -omat %s/intermediate_processed/align_multirun/%03d_reg.mat -ref %s/intermediate_processed/align_multirun/mean_%s_unmasked.nii -in %s/intermediate_processed/align_multirun/mean_%s_unmasked.nii -dof 6',FSL_PATH,InputStruct(ksub).run(ksub).Output_nifti_file_path,InputStruct(ksub).run(krun).Output_nifti_file_prefix,InputStruct(ksub).run(krun).Output_nifti_file_path,krun,InputStruct(ksub).run(krun).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix,InputStruct(ksub).run(krun).Output_nifti_file_path,InputStruct(ksub).run(krun).Output_nifti_file_prefix));
+            
+            if ~exist(sprintf('%s/intermediate_processed/align_multirun/reg_mean_%s_unmasked.nii',InputStruct(ksub).run(krun).Output_nifti_file_path,InputStruct(ksub).run(krun).Output_nifti_file_prefix))
+            unix(sprintf('%sflirt -out %s/intermediate_processed/align_multirun/reg_mean_%s_unmasked.nii -omat %s/intermediate_processed/align_multirun/%03d_reg.mat -ref %s/intermediate_processed/align_multirun/mean_%s_unmasked.nii -in %s/intermediate_processed/align_multirun/mean_%s_unmasked.nii -dof 6',FSL_PATH,InputStruct(ksub).run(krun).Output_nifti_file_path,InputStruct(ksub).run(krun).Output_nifti_file_prefix,InputStruct(ksub).run(krun).Output_nifti_file_path,krun,InputStruct(ksub).run(krun).Output_nifti_file_path,InputStruct(ksub).run(1).Output_nifti_file_prefix,InputStruct(ksub).run(krun).Output_nifti_file_path,InputStruct(ksub).run(krun).Output_nifti_file_prefix));
+            end
             
             for pipe_counter=1:size(input_pipeset_half,1)
                 final_preprocessed_filename = sprintf('%s_m%dc%dp%dt%ds%d.nii',InputStruct(ksub).run(krun).Output_nifti_file_prefix,input_pipeset_half(pipe_counter,:));
@@ -485,7 +488,7 @@ if MULTI_RUN_INPUTFILE && ~dospnormfirst  % If the spatial normalization has not
             final_preprocessed_filename = sprintf('%s_baseproc.nii',InputStruct(ksub).run(krun).Output_nifti_file_prefix);
             if ~exist(sprintf('%s/intermediate_processed/afni_processed/%s_aligned.nii',InputStruct(ksub).run(krun).Output_nifti_file_path,final_preprocessed_filename(1:end-4)),'file')
                 display(sprintf('Run 3drotate %d',pipe_counter))
-                unix(sprintf('%sflirt -out %s/intermediate_processed/afni_processed/%s_aligned.nii -applyxfm -init %s/intermediate_processed/spat_norm/%03d_reg.mat -in %s/intermediate_processed/afni_processed/%s -ref %s/intermediate_processed/afni_processed/%s',FSL_PATH,InputStruct(ksub).run(krun).Output_nifti_file_path,final_preprocessed_filename(1:end-4),InputStruct(ksub).run(krun).Output_nifti_file_path,krun,InputStruct(ksub).run(krun).Output_nifti_file_path,final_preprocessed_filename,InputStruct(ksub).run(krun).Output_nifti_file_path,final_preprocessed_filename));
+                unix(sprintf('%sflirt -out %s/intermediate_processed/afni_processed/%s_aligned.nii -applyxfm -init %s/intermediate_processed/align_multirun/%03d_reg.mat -in %s/intermediate_processed/afni_processed/%s -ref %s/intermediate_processed/afni_processed/%s',FSL_PATH,InputStruct(ksub).run(krun).Output_nifti_file_path,final_preprocessed_filename(1:end-4),InputStruct(ksub).run(krun).Output_nifti_file_path,krun,InputStruct(ksub).run(krun).Output_nifti_file_path,final_preprocessed_filename,InputStruct(ksub).run(krun).Output_nifti_file_path,final_preprocessed_filename));
             end
         end
     end

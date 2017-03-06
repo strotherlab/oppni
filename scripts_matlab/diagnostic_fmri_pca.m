@@ -443,7 +443,7 @@ output.censor_slcmot = 1-outlier_slcmot;
 output.eigfract_fmri  = P(  1:numsignif );
 output.eigfract_mot   = p;
 % eigenvector data
-output.eigimages_fmri= U(:, 1:numsignif);
+%output.eigimages_fmri= U(:, 1:numsignif); %% currently excluded to reduce storage overhead
 output.eigvect_fmri  = V(:, 1:numsignif);
 output.eigweights_mot= u;
 output.eigvect_mot   = v;

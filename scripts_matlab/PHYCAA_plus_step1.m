@@ -146,7 +146,11 @@ percentNN = zeros(Nruns,1);
 for( r=1:Nruns ) %% estimate on each split
 
     % parameters for spectral estimation
-    Fny    = 0.5 * (1/dataInfo.TR);                % nyquist frequency
+    
+    if(length(dataInfo.TR)==1)
+         Fny    = 0.5 * (1/dataInfo.TR);    % * nyquist frequency
+    else Fny    = 0.5 * (1/dataInfo.TR(r)); % * This allows for runs with variable TR!
+    end
     NFFT   = 2^nextpow2( Ntime(r) );           % Next power of 2 from length of time-axis
     f      = Fny*linspace(0,1,NFFT/2+1);  % fourier data corresponds to these frequency points
     numlow = sum( f <= dataInfo.FreqCut );           % count the number of frequency points below threshold

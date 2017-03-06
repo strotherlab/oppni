@@ -1,35 +1,9 @@
-%  Save back to the original image with a portion of slices that was
-%  loaded by "load_untouch_nii". You can process those slices matrix
-%  in any way, as long as their dimension is not altered.
+%  Save back to the back to the original image a portion of slices that
+%  were loaded by "load_untouch_nii". You can process those slices matrix
+%  in any way, as long as their dimension is not changed.
 %
 %  Usage: save_untouch_slice(slice, filename, ...
 %		slice_idx, [img_idx], [dim5_idx], [dim6_idx], [dim7_idx])
-%
-%  slice  -  a portion of slices that was loaded by "load_untouch_nii".
-%	This should be a numeric matrix (i.e. only the .img field in the
-%	loaded structure)
-%
-%  filename  - 	NIfTI or ANALYZE file name.
-%
-%  slice_idx (depending on slice size)  -  a numerical array of image
-%	slice indices, which should be the same as that you entered
-%	in "load_untouch_nii" command.
-%
-%  img_idx (depending on slice size)  -  a numerical array of image
-%	volume indices, which should be the same as that you entered
-%	in "load_untouch_nii" command.
-%
-%  dim5_idx (depending on slice size)  -  a numerical array of 5th 
-%	dimension indices, which should be the same as that you entered
-%	in "load_untouch_nii" command.
-%
-%  dim6_idx (depending on slice size)  -  a numerical array of 6th 
-%	dimension indices, which should be the same as that you entered
-%	in "load_untouch_nii" command.
-%
-%  dim7_idx (depending on slice size)  -  a numerical array of 7th 
-%	dimension indices, which should be the same as that you entered
-%	in "load_untouch_nii" command.
 %
 %  Example:
 %	nii = load_nii('avg152T1_LR_nifti.nii');
@@ -45,137 +19,24 @@
 %
 function save_untouch_slice(slice, filename, slice_idx, img_idx, dim5_idx, dim6_idx, dim7_idx)
 
-   if ~exist('slice','var') | ~isnumeric(slice)
-      msg = [char(10) '"slice" argument should be a portion of slices that was loaded' char(10)];
-      msg = [msg 'by "load_untouch_nii.m". This should be a numeric matrix (i.e.' char(10)];
-      msg = [msg 'only the .img field in the loaded structure).'];
-      error(msg);
-   end
-
-   if ~exist('filename','var') | ~exist(filename,'file')
-      error('In order to save back, original NIfTI or ANALYZE file must exist.');
-   end
-
-   if ~exist('slice_idx','var') | isempty(slice_idx) | ~isequal(size(slice,3),length(slice_idx))
-      msg = [char(10) '"slice_idx" is a numerical array of image slice indices, which' char(10)];
-      msg = [msg 'should be the same as that you entered in "load_untouch_nii.m"' char(10)];
-      msg = [msg 'command.'];
-      error(msg);
+   if ~exist('filename','var') | ~exist('slice_idx','var')
+      error('Usage: save_untouch_slice(slice, filename, slice_idx, [img_idx], [dim5_idx], [dim6_idx], [dim7_idx])');
    end
 
    if ~exist('img_idx','var') | isempty(img_idx)
       img_idx = [];
-
-      if ~isequal(size(slice,4),1)
-         msg = [char(10) '"img_idx" is a numerical array of image volume indices, which' char(10)];
-         msg = [msg 'should be the same as that you entered in "load_untouch_nii.m"' char(10)];
-         msg = [msg 'command.'];
-         error(msg);
-      end
-   elseif ~isequal(size(slice,4),length(img_idx))
-      msg = [char(10) '"img_idx" is a numerical array of image volume indices, which' char(10)];
-      msg = [msg 'should be the same as that you entered in "load_untouch_nii.m"' char(10)];
-      msg = [msg 'command.'];
-      error(msg);
    end
 
    if ~exist('dim5_idx','var') | isempty(dim5_idx)
       dim5_idx = [];
-
-      if ~isequal(size(slice,5),1)
-         msg = [char(10) '"dim5_idx" is a numerical array of 5th dimension indices, which' char(10)];
-         msg = [msg 'should be the same as that you entered in "load_untouch_nii.m"' char(10)];
-         msg = [msg 'command.'];
-         error(msg);
-      end
-   elseif ~isequal(size(slice,5),length(img_idx))
-      msg = [char(10) '"img_idx" is a numerical array of 5th dimension indices, which' char(10)];
-      msg = [msg 'should be the same as that you entered in "load_untouch_nii.m"' char(10)];
-      msg = [msg 'command.'];
-      error(msg);
    end
 
    if ~exist('dim6_idx','var') | isempty(dim6_idx)
       dim6_idx = [];
-
-      if ~isequal(size(slice,6),1)
-         msg = [char(10) '"dim6_idx" is a numerical array of 6th dimension indices, which' char(10)];
-         msg = [msg 'should be the same as that you entered in "load_untouch_nii.m"' char(10)];
-         msg = [msg 'command.'];
-         error(msg);
-      end
-   elseif ~isequal(size(slice,6),length(img_idx))
-      msg = [char(10) '"img_idx" is a numerical array of 6th dimension indices, which' char(10)];
-      msg = [msg 'should be the same as that you entered in "load_untouch_nii.m"' char(10)];
-      msg = [msg 'command.'];
-      error(msg);
    end
 
    if ~exist('dim7_idx','var') | isempty(dim7_idx)
       dim7_idx = [];
-
-      if ~isequal(size(slice,7),1)
-         msg = [char(10) '"dim7_idx" is a numerical array of 7th dimension indices, which' char(10)];
-         msg = [msg 'should be the same as that you entered in "load_untouch_nii.m"' char(10)];
-         msg = [msg 'command.'];
-         error(msg);
-      end
-   elseif ~isequal(size(slice,7),length(img_idx))
-      msg = [char(10) '"img_idx" is a numerical array of 7th dimension indices, which' char(10)];
-      msg = [msg 'should be the same as that you entered in "load_untouch_nii.m"' char(10)];
-      msg = [msg 'command.'];
-      error(msg);
-   end
-
-
-   v = version;
-
-   %  Check file extension. If .gz, unpack it into temp folder
-   %
-   if length(filename) > 2 & strcmp(filename(end-2:end), '.gz')
-
-      if ~strcmp(filename(end-6:end), '.img.gz') & ...
-         ~strcmp(filename(end-6:end), '.hdr.gz') & ...
-         ~strcmp(filename(end-6:end), '.nii.gz')
-
-         error('Please check filename.');
-      end
-
-      if str2num(v(1:3)) < 7.1 | ~usejava('jvm')
-         error('Please use MATLAB 7.1 (with java) and above, or run gunzip outside MATLAB.');
-      elseif strcmp(filename(end-6:end), '.img.gz')
-         filename1 = filename;
-         filename2 = filename;
-         filename2(end-6:end) = '';
-         filename2 = [filename2, '.hdr.gz'];
-
-         tmpDir = tempname;
-         mkdir(tmpDir);
-         gzFileName = filename;
-
-         filename1 = gunzip(filename1, tmpDir);
-         filename2 = gunzip(filename2, tmpDir);
-         filename = char(filename1);    % convert from cell to string
-      elseif strcmp(filename(end-6:end), '.hdr.gz')
-         filename1 = filename;
-         filename2 = filename;
-         filename2(end-6:end) = '';
-         filename2 = [filename2, '.img.gz'];
-
-         tmpDir = tempname;
-         mkdir(tmpDir);
-         gzFileName = filename;
-
-         filename1 = gunzip(filename1, tmpDir);
-         filename2 = gunzip(filename2, tmpDir);
-         filename = char(filename1);    % convert from cell to string
-      elseif strcmp(filename(end-6:end), '.nii.gz')
-         tmpDir = tempname;
-         mkdir(tmpDir);
-         gzFileName = filename;
-         filename = gunzip(filename, tmpDir);
-         filename = char(filename);     % convert from cell to string
-      end
    end
 
    %  Read the dataset header
@@ -188,63 +49,19 @@ function save_untouch_slice(slice, filename, slice_idx, img_idx, dim5_idx, dim6_
       nii.hdr = load_untouch_nii_hdr(nii.fileprefix,nii.machine,nii.filetype);
    end
 
-
-   %  Clean up after gunzip
-   %
-   if exist('gzFileName', 'var')
-
-      %  fix fileprefix so it doesn't point to temp location
-      %
-      nii.fileprefix = gzFileName(1:end-7);
-%      rmdir(tmpDir,'s');
-   end
-
-   [p,f] = fileparts(filename);
-   fileprefix = fullfile(p, f);
-%   fileprefix = nii.fileprefix;
-   filetype = nii.filetype;
-
-   if ~isequal( nii.hdr.dime.dim(2:3), [size(slice,1),size(slice,2)] )
-      msg = [char(10) 'The first two dimensions of slice matrix should be the same as' char(10)];
-      msg = [msg 'the first two dimensions of image loaded by "load_untouch_nii".'];
-      error(msg);
-   end
-
-
    %  Save the dataset body
    %
-   save_untouch_slice_img(slice, nii.hdr, filetype, fileprefix, ...
-	nii.machine, slice_idx,img_idx,dim5_idx,dim6_idx,dim7_idx);
-
-   %  gzip output file if requested
-   %
-   if exist('gzFileName', 'var')
-      [p,f] = fileparts(gzFileName);
-
-      if filetype == 1
-         gzip([fileprefix, '.img']);
-         delete([fileprefix, '.img']);
-         movefile([fileprefix, '.img.gz']);
-         gzip([fileprefix, '.hdr']);
-         delete([fileprefix, '.hdr']);
-         movefile([fileprefix, '.hdr.gz']);
-      elseif filetype == 2
-         gzip([fileprefix, '.nii']);
-         delete([fileprefix, '.nii']);
-         movefile([fileprefix, '.nii.gz']);
-      end;
-
-      rmdir(tmpDir,'s');
-   end;
+   save_untouch_slice_img(slice,filename,nii.hdr,nii.filetype,nii.fileprefix, ...
+	nii.machine,slice_idx,img_idx,dim5_idx,dim6_idx,dim7_idx);
 
    return					% save_untouch_slice
 
 
 %--------------------------------------------------------------------------
-function save_untouch_slice_img(slice,hdr,filetype,fileprefix,machine,slice_idx,img_idx,dim5_idx,dim6_idx,dim7_idx)
+function save_untouch_slice_img(slice,filename,hdr,filetype,fileprefix,machine,slice_idx,img_idx,dim5_idx,dim6_idx,dim7_idx)
 
    if ~exist('hdr','var') | ~exist('filetype','var') | ~exist('fileprefix','var') | ~exist('machine','var')
-      error('Usage: save_untouch_slice_img(slice,hdr,filetype,fileprefix,machine,slice_idx,[img_idx],[dim5_idx],[dim6_idx],[dim7_idx]);');
+      error('Usage: save_untouch_slice_img(slice,filename,hdr,filetype,fileprefix,machine,slice_idx,[img_idx],[dim5_idx],[dim6_idx],[dim7_idx]);');
    end
 
    if ~exist('slice_idx','var') | isempty(slice_idx) | hdr.dime.dim(4)<1
@@ -372,28 +189,19 @@ function save_untouch_slice_img(slice,hdr,filetype,fileprefix,machine,slice_idx,
       end
    end
 
-   write_image(slice,hdr,filetype,fileprefix,machine,slice_idx,img_idx,dim5_idx,dim6_idx,dim7_idx);
+   write_image(slice,filename,hdr,filetype,fileprefix,machine,slice_idx,img_idx,dim5_idx,dim6_idx,dim7_idx);
 
    return					% save_untouch_slice_img
 
 
 %---------------------------------------------------------------------
-function write_image(slice,hdr,filetype,fileprefix,machine,slice_idx,img_idx,dim5_idx,dim6_idx,dim7_idx)
+function write_image(slice,fn,hdr,filetype,fileprefix,machine,slice_idx,img_idx,dim5_idx,dim6_idx,dim7_idx)
 
-   if filetype == 2
-      fid = fopen(sprintf('%s.nii',fileprefix),'r+');
+   fid = fopen(fn,'r+',machine);
 
-      if fid < 0,
-         msg = sprintf('Cannot open file %s.nii.',fileprefix);
-         error(msg);
-      end
-   else
-      fid = fopen(sprintf('%s.img',fileprefix),'r+');
-
-      if fid < 0,
-         msg = sprintf('Cannot open file %s.img.',fileprefix);
-         error(msg);
-      end
+   if fid < 0,
+      msg = sprintf('Cannot open file %s.',fn);
+      error(msg);
    end
 
    %  Set bitpix according to datatype

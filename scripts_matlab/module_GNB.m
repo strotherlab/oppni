@@ -33,8 +33,8 @@ block_cond2_sp2 = datamat(:,split_info.idx_cond2_sp2);
 % gnb analysis, under two different splitting structures...
 
 % define split-half task design
-design1 = [-ones( size(block_cond1_sp1,2), 1 ); ones( size(block_cond2_sp1,2), 1 )];
-design2 = [-ones( size(block_cond1_sp2,2), 1 ); ones( size(block_cond2_sp2,2), 1 )];
+design1 = [ ones( size(block_cond1_sp1,2), 1 ); -ones( size(block_cond2_sp1,2), 1 )];
+design2 = [ ones( size(block_cond1_sp2,2), 1 ); -ones( size(block_cond2_sp2,2), 1 )];
 % analysis
 results = gnb_optimization( [block_cond1_sp1 block_cond2_sp1], [block_cond1_sp2 block_cond2_sp2], design1, design2, split_info.decision_model, split_info.spat_weight );
 

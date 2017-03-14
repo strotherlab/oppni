@@ -39,13 +39,13 @@ for( k=1:N_resample )
     design1     = [];
     for i = 1:length(set1)
         data_class1 = [data_class1 datamat{set1(i)}(:,split_info{set1(i)}.idx_cond1) datamat{set1(i)}(:,split_info{set1(i)}.idx_cond2)];
-        design1     = [design1; -ones(length(split_info{set1(i)}.idx_cond1),1); ones(length(split_info{set1(i)}.idx_cond2),1)];
+        design1     = [design1; ones(length(split_info{set1(i)}.idx_cond1),1); -ones(length(split_info{set1(i)}.idx_cond2),1)];
     end
     data_class2 = [];
     design2     = [];
     for i = 1:length(set2)
         data_class2   = [data_class2 datamat{set2(i)}(:,split_info{set2(i)}.idx_cond1) datamat{set2(i)}(:,split_info{set2(i)}.idx_cond2)];
-        design2     = [design2; -ones(length(split_info{set2(i)}.idx_cond1),1); ones(length(split_info{set2(i)}.idx_cond2),1)];
+        design2     = [design2; ones(length(split_info{set2(i)}.idx_cond1),1); -ones(length(split_info{set2(i)}.idx_cond2),1)];
     end
     results_temp = gnb_optimization( data_class1, data_class2, design1, design2, split_info{1}.decision_model, split_info{1}.spat_weight );
     eig = eig + results_temp.eig;

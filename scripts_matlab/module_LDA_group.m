@@ -29,11 +29,11 @@ N_subject = length(datamat);
 % split into cell arrays
 for( n=1:N_subject )
     %
-    data_class1{n} = datamat{n}(:, split_info{n}.idx_cond1);
-    data_class2{n} = datamat{n}(:, split_info{n}.idx_cond2);    
+    data_cond1{n} = datamat{n}(:, split_info{n}.idx_cond1);
+    data_cond2{n} = datamat{n}(:, split_info{n}.idx_cond2);    
 end
-% run lda
-results = lda_optimization_group ( data_class1, data_class2, split_info{1}.drf, Resampling_Index );
+% run lda --> *NB cond order flipped to ensure correct sign (cond1-cond2)
+results = lda_optimization_group ( data_cond2, data_cond1, split_info{1}.drf, Resampling_Index );
 
 % optimization stats
 DD       = sqrt( (1-results.R).^2 + (1-results.P).^2 );

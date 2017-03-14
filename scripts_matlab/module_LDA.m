@@ -31,8 +31,8 @@ block_cond2_sp1 = datamat(:,split_info.idx_cond2_sp1);
 block_cond2_sp2 = datamat(:,split_info.idx_cond2_sp2);
 
 % define split-half task designs:
-design1 = [-ones( size(block_cond1_sp1,2), 1 ); ones( size(block_cond2_sp1,2), 1 )];
-design2 = [-ones( size(block_cond1_sp2,2), 1 ); ones( size(block_cond2_sp2,2), 1 )];
+design1 = [ ones( size(block_cond1_sp1,2), 1 ); -ones( size(block_cond2_sp1,2), 1 )];
+design2 = [ ones( size(block_cond1_sp2,2), 1 ); -ones( size(block_cond2_sp2,2), 1 )];
 % linear discriminant analysis, under single-split structure
 results = lda_optimization( [block_cond1_sp1 block_cond2_sp1], [block_cond1_sp2 block_cond2_sp2], design1,design2, split_info.drf );
 

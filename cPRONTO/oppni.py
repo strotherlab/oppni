@@ -22,6 +22,7 @@ from distutils.spawn import find_executable
 from multiprocessing import Pool
 from shutil import rmtree
 from time import localtime, strftime
+from datetime import timedelta
 
 # OPPNI related
 import cfg_front as cfg_pronto
@@ -961,6 +962,42 @@ def print_options(proc_path):
                     print "{:>{}} : {}".format(attr, attr_width, attr_val)
 
 
+def estimate_processing_times(input_file_all, options, all_subjects):
+    """Helper to make a very rough estimate of processing time for entire workflow."""
+
+    ipfile_modtime = os.path.getmtime(input_file_all)
+    opt_summary = os.path.join(options.out_dir_common, 'optimization_results', 'matfiles', 'optimization_summary.mat')
+    opt_summary_modtime = os.path.getmtime(opt_summary)
+
+    proc_time_est = opt_summary_modtime - ipfile_modtime
+    tdelta = timedelta(seconds=proc_time_est)
+
+    if tdelta.total_seconds() > 0:
+
+        num_days = tdelta.days
+        rem_secs = tdelta.total_seconds()-num_days*24*3600
+
+        num_minutes = math.floor(rem_secs/60)
+        rem_secs = tdelta.total_seconds()-num_minutes*60
+
+        readable_tdelta = ''
+        if num_days > 0:
+            readable_tdelta = '{} {:n} days'.format(readable_tdelta, num_days)
+
+        if num_minutes > 1:
+            readable_tdelta = '{} {:n} minutes'.format(readable_tdelta, num_minutes)
+
+        if rem_secs > 0:
+            readable_tdelta = '{} {:n} seconds'.format(readable_tdelta, rem_secs)
+
+        print('Estimated processing time for whole workflow: \n\t {}.'.format(readable_tdelta))
+
+    else:
+        print('Estimated processing is 0, something seems to be wrong!')
+
+
+
+
 def update_status_and_exit(out_dir):
     """Utility to update the user on the status of processing, and resubmit failed jobs for processing if necessary."""
 
@@ -972,6 +1009,8 @@ def update_status_and_exit(out_dir):
     try:
         prev_proc_status, prev_options, prev_input_file_all, \
         failed_sub_file, failed_spnorm_file, all_subjects = update_proc_status(out_dir)
+
+        estimate_processing_times(prev_input_file_all, prev_options, all_subjects)
 
         if not prev_proc_status.all_done:
             print('Previous processing is incomplete.')

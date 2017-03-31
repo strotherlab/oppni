@@ -41,6 +41,11 @@ outputs_qc_part_two = [ 'FIG1_optimized_pipeline_steps.' + qc_out_format,
                         'FIG3_spatial_norm_statistics.' + qc_out_format,
                         'FIG4_inter_subject_SPM_similarity.' + qc_out_format ]
 
+# version check
+
+AFNI_VERSION_TESTED    = 'Version AFNI_2011_12_21_1014\n[[Precompiled binary linux_openmp_64: Aug 31 2012]]\n'
+FLIRT_VERSION_TESTED   = 'FLIRT version 6.0\n'
+MELODIC_VERSION_TESTED = '\nMELODIC Version 3.14\n\n'
 
 def initialize_proc_status():
     """Method to initialize a namedtuple to store the indicators of processing status"""

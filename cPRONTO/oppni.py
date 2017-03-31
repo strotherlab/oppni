@@ -139,11 +139,43 @@ def not_unspecified( var ):
     return var not in [ 'None', None, '' ]
 
 
+def validate_afni_version():
+    "Throw a warning if the AFNI version differs from the one tested."
+
+    version_str = subprocess.check_output(['afni',  '-ver' ])
+    if not version_str.lower() == cfg_pronto.AFNI_VERSION_TESTED.lower():
+        warnings.warn('\nYour AFNI version differs from the version tested by developers.'
+                      '\nYours \n{} \nTested:\n{}'
+                      '\nThis might cause differences in results.'.format(version_str, cfg_pronto.AFNI_VERSION_TESTED))
+
+
+def validate_flirt_version():
+    "Throw a warning if the FLIRT version differs from the one tested."
+
+    version_str = subprocess.check_output(['flirt', '-version'])
+    if not version_str.lower() == cfg_pronto.FLIRT_VERSION_TESTED.lower():
+        warnings.warn('\nYour FLIRT version differs from the version tested by developers.'
+                      '\nYours \n{} \nTested:\n{}'
+                      '\nThis might cause differences in results.'.format(version_str, cfg_pronto.FLIRT_VERSION_TESTED))
+
+
+def validate_melodic_version():
+    "Throw a warning if the MELODIC version differs from the one tested."
+
+    version_str = subprocess.check_output(['melodic', '--version'])
+    if not version_str.lower() == cfg_pronto.MELODIC_VERSION_TESTED.lower():
+        warnings.warn('\nYour MELODIC version differs from the version tested by developers.'
+                      '\nYours \n{} \nTested:\n{}'
+                      '\nThis might cause differences in results.'.format(version_str,
+                                                                        cfg_pronto.MELODIC_VERSION_TESTED))
+
+
 def validate_env_var(var):
-    assert os.getenv(var) is not None, "Path {} is not defined. Fix your environment and rerun.".format(var)
+    if os.getenv(var) is None:
+        raise ValueError("Path {} is not defined. Fix your environment and rerun.".format(var))
 
 
-def validate_user_env(opt):
+def validate_user_env(opt, verbose = False):
     """Validates set up of user's shell environment variables."""
     if not hpc['dry_run']:
         for var in ['AFNI_PATH', 'FSL_PATH']:
@@ -151,6 +183,10 @@ def validate_user_env(opt):
 
         if opt.environment.lower() in ['compiled']:
             validate_env_var('MCR_PATH')
+
+        validate_afni_version()
+        validate_flirt_version()
+        validate_melodic_version()
 
 
 def validate_input_file(input_file, options=None, new_input_file=None, cond_names_in_contrast=None):
@@ -233,6 +269,25 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
 
     line = ip_line.strip()
     LINE = line.upper()
+
+    # commas are not allowed unless it's multi-run analysis
+    num_commas = line.count(',')
+    if num_commas > 0:
+        # split by space
+        line_sections = line.split(' ')
+        for sec in line_sections:
+            if "IN=" in sec.upper():
+                in_sec = sec
+            elif "OUT=" in sec.upper():
+                out_sec = sec
+            elif sec.count(',') > 0:
+                raise ValueError('Commas are not allowed in the line '
+                                 'except in IN= and OUT= sections when doing multi-run analaysis which is not supported yet.')
+        if in_sec.count(',') != out_sec.count(','):
+            raise ValueError('Number of commans in IN= section does not match those in OUT= section.'
+                             'Ensure you provide equal number of output prefixes (comma separated) '
+                             'in OUT= section as # runs in IN= section.')
+
 
     # defining an empty subject or run
     subject = {
@@ -352,7 +407,7 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
 
 def parse_args_check():
     """Parser setup and assessment of different input flags."""
-    parser = argparse.ArgumentParser(prog="opni")
+    parser = argparse.ArgumentParser(prog="oppni")
 
     parser.add_argument("-s", "--status", action="store", dest="status_update_in",
                         default=None,
@@ -557,6 +612,10 @@ def parse_args_check():
                         default=None,
                         help="Prints the options used in the previous processing of this folder.")
 
+    parser.add_argument("--validate_user_env", action="store_true", dest="val_user_env",
+                        default=False,
+                        help=argparse.SUPPRESS) # "Performs a basic validation of user environment and version checks.")
+
     if len(sys.argv) < 2:
         print('Too few arguments!')
         parser.print_help()
@@ -569,10 +628,10 @@ def parse_args_check():
         parser.exit(1)
 
     # updating the status to the user if requested.
-    if options.status_update_in is not None:
+    if options.status_update_in is not None and options.input_data_orig is None:
         cur_garage = os.path.abspath(options.status_update_in)
         update_status_and_exit(cur_garage)
-    elif options.val_input_file_path is not None:
+    elif options.val_input_file_path is not None and options.input_data_orig is None:
         # performing a basic validation
         try:
             _ = validate_input_file(options.val_input_file_path)
@@ -580,9 +639,24 @@ def parse_args_check():
         except:
             print " validation failed."
         sys.exit(0)
-    elif options.print_options_path is not None:
+    elif options.print_options_path is not None and options.input_data_orig is None:
         print_options(options.print_options_path)
         sys.exit(0)
+    elif options.val_user_env and options.input_data_orig is None:
+        try:
+            validate_user_env(options)
+            sys.exit(0)
+        except UserWarning:
+            warnings.warn('The versions of some of your software do not match the tested versions.')
+            sys.exit(1)
+        except:
+            raise
+    elif len(sys.argv) < 3:
+        print('Invalid single arg! \n'
+              'Use only one of \n --status \n--validate \n--print_options_in \n'
+              'Or supply a full logical set of arguments for processing.\n'
+              'For help, try oppni -h, or simply oppni')
+        parser.exit(1)
 
     global hpc
 

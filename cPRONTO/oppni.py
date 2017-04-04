@@ -139,35 +139,26 @@ def not_unspecified( var ):
     return var not in [ 'None', None, '' ]
 
 
-def validate_afni_version():
-    "Throw a warning if the AFNI version differs from the one tested."
+def version_strings_differ(ver1, ver2):
+    "Method to control the level of version match."
 
-    version_str = subprocess.check_output(['afni',  '-ver' ])
-    if not version_str.lower() == cfg_pronto.AFNI_VERSION_TESTED.lower():
-        warnings.warn('\nYour AFNI version differs from the version tested by developers.'
+    # removing new lines and spaces to make comparison easy
+    ver1 = ver1.lower().strip()
+    ver2 = ver2.lower().strip()
+
+    versions_differ = not ver1.startswith(ver2)
+
+    return versions_differ
+
+
+def validate_software_version(version_cmd_list, version_to_match, software_name):
+    "Throw a warning if the user software version differs from the one tested."
+
+    version_str = subprocess.check_output(version_cmd_list)
+    if version_strings_differ(version_str, version_to_match):
+        warnings.warn('\nYour {} version differs from the version tested by developers.'
                       '\nYours \n{} \nTested:\n{}'
-                      '\nThis might cause differences in results.'.format(version_str, cfg_pronto.AFNI_VERSION_TESTED))
-
-
-def validate_flirt_version():
-    "Throw a warning if the FLIRT version differs from the one tested."
-
-    version_str = subprocess.check_output(['flirt', '-version'])
-    if not version_str.lower() == cfg_pronto.FLIRT_VERSION_TESTED.lower():
-        warnings.warn('\nYour FLIRT version differs from the version tested by developers.'
-                      '\nYours \n{} \nTested:\n{}'
-                      '\nThis might cause differences in results.'.format(version_str, cfg_pronto.FLIRT_VERSION_TESTED))
-
-
-def validate_melodic_version():
-    "Throw a warning if the MELODIC version differs from the one tested."
-
-    version_str = subprocess.check_output(['melodic', '--version'])
-    if not version_str.lower() == cfg_pronto.MELODIC_VERSION_TESTED.lower():
-        warnings.warn('\nYour MELODIC version differs from the version tested by developers.'
-                      '\nYours \n{} \nTested:\n{}'
-                      '\nThis might cause differences in results.'.format(version_str,
-                                                                        cfg_pronto.MELODIC_VERSION_TESTED))
+                      '\nThis might cause differences in results.'.format(software_name, version_str, version_to_match))
 
 
 def validate_env_var(var):
@@ -184,9 +175,9 @@ def validate_user_env(opt, verbose = False):
         if opt.environment.lower() in ['compiled']:
             validate_env_var('MCR_PATH')
 
-        validate_afni_version()
-        validate_flirt_version()
-        validate_melodic_version()
+        validate_software_version(['afni',  '-ver' ]      , cfg_pronto.AFNI_VERSION_TESTED   , 'AFNI')
+        validate_software_version(['flirt', '-version']   , cfg_pronto.FLIRT_VERSION_TESTED  , 'FLIRT')
+        validate_software_version(['melodic', '--version'], cfg_pronto.MELODIC_VERSION_TESTED, 'MELODIC')
 
 
 def validate_input_file(input_file, options=None, new_input_file=None, cond_names_in_contrast=None):

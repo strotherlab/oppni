@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <deployment-project plugin="plugin.deploytool" plugin-version="1.0">
-  <configuration target="target.standalone" target-name="Standalone Application" name="oppni" location="/home/praamana/oppni" file="/home/praamana/oppni/oppni.prj" build-checksum="1181404167">
+  <configuration target="target.standalone" target-name="Standalone Application" name="oppni" location="/home/praamana/oppni" file="/home/praamana/oppni/oppni.prj" build-checksum="3930437682">
     <param.project.name>/home/praamana/oppni/oppni.prj</param.project.name>
     <param.target.type>Standalone Application</param.target.type>
     <param.appname>oppni</param.appname>
@@ -157,7 +157,6 @@
     <matlab>
       <root>/opt/Matlab2012b</root>
       <path>
-        <directory>/opt/freesurfer/fsfast/toolbox</directory>
         <directory>/opt/freesurfer/matlab</directory>
         <directory>/data1/strother_lab/praamana/src</directory>
         <directory>/data1/strother_lab/praamana/src/.git</directory>
@@ -171,7 +170,9 @@
         <directory>/data1/strother_lab/praamana/src/.git/logs/refs/remotes/origin</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/00</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/01</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/02</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/03</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/04</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/05</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/06</directory>
@@ -186,8 +187,10 @@
         <directory>/data1/strother_lab/praamana/src/.git/objects/0f</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/11</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/12</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/13</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/14</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/15</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/16</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/17</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/18</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/19</directory>
@@ -196,6 +199,7 @@
         <directory>/data1/strother_lab/praamana/src/.git/objects/1c</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/1e</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/20</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/21</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/22</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/23</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/24</directory>
@@ -204,8 +208,10 @@
         <directory>/data1/strother_lab/praamana/src/.git/objects/27</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/28</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/29</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/2a</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/2b</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/2c</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/2d</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/2e</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/2f</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/30</directory>
@@ -216,6 +222,7 @@
         <directory>/data1/strother_lab/praamana/src/.git/objects/36</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/37</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/38</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/39</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/3a</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/3b</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/3c</directory>
@@ -258,11 +265,13 @@
         <directory>/data1/strother_lab/praamana/src/.git/objects/64</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/65</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/66</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/67</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/69</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/6a</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/6b</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/6c</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/6d</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/6e</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/6f</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/70</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/71</directory>
@@ -272,6 +281,7 @@
         <directory>/data1/strother_lab/praamana/src/.git/objects/75</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/76</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/77</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/78</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/79</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/7a</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/7b</directory>
@@ -286,6 +296,7 @@
         <directory>/data1/strother_lab/praamana/src/.git/objects/84</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/85</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/86</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/87</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/88</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/89</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/8b</directory>
@@ -312,7 +323,9 @@
         <directory>/data1/strother_lab/praamana/src/.git/objects/a2</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/a3</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/a4</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/a5</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/a6</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/a7</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/a8</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/a9</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/aa</directory>
@@ -320,8 +333,10 @@
         <directory>/data1/strother_lab/praamana/src/.git/objects/ad</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/ae</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/af</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/b0</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/b1</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/b2</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/b3</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/b4</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/b5</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/b6</directory>
@@ -332,6 +347,7 @@
         <directory>/data1/strother_lab/praamana/src/.git/objects/bb</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/bc</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/bd</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/be</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/bf</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/c0</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/c1</directory>
@@ -354,14 +370,17 @@
         <directory>/data1/strother_lab/praamana/src/.git/objects/d5</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/d7</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/d8</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/d9</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/da</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/db</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/dc</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/dd</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/de</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/df</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/e0</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/e1</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/e2</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/e3</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/e4</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/e5</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/e6</directory>
@@ -376,8 +395,10 @@
         <directory>/data1/strother_lab/praamana/src/.git/objects/ef</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/f0</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/f2</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/f3</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/f4</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/f5</directory>
+        <directory>/data1/strother_lab/praamana/src/.git/objects/f8</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/f9</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/fa</directory>
         <directory>/data1/strother_lab/praamana/src/.git/objects/fb</directory>
@@ -393,6 +414,7 @@
         <directory>/data1/strother_lab/praamana/src/.git/refs/remotes/origin</directory>
         <directory>/data1/strother_lab/praamana/src/.git/refs/tags</directory>
         <directory>/data1/strother_lab/praamana/src/.idea</directory>
+        <directory>/data1/strother_lab/praamana/src/4RTNI</directory>
         <directory>/data1/strother_lab/praamana/src/ABIDE</directory>
         <directory>/data1/strother_lab/praamana/src/ADNI</directory>
         <directory>/data1/strother_lab/praamana/src/ADNI/ADNI1-Rotman</directory>
@@ -420,6 +442,7 @@
         <directory>/data1/strother_lab/praamana/src/MultipleKernelLearning</directory>
         <directory>/data1/strother_lab/praamana/src/NetworkAnalysis</directory>
         <directory>/data1/strother_lab/praamana/src/NetworkAnalysis/vis</directory>
+        <directory>/data1/strother_lab/praamana/src/NewFolder</directory>
         <directory>/data1/strother_lab/praamana/src/OASIS</directory>
         <directory>/data1/strother_lab/praamana/src/PBS</directory>
         <directory>/data1/strother_lab/praamana/src/Parkinsons</directory>
@@ -2420,6 +2443,7 @@
         <directory>/home/praamana/mial-tools/trunk/matlab/toolboxes/spm5/man/fmri_spec/.svn/tmp/prop-base</directory>
         <directory>/home/praamana/mial-tools/trunk/matlab/toolboxes/spm5/man/fmri_spec/.svn/tmp/props</directory>
         <directory>/home/praamana/mial-tools/trunk/matlab/toolboxes/spm5/man/fmri_spec/.svn/tmp/text-base</directory>
+        <directory>/home/praamana/mial-tools/trunk/matlab/toolboxes/spm5/man/helpsearch-v3</directory>
         <directory>/home/praamana/mial-tools/trunk/matlab/toolboxes/spm5/man/images</directory>
         <directory>/home/praamana/mial-tools/trunk/matlab/toolboxes/spm5/man/images/.svn</directory>
         <directory>/home/praamana/mial-tools/trunk/matlab/toolboxes/spm5/man/images/.svn/prop-base</directory>

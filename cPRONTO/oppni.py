@@ -151,7 +151,7 @@ def version_strings_differ(ver1, ver2):
     return versions_differ
 
 
-def validate_software_version(version_cmd_list, version_to_match, software_name):
+def validate_software_version(version_cmd_list, version_to_match, software_name, verbose = False):
     "Throw a warning if the user software version differs from the one tested."
 
     version_str = subprocess.check_output(version_cmd_list)
@@ -160,24 +160,31 @@ def validate_software_version(version_cmd_list, version_to_match, software_name)
                       '\nYours \n{} \nTested:\n{}'
                       '\nThis might cause differences in results.'.format(software_name, version_str, version_to_match))
 
+    if verbose:
+        print(version_str.strip().splitlines()[0])
 
-def validate_env_var(var):
-    if os.getenv(var) is None:
+
+def validate_env_var(var, verbose = False):
+
+    upath = os.getenv(var)
+    if upath is None:
         raise ValueError("Path {} is not defined. Fix your environment and rerun.".format(var))
 
+    if verbose:
+        print('{}: {}'.format(var, upath))
 
 def validate_user_env(opt, verbose = False):
     """Validates set up of user's shell environment variables."""
     if not hpc['dry_run']:
         for var in ['AFNI_PATH', 'FSL_PATH']:
-            validate_env_var(var)
+            validate_env_var(var, verbose)
 
         if opt.environment.lower() in ['compiled']:
-            validate_env_var('MCR_PATH')
+            validate_env_var('MCR_PATH', verbose)
 
-        validate_software_version(['afni',  '-ver' ]      , cfg_pronto.AFNI_VERSION_TESTED   , 'AFNI')
-        validate_software_version(['flirt', '-version']   , cfg_pronto.FLIRT_VERSION_TESTED  , 'FLIRT')
-        validate_software_version(['melodic', '--version'], cfg_pronto.MELODIC_VERSION_TESTED, 'MELODIC')
+        validate_software_version(['afni',  '-ver' ]      , cfg_pronto.AFNI_VERSION_TESTED   , 'AFNI'   , verbose)
+        validate_software_version(['flirt', '-version']   , cfg_pronto.FLIRT_VERSION_TESTED  , 'FLIRT'  , verbose)
+        validate_software_version(['melodic', '--version'], cfg_pronto.MELODIC_VERSION_TESTED, 'MELODIC', verbose)
 
 
 def validate_input_file(input_file, options=None, new_input_file=None, cond_names_in_contrast=None):
@@ -635,7 +642,8 @@ def parse_args_check():
         sys.exit(0)
     elif options.val_user_env and options.input_data_orig is None:
         try:
-            validate_user_env(options)
+            validate_user_env(options, verbose=True)
+            print('Versions (major) match those tested.')
             sys.exit(0)
         except UserWarning:
             warnings.warn('The versions of some of your software do not match the tested versions.')

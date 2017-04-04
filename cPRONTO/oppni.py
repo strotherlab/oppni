@@ -270,7 +270,7 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
 
     # commas are not allowed unless it's multi-run analysis
     num_commas = line.count(',')
-    if num_commas > 0:
+    if num_commas > 1:
         # split by space
         line_sections = line.split(' ')
         for sec in line_sections:
@@ -278,6 +278,9 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
                 in_sec = sec
             elif "OUT=" in sec.upper():
                 out_sec = sec
+            elif "DROP=" in sec.upper():
+                if sec.count(',') > 1:
+                    raise ValueError('Only 1 comma allowed in the DROP= section ')
             elif sec.count(',') > 0:
                 raise ValueError('Commas are not allowed in the line '
                                  'except in IN= and OUT= sections when doing multi-run analaysis which is not supported yet.')

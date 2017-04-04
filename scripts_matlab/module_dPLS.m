@@ -26,8 +26,8 @@ block_cond2_sp1 = datamat(:,split_info.idx_cond2_sp1);
 block_cond2_sp2 = datamat(:,split_info.idx_cond2_sp2);
 
 % define split-half task designs:
-design1 = [-ones( size(block_cond1_sp1,2), 1 ); ones( size(block_cond2_sp1,2), 1 )];
-design2 = [-ones( size(block_cond1_sp2,2), 1 ); ones( size(block_cond2_sp2,2), 1 )];
+design1 = [ ones( size(block_cond1_sp1,2), 1 ); -ones( size(block_cond2_sp1,2), 1 )];
+design2 = [ ones( size(block_cond1_sp2,2), 1 ); -ones( size(block_cond2_sp2,2), 1 )];
 % data splits
 xx_sp1 = [block_cond1_sp1 block_cond2_sp1]; xx_sp1=bsxfun(@minus,xx_sp1,mean(xx_sp1,2));
 xx_sp2 = [block_cond1_sp2 block_cond2_sp2]; xx_sp2=bsxfun(@minus,xx_sp2,mean(xx_sp2,2));

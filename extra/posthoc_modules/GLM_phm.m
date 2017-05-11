@@ -3,7 +3,7 @@ function out = GLM( datamat, design )
     disp('GLM, t-statistic...');
 
     n    = size(datamat,2);
-    k    = size(design, 1);
+    k    = size(design, 2);
     op   = GLM_model_fmri( datamat, 0, [], design, [], [] );
     
     % parameters

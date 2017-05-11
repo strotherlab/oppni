@@ -128,6 +128,8 @@ else
     output.images  = results.eig(:,id);
 
     % CV score timeseries, on unit-normed eigenimage
-    %output.temp    = datamat'  * (output.images ./ sqrt(sum(output.images.^2)));
+    for(is=1:N_subject)
+        output.temp.Tser{is}    = datamat{is}'  * (output.images ./ sqrt(sum(output.images.^2)));
+    end
 
 end

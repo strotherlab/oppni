@@ -21,6 +21,18 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 Overview Change Log:
 ------------------------------------------------------------------------------------
 
+[UPDATES 2017/05/10] by Nathan
+* number of fixes/revisiong to posthoc testing tools (all works in progress)
+ (GLM_phm, GLMboot_phm, Splithalf_phm, run_oppni_posthoc, clust_up)
+
+GNB.m
+> fixed issue when estimating timeseries for multirun data (ln.126)
+
+interpret_contrast_list_str.m
+> now does not require nocontrast analysis to have task conditions (ln.87)
+> now check if onsets are "close" to start of run but not before -> keep (ln.141)
+  also less conservative about onsets at the end of the run
+
 [UPDATES 2017/03/06] by Nathan
 
 >> official start of new git branch!

@@ -89,7 +89,7 @@ save_untouch_nii(nii,[newmaskname '_consensus_mask.nii']);
 
 for(is=1:numel(InputStruct))
     outstr  = [InputStruct(is).run(1).Output_nifti_file_path,'/asl_processed/',InputStruct(is).run(1).Output_nifti_file_prefix{1}];
-    xbase_string  = [outstr,'/proc_TCBF_avg_sNorm.nii'];
+    xbase_string  = [outstr,'/proc_aCBF_avg_sNorm.nii'];
     VX            = load_untouch_nii(  xbase_string );
     meanset(:,is)  = nifti_to_mat(VX,nii);
 end

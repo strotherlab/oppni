@@ -89,8 +89,9 @@ for ksub = 1:numel(InputStruct)
             % case with task contrast, no conditions
             sge_exit(100,'you specified contrast-based analysis without any conditions!');
 
-        elseif isfield(split_info,'cond') 
-            % case with conditions specified --> currently, we admit for nocontrast/no analysis model
+        elseif( ~strcmpi(analysis_model.design_type,'nocontrast') ) %% OLD CONDITION: isfield(split_info,'cond')
+            
+            % case with conditions specified --> ** now only admit for task-based analysis models **
             
             % number of "real" conditions; need to keep track because combined
             % conditions may be specified below
@@ -143,14 +144,21 @@ for ksub = 1:numel(InputStruct)
             % compensate the offset in the split_info file, using DROP_first
             for i = 1:length(split_info.cond)
                 split_info.cond(i).onsetlist = split_info.cond(i).onsetlist - InputStruct(ksub).run(krun).DROP_first*split_info.TR_MSEC;
-                % remove those onsets that occur in the first DROP_first scans
+                % for onsets happening ~at onset of first non-drop scan (<0.5TR), reset onset >0 
+                ind_temp = split_info.cond(i).onsetlist<eps & split_info.cond(i).onsetlist>(-eps);
+                split_info.cond(i).onsetlist(ind_temp) = eps;
+                % remove those onsets that occur within the first DROP_first scans
                 ind_temp = split_info.cond(i).onsetlist<0;
                 split_info.cond(i).onsetlist(ind_temp) = [];
                 split_info.cond(i).blklength(ind_temp) = [];
-                % check if any blocks fully overrun the fmri run (+4s)
-                onsmax=max(split_info.cond(i).onsetlist) + 4000;
-                if(onsmax > (InputStruct(ksub).run(krun).Nt*split_info.TR_MSEC)) 
-                    error(['condition "',split_info.cond(i).name,'" has blocks that start near (or after) end of fMRI run! check your onsets.']); 
+                % remove those onsets that occur after the end of the run (-1 tr)
+                ind_temp = split_info.cond(i).onsetlist>( InputStruct(ksub).run(krun).Nt*split_info.TR_MSEC - 1*split_info.TR_MSEC );
+                split_info.cond(i).onsetlist(ind_temp) = [];
+                split_info.cond(i).blklength(ind_temp) = [];
+                
+                if( isempty(split_info.cond(i).onsetlist) ) 
+                    InputStruct(ksub).run(krun).Input_nifti_filename,
+                    error(['condition "',split_info.cond(i).name,'" has exclusively blocks that start before the start/after the end of the fMRI run! check your onsets.']); 
                 end
             end
             

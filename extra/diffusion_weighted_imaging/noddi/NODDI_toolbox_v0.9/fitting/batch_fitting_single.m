@@ -62,9 +62,14 @@ fprintf('%i of voxels to fit\n', numOfVoxels-current_index+1);
 for i=current_index:numOfVoxels
     
     fprintf('Fitting voxel %i\n', i);
-    
+
     % get the MR signals for the voxel i
     voxel = roi(i,:)';
+    
+    %checking for bad values
+    if(~isfinite(sum(voxel)))
+        voxel = zeros(size(voxel))+eps;
+    end
     
     % fit the voxel
     if model.noOfStages == 2

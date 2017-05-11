@@ -1,4 +1,4 @@
-function posthoc_analysis_fmri_func( inputfile, newmaskname, ppl_opt, contr_num, analysis1, analysis2, suppDat, design )
+function posthoc_analysis_fmri_func( inputfile, newmaskname, ppl_opt, contr_num, analysis1, analysis2, suppDat, design, pathstuff )
 %
 %
 % Syntax:
@@ -124,7 +124,7 @@ else
     [apath,aprefix,aext] = fileparts(newmaskname);
     mkdir_r(apath);
     %%% make sure mask-name terminates with .nii string
-    newmaskname = [apath,'/',aprefix];
+    newmaskname = [apath,'/',aprefix,'.nii'];
 end
 
 % % pipeline optimization method - convert to numeric index
@@ -152,7 +152,7 @@ else %% if a string, format appropriately
 end
 % end result is numeric vector listing contrasts of interest
 
-MM = load_untouch_nii([newmaskname '_consensus_mask.nii']);
+MM = load_untouch_nii([newmaskname]);
 mask = double(MM.img);
 
 if(ischar(design)   ) design = dlmread(design); end
@@ -171,14 +171,14 @@ if(~exist(filename,'file'))
         % load split_info data for further analysis
         Subject_OutputDirIntermed = [InputStruct(is).run(1).Output_nifti_file_path '/intermediate_metrics'];
         subjectprefix = InputStruct(is).run(1).subjectprefix;
-        load([Subject_OutputDirIntermed '/res0_params/params' subjectprefix '.mat']);
+        load([Subject_OutputDirIntermed,'/',pathstuff{1},'/res0_params/params' subjectprefix '.mat']);
 
         outdir = InputStruct(is).run(1).Output_nifti_file_path;
         prefix = InputStruct(is).run(1).Output_nifti_file_prefix;
 
         % ------------------------------------------------------------------------------------------------
         % ------------------------------------------------------------------------------------------------
-        VV       = load_untouch_nii(strcat(outdir,'/optimization_results/processed/Proc_',prefix,'_',ppl_opt,'_sNorm.nii'));  
+        VV       = load_untouch_nii(strcat(outdir,'/optimization_results/',pathstuff{1},'/images_',pathstuff{2},'/Proc_',prefix,'_',ppl_opt,'_sNorm.nii'));  
         volmat   = nifti_to_mat( VV,MM ); %% load volumes
         filename = [PH_folder,'/tempfiles/tempvol',num2str(is),'.mat'];
         save(filename,'volmat');

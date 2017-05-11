@@ -1,4 +1,4 @@
-function [Input_nifti_file_path,Input_nifti_file_prefix,Output_nifti_file_path,Output_nifti_file_prefix] = Parse_Input_DTI(tline)
+function [Input_nifti_file_path,Input_nifti_file_prefix,Output_nifti_file_path,Output_nifti_file_prefix,acq_file,idx_file] = Parse_Input_DTI(tline)
 
 global CODE_PATH
 if isempty(CODE_PATH)
@@ -40,3 +40,25 @@ if(~isempty(strfind(Output_nifti_file_prefix,',')))
     sge_exit(100);
 end
 
+
+% parse ec file directory
+ifile = strfind( upper(tline), 'ACQFILE=' ); ifile = ifile+8;
+ips   = [strfind( tline, ' ' )-1 length(tline)];
+ips   = ips(ips>ifile);
+acq_file  =  tline(ifile:ips(1));
+% split in DWI runs
+if(isempty(strfind(acq_file,',')))
+     acq_file = cellstr(acq_file);
+else acq_file = regexp(acq_file,',','split');
+end
+
+% parse ec file directory
+ifile = strfind( upper(tline), 'IDXFILE=' ); ifile = ifile+8;
+ips   = [strfind( tline, ' ' )-1 length(tline)];
+ips   = ips(ips>ifile);
+idx_file  =  tline(ifile:ips(1));
+% split in DWI runs
+if(isempty(strfind(idx_file,',')))
+     idx_file = cellstr(idx_file);
+else idx_file = regexp(idx_file,',','split');
+end

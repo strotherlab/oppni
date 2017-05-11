@@ -29,13 +29,15 @@ while ischar(tline)
 
     ksub = ksub  +1;
     
-    [Input_nifti_file_path,Input_nifti_file_prefix,Output_nifti_file_path,Output_nifti_file_prefix] = Parse_Input_DTI(tline);
-    InputStruct(ksub).run(1).Input_nifti_file_path             = Input_nifti_file_path;
-    InputStruct(ksub).run(1).Input_nifti_file_prefix           = Input_nifti_file_prefix;
-    InputStruct(ksub).run(1).Output_nifti_file_path            = Output_nifti_file_path;
-    InputStruct(ksub).run(1).Output_nifti_file_prefix          = Output_nifti_file_prefix;
-    InputStruct(ksub).run(1).MULTI_RUN_NODDI                   = length(Input_nifti_file_prefix) > 1;
- 
+    [Input_nifti_file_path,Input_nifti_file_prefix,Output_nifti_file_path,Output_nifti_file_prefix,acq_file,idx_file] = Parse_Input_DTI(tline);
+    InputStruct(ksub).run(1).Input_nifti_file_path       = Input_nifti_file_path;
+    InputStruct(ksub).run(1).Input_nifti_file_prefix     = Input_nifti_file_prefix;
+    InputStruct(ksub).run(1).Output_nifti_file_path      = Output_nifti_file_path;
+    InputStruct(ksub).run(1).Output_nifti_file_prefix    = Output_nifti_file_prefix;
+    InputStruct(ksub).run(1).MULTI_RUN_NODDI             = length(Input_nifti_file_prefix) > 1;
+    InputStruct(ksub).run(1).acq_file                    = acq_file;
+    InputStruct(ksub).run(1).idx_file                    = idx_file;
+    
     tline = fgetl(fid);
     if isempty(tline)
         tline = fgetl(fid);

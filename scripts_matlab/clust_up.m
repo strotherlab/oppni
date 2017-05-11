@@ -5,12 +5,15 @@ function vol2 = clust_up( vol, minclust, varargin )
 % =========================================================================
 %
 % Syntax:
-%           vol2 = clust_up( vol, minclust )
+%           vol2 = clust_up( vol, minclust (filename, coord_space, outformat) )
 %
 % Input:
 %           vol: 3D volume, clusterized based on binary thresholding
 %                (x==0 vs x~=0)
 %      minclust: minimum cluster-size threshold. Must be 3 or more
+%      filename: name of file for output report
+%   coord_space: coordiante space (either 'native' or 'MNI');
+%     outformat: format of output file (either 'standard' or 'simple');
 %
 % Output:
 %          vol2: cluster thresholded image
@@ -21,20 +24,32 @@ if(ischar(vol))
     V=load_untouch_nii(volnii);
     vol = double(V.img);
     fromnii = true;
+    cubevol = prod( V.hdr.dime.pixdim(2:4) );
+    units   = 'mm^3';
 else
     fromnii = false;
+    cubevol = 1;
+    units   = 'vox';
 end
 
-if(nargin>2) 
+if(nargin>2)
     outfile = varargin{1}; 
     toout   = true;
-    if(nargin==4) oformat = varargin{2}; 
+    if(nargin>=4) coordsp = varargin{2};
+    else          coordsp = 'native';
+    end
+    if(nargin==5) oformat = varargin{3}; 
     else          oformat = 'standard';
     end
     if( ~strcmpi(oformat,'standard') && ~strcmpi(oformat,'simple'))
-        error('unrecognized output text format');
+        error('unrecognized coordinate space - must be "native" or "MNI"');
+    end
+    if( ~strcmpi(oformat,'standard') && ~strcmpi(oformat,'simple'))
+        error('unrecognized output text format - must be "standard" or "simple"');
     end
 else
+    coordsp='native';
+    oformat=[];
     toout   = false;
 end
 
@@ -51,12 +66,7 @@ bino_th   = double(C2>=2);
 if( minclust <3 )
     
     error('minimum cluster size threshold of 3!');
-
-elseif( minclust==3 )
     
-    vol2 = vol.*bino_th;
-
-    disp('No cluster-size reporting for minclust=3. Assuming it is just cleanup!');
 else
     
     % now fit to minclust
@@ -124,27 +134,37 @@ else
         vtemp  = clust_map(clust_map(:) == n);
         bintmp = double(clust_map==n);
         voltmp = vol.*double(clust_map==n);
-        [x y z] = ind2sub( D, find(abs(voltmp)==max(abs(voltmp(:)))));
         
-        val{1} = numel(vtemp); %size
-        val{2} = [x,y,z]; %peak coordinates
         %%%
         d1=sum(sum(abs(voltmp),2),3); xc = sum(d1(:).*(1:size(bintmp,1))')./sum(d1(:));
         d1=sum(sum(abs(voltmp),1),3); yc = sum(d1(:).*(1:size(bintmp,2))')./sum(d1(:));
         d1=sum(sum(abs(voltmp),1),2); zc = sum(d1(:).*(1:size(bintmp,3))')./sum(d1(:));    
-        val{3}=round([xc yc zc]);
+        val{1}=round([xc yc zc]); % center of mass
+        val{2} = numel(vtemp); %size
         %%%
+        [x y z] = ind2sub( D, find(abs(voltmp)==max(abs(voltmp(:)))));
+        val{3} = [x,y,z]; %peak coordinates
         val{4} = voltmp(x(1),y(1),z(1)); %peak value
-        strout = ['Clust #',num2str(n),', size=',num2str(val{1}),...
-                                  ', coords(com) =[',num2str(val{3}(1)),',',num2str(val{3}(2)),',',num2str(val{3}(3)),...                                  
-                                 '], peak=',sprintf('%0.2f',val{4})];
+        
+        if( strcmpi(coordsp,'MNI') )
+            val{1} = [2*val{1}(1)-92, 2*val{1}(2)-128, 2*val{1}(3)-74];
+            val{3} = [2*val{3}(1)-92, 2*val{3}(2)-128, 2*val{3}(3)-74];
+        end
+        
+        strout = ['Clust#',num2str(n),...
+                   ': size(',units,')=',num2str(cubevol*val{2}),...
+                   ', CoM (',coordsp,') =[',num2str(val{1}(1)),',',num2str(val{1}(2)),',',num2str(val{1}(3)),']',...
+                   ', peak value  =',sprintf('%0.2f',val{4}),...
+                   ', peak (',coordsp,') =[',num2str(val{3}(1)),',',num2str(val{3}(2)),',',num2str(val{3}(3)),']',...
+                   ];
         disp(strout);
         if(toout)
             if( strcmpi(oformat,'standard') )
                 fprintf(fin,[strout,'\n']); 
+            elseif(  strcmpi(oformat,'simple') )
+                fprintf(fin,'%u, %u,%u,%u, %f, %u,%u,%u\n',cubevol*val{2}, val{1}(1),val{1}(2),val{1}(3), val{4}, val{3}(1),val{3}(2),val{3}(3));
             else
-                strout = sprintf('%u,%u,%u,%u,%u,%0.2f',n,val{1},val{3}(1),val{3}(2),val{3}(3),val{4});
-                fprintf(fin,[strout,'\n']); 
+                error('type not recognized');
             end
         end
     end
@@ -152,6 +172,12 @@ else
     vol2 = vol.*double(clust_map>0);
     
     if(toout) fclose(fin); end
+    
+    if(fromnii)
+        [~,pref,ext] = fileparts(volnii);
+        V.img = vol2;
+        save_untouch_nii(V,[pref,'_clustSize',num2str(minclust),'.nii']);
+    end
 end
 
 %%

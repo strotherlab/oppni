@@ -6,9 +6,9 @@ NBOOT = 500;
  
     % parameters
     n    = size(datamat,2);
-    k    = size(design, 1);
+    k    = size(design, 2);
     disp('running resampling...');
-    bsrmat = zeros( size(datamat,1), NBOOT );
+    bsrmat = zeros( size(datamat,1), k, NBOOT );
     for(bsr=1:NBOOT)
         [bsr NBOOT],
         list = ceil(n*rand(n,1));
@@ -18,10 +18,10 @@ NBOOT = 500;
         y = design(list,:);
         y = bsxfun(@minus,  y,mean(y,1));        
         y = bsxfun(@rdivide,y,std(y,0,1));        
-        op   = GLM_model_fmri( D, 0, [],y, [], [] );
+        op   = GLM_model_fmri( D, 0, [],y, [] );
         bsrmat(:,:,bsr) = op.Beta_signl;
     end
     out.bsr     = mean(bsrmat,3)./std(bsrmat,0,3);
-    out.bsr_p   = 2*min(cat(3,sum(bsrmat>0,2) sum(bsrmat<0,2)),[],3)./bsr;
+    out.bsr_p   = 2*min(cat(3,sum(bsrmat>0,2), sum(bsrmat<0,2)),[],3)./bsr;
    
     out.testname = 'glm_bootstrap';

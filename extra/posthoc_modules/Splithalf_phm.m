@@ -5,7 +5,6 @@ function out = Splithalf( datamat, design )
 
 NBOOT = 100;
 
-
 if    ( isempty(design) || numel(unique(design))==1 )
     
     disp('Split-half analysis, 1-sample...');
@@ -13,17 +12,20 @@ if    ( isempty(design) || numel(unique(design))==1 )
     % parameters
     n    = size(datamat,2);
     disp('running resampling...');
-    bsrmat = zeros( size(datamat,1), 1 );
+    sp_av = zeros( size(datamat,1), NBOOT );
+    sp_df = zeros( size(datamat,1), NBOOT );
     for(bsr=1:NBOOT)
         [bsr NBOOT],
         list = randperm(n);
         sp1  = mean( datamat(:, list(1:round(n/2)))     ,2);
         sp2  = mean( datamat(:, list(round(n/2)+1:end)) ,2);
-        [r spm] = get_rSPM( sp1,sp2,1 );
-        bsrmat = bsrmat + spm./NBOOT;
+        %[r spm] = get_rSPM( sp1,sp2,1 );
+        %bsrmat = bsrmat + spm./NBOOT;
+        sp_av(:,bsr) = (sp1+sp2);
+        sp_df(:,bsr) = (sp1-sp2);
     end
-    out.bsr     = bsrmat;
-    out.bsr_p   = 2*normcdf(bsrmat);
+    out.bsr     = mean(sp_av,2)./std(sp_df,0,2);
+    out.bsr_p   = 2*normcdf(out.bsr);
     
     out.testname = 'splithalf_1samp';
 

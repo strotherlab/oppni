@@ -1,4 +1,11 @@
-function run_oppni_posthoc( datatype, inputfile, newmaskname, img_selector, analysis, design, contrast, rmeas, threshold )
+function run_oppni_posthoc( datatype, inputfile, newmaskname, img_selector, analysis, design, contrast, rmeas, threshold, outlier_reject )
+
+
+if(nargin<10) 
+    outlier_reject=0; 
+elseif(~isnumeric(outlier_reject))
+    outlier_reject=str2num(outlier_reject);
+end
 
 % convert to string
 if(isnumeric(threshold)) threshold = num2str(threshold); end
@@ -42,6 +49,11 @@ for(i=1:Nlev)
     if( numel(tmp)==2 && tmp(1)==0 && tmp(2)==1 ) 
          binlev(i,1) = 1; %binary
     else binlev(i,1) = 0; %non-binary
+         if(numel(tmp)==3 && tmp(1)==0 && tmp(2)==1 && ~isfinite(tmp(3))) error('no missing values allowed in binary design'); end
+% %          tmp=design(:,i); 
+% %          if( sum( ~isfinite(tmp)>0 ) ) disp(['total of ',num2str(sum(~isfinite(tmp))),' missing values detected in col#',num2str(i),'. Performing median imputation...']); end
+% %          tmp(~isfinite(tmp)) = median( tmp(isfinite(tmp)) );
+% %          design(:,i) = tmp;
     end
 end
 
@@ -55,11 +67,12 @@ else
     design_newmat = zeros( size(design,1), numel(contrast) );
     
     for(i=1:numel(contrast)) %go through list of contrasts
-        
+        i,
         contrtemp = contrast{i};
         
         allcond   = regexp(contrtemp,'-|+','split'); %get all condition indices
         %convert to numeric indices for checking purposes
+        clear allcix;
         for(j=1:numel(allcond)) allcix(j,1) = str2num(allcond{j}); end
         %check if levels are in bounds
         if( max(allcix)>Nlev ) error(['variable index #',num2str(max(allcix)),' exceeds total number of columns']); end
@@ -83,19 +96,32 @@ else
             contrtemp = regexp(contrtemp,'-','split');
             %
             contrtemp_sub=regexp(contrtemp{1},'+','split');
+            newreg=0;
             for(j=1:numel(contrtemp_sub))
-                design_newmat(:,i) = design_newmat(:,i) + design(:,str2num(contrtemp_sub{j}));
+                newreg=newreg + design(:,str2num(contrtemp_sub{j}));
+            end
+            if( contr_type(i,1)==1 ) design_newmat(:,i) = design_newmat(:,i) + double(newreg==j);
+            else                     design_newmat(:,i) = design_newmat(:,i) + newreg;
             end
             contrtemp_sub=regexp(contrtemp{2},'+','split');
+            newreg=0;
             for(j=1:numel(contrtemp_sub))
-                design_newmat(:,i) = design_newmat(:,i) - design(:,str2num(contrtemp_sub{j}));
+                newreg=newreg + design(:,str2num(contrtemp_sub{j}));
             end
+            if( contr_type(i,1)==1 ) design_newmat(:,i) = design_newmat(:,i) - double(newreg==j);
+            else                     design_newmat(:,i) = design_newmat(:,i) - newreg;
+            end            
         end
-        % if values were binary, reset to (signed) bin again afterwards
-        if(contr_type(i,1)==1) 
-            design_newmat(design_newmat(:,i)> 1,i)= 1; 
-            design_newmat(design_newmat(:,i)<-1,i)=-1; 
-        end
+    end
+end
+
+disp('checking for missing values...');
+for(i=1:size(design_newmat,2))
+    if( contr_type(i)~=1 && sum(~isfinite(design_newmat(:,i)))>0 )
+        disp(['median-values imputated on col#',num2str(i),'.'])
+        tmp = design_newmat(:,i);
+        tmp(~isfinite(tmp))= median(tmp(isfinite(tmp)));
+        design_newmat(:,i)=tmp;
     end
 end
 
@@ -122,21 +148,12 @@ Nsubject = numel(InputStruct);
 %================================================================== fMRI =%
 if( strcmpi(datatype,'fMRI') )
 
-    % name for group masks --> default should be empty
-    if( isempty(newmaskname) )
-        newmaskname = [InputStruct(1).run(1).Output_nifti_file_path, '/GroupMasks/group_consensus_mask.nii'];           
-        M = load_nii(newmaskname);
-    else
-        [apath,aprefix,aext] = fileparts(newmaskname);
-        mkdir_r(apath);
-        %%% make sure mask-name terminates with .nii string
-        newmaskname = [apath,'/',aprefix];
-        M = load_nii(newmaskname);
-    end
-
-    img_selector = regexp(img_selector,',','split');
-    ppl_opt   =img_selector{1};
-    contr_num =img_selector{2};
+    img_selectorSP = regexp(img_selector,',','split');
+    contr_typ =img_selectorSP{1};
+    anl_typ   =img_selectorSP{2};
+    warp_typ  =img_selectorSP{3};
+    ppl_opt   =img_selectorSP{4};
+    contr_num =str2num(img_selectorSP{5});
 
     % pipeline optimization method - convert to numeric index
     if    ( ischar(ppl_opt) && strcmpi(ppl_opt,'PIPE1') ) ppl_opt=1;
@@ -145,19 +162,37 @@ if( strcmpi(datatype,'fMRI') )
     elseif( ischar(ppl_opt) && strcmpi(ppl_opt,'IND') )   ppl_opt=3;
     end
 
+        % name for group masks --> default should be empty
+    if( isempty(newmaskname) )
+        newmaskname = [InputStruct(1).run(1).Output_nifti_file_path, '/GroupMasks',warp_typ,'/group_consensus_mask.nii'];           
+        M = load_nii(newmaskname);
+    else
+        [apath,aprefix,aext] = fileparts(newmaskname);
+        mkdir_r(apath);
+        %%% make sure mask-name terminates with .nii string
+        newmaskname = [apath,'/',aprefix,'.nii'];
+        M = load_nii(newmaskname);
+    end
+
     % upload relevant SPMs
     for(is=1:numel(InputStruct))
 
         % load split_info data for further analysis
-        Subject_OutputDirIntermed = [InputStruct(is).run(1).Output_nifti_file_path '/intermediate_metrics'];
+        Subject_OutputDirIntermed = [InputStruct(is).run(1).Output_nifti_file_path '/intermediate_metrics/'];
         subjectprefix = InputStruct(is).run(1).subjectprefix;
-        load([Subject_OutputDirIntermed '/res0_params/params' subjectprefix '.mat']);
+        load([Subject_OutputDirIntermed, contr_typ,'-',anl_typ,'/res0_params/params' subjectprefix '.mat']);
 
         outdir = InputStruct(is).run(1).Output_nifti_file_path;
         prefix = InputStruct(is).run(1).Output_nifti_file_prefix;
 
-        VV=load_untouch_nii(strcat(outdir,'/optimization_results/spms/rSPM_',prefix,'_CON_FIX_IND_sNorm.nii'));  
-        tmp = nifti_to_mat( VV,MM ); %% load volumes CON( contr ), FIX( contr ), IND( contr )
+        V=load_nii(strcat(outdir,'/optimization_results/',contr_typ,'-',anl_typ,'/images_',warp_typ,'/rSPM_',prefix,'_CON_FIX_IND_sNorm.nii'));  
+
+        if(is==1)
+           if( rem(size(V.img,4),3) >0 ) error('does not have equal conditions for CON, FIX, IND'); end
+           Ncont = round( size(V.img,4)/3 );
+        end
+        
+        tmp = nifti_to_mat( V,M ); %% load volumes CON( contr ), FIX( contr ), IND( contr )
         vimg_smooth(:,is) = tmp(:, (ppl_opt-1)*Ncont + contr_num );
     end
     
@@ -260,6 +295,8 @@ mask =double(M.img);
     
 %% 3. running analyses
 
+% figure, imagesc( corr(vimg_smooth), [0 1] );
+
 % if repeated measures, run on paired differences
 if(rm>0)
     
@@ -316,8 +353,8 @@ analysis_model.filepath = which(analysis);
 addpath( analysis_model.filepath );
 pfun = str2func( analysis );
 
-if(strcmpi(analysis,'Ttest') || strcmpi(analysis,'Bootstrap') || strcmpi(analysis,'Splithalf'))
-    
+if(strcmpi(analysis,'Ttest_phm') || strcmpi(analysis,'Bootstrap_phm') || strcmpi(analysis,'Splithalf_phm'))
+
     if(~isempty(design_newmat))
         if(size(design_newmat,2)>1) error('cannot run t-test or bootstrap on multiple design contrasts. Use a GLM!'); end
         if( contr_type ~=1 ) error('contrasts must be on binary class labels');
@@ -328,11 +365,52 @@ if(strcmpi(analysis,'Ttest') || strcmpi(analysis,'Bootstrap') || strcmpi(analysi
         X = vimg_smooth;
         y = [];
     end
+    
+    if( outlier_reject>0 )
+        C2 = corr( X );
+        % median correlation, converted to distance
+        cmed_nn          = 1-median(C2,2);
+        [thr_nn] = quick_gamma_test( cmed_nn );
+        X = X(:, cmed_nn<thr_nn );
+        y = y(cmed_nn<thr_nn,:);
+        nout = sum(cmed_nn>thr_nn);
+        
+        if(nout==0) disp('no outliers found!');
+        else disp(['found ',num2str(nout),' outliers. Subject lines #:']);
+             disp(find(cmed_nn>=thr_nn));
+        end
+    else
+        nout =0;
+    end
+    
     % run the analysis
     output = pfun( X, y );    
 else
     X = vimg_smooth;
     y = design_newmat;
+    
+    if(strcmpi(analysis,'GLM'))
+       ycheck = [ones(size(y,1),1) y];
+       ycheck = bsxfun(@rdivide,ycheck,sqrt(sum(ycheck.^2)));
+       cnum   = cond( ycheck );
+       if    ( cnum > 1000 )   error(['GLM design matrix is multi-collinear! condition number=',num2str(cnum),'.']);
+       elseif( cnum > 100  ) warning(['GLM design matrix is approaching multi-collinear! condition number=',num2str(cnum),'.']);
+       else                     disp(['GLM design matrix is ok! condition number=',num2str(cnum),'.']);
+       end
+    end
+    
+    if( outlier_reject>0 )
+        C2 = corr( X );
+        % median correlation, converted to distance
+        cmed_nn          = 1-median(C2,2);
+        [thr_nn] = quick_gamma_test( cmed_nn );
+        X = X(:, cmed_nn<thr_nn );
+        y = y(cmed_nn<thr_nn,:);
+        nout = sum(cmed_nn>thr_nn);
+    else
+        nout = 0;
+    end
+
     output = pfun( X, y );        
 end
 
@@ -386,6 +464,27 @@ for(i=1:numel(e_stat))
         end
     end
     % save the nifti file
-    strcat(PH_folder,'/',output.testname,'_',e{i},'_Tissue.',img_selector,'_Contrast.',costr,'_Rmeas.',rmstr,'_Thresh.',threshold,'.nii'),
-    save_nii(nii,strcat(PH_folder,'/',output.testname,'_',e{i},'_Tissue.',img_selector,'_Contrast.',costr,'_Rmeas.',rmstr,'_Thresh.',threshold,'.nii'));
+    if(outlier_reject>0) outlcat = ['OutlierCorrect_n',num2str(nout)];
+    else                 outlcat = [];
+    end
+    strcat(PH_folder,'/',output.testname,'_',e{i},'_Tissue.',img_selector,'_Contrast.',costr,'_Rmeas.',rmstr,'_Thresh.',threshold,outlcat,'.nii'),
+    save_nii(nii,strcat(PH_folder,'/',output.testname,'_',e{i},'_Tissue.',img_selector,'_Contrast.',costr,'_Rmeas.',rmstr,'_Thresh.',threshold,outlcat,'.nii'));
 end
+
+function [thresh] = quick_gamma_test( dist_vector )
+
+% vectorize
+dist_vector = dist_vector(:);
+%
+ratiotest = range(dist_vector)/min(dist_vector);
+
+if( exist('OCTAVE_VERSION','builtin') && (ratiotest < (1/5)) )
+    % in case differences are v. small (+run in octave), default out:
+    thresh = max(dist_vector) + eps;
+else
+    % Gamma fit on correlation distance values
+    par_ab   = gamfit( dist_vector );
+    % threshold of max dist.
+    thresh   = gaminv( 0.95, par_ab(1), par_ab(2) );
+end
+

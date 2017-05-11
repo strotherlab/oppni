@@ -1,4 +1,4 @@
-function DTI_spat_norm(InputStruct,reference_file,list,append_dir)
+function run_noddi_wmtract(InputStruct,EC_type,corrDiffParam,list,append_dir)
 
 
 global NUMBER_OF_CORES
@@ -35,13 +35,16 @@ if ~isstruct(InputStruct)
     [InputStruct] = Read_Input_DTI(InputStruct);
 end
 
-if( nargin<3 ) list=[];
+if( nargin<4 ) list=[];
 end
 
-if(nargin<4) %% default is not assuming appended files
+if(nargin<5) %% default is not assuming appended files
     append_dir = [];
 end
 
+if(strcmpi(EC_type,'eddy_correct')) EC_type='ec';
+elseif( ~strcmpi(EC_type,'eddy') ) error('unrecognized correction method.');
+end
 
 % To run on HPCVL
 % setenv('PATH',[getenv('PATH') ':' FSL_PATH ':' AFNI_PATH ':' FSL_PATH '/bin/']);
@@ -88,14 +91,43 @@ if( ~isempty(append_dir))
             end
 
             % 2.noddi steps now:
-            unix(['gunzip ',dti_path,'/noddi_out/DTI_Multi_ec.nii.gz']);
+            unix(['gunzip ',dti_path,'/noddi_out/DTI_Multi_',EC_type,'.nii.gz']);
+            
+            if(corrDiffParam==0)
+                noddi_inprefix = ['DTI_Multi_',EC_type];
+            elseif(corrDiffParam==1)
+                noddi_inprefix = ['DTI_Multi_',EC_type,'_adjust']; 
+                % create adjusted file...
+                if(~exist([dti_path,'/noddi_out/DTI_Multi_',EC_type,'_adjust.nii'],'file'))
+                    V=load_untouch_nii([dti_path,'/noddi_out/DTI_Multi_',EC_type,'.nii']);
+                    M=load_untouch_nii([dti_path,'/noddi_out/template_FA_native_thr0.20.nii']); maskvol=double(M.img>0);
+                    N_runs = length(InputStruct(ksub).run(1).Input_nifti_file_prefix);
+                    clear numvol;
+                    for(i=1:N_runs)
+                        hdr=load_nii_hdr([InputStruct(ksub).run(1).Input_nifti_file_path,'/',InputStruct(ksub).run(1).Input_nifti_file_prefix{i},'.nii']);
+                        numvol(i,1) = hdr.dime.dim(5);
+                    end
+                    ncumul     = cumsum(numvol);
+                    numix(:,1) = [0; ncumul(1:end-1)]+1;
+                    numix(:,2) = ncumul(1:end);
+                    vimg_temp = V.img; 
+                    for(i=1:N_runs)
+                        vimg_temp(:,:,:,numix(i,1):numix(i,2)) = bsxfun(@times, bsxfun(@rdivide,  vimg_temp(:,:,:,numix(i,1):numix(i,2)), vimg_temp(:,:,:,numix(i,1))  ), maskvol);
+                    end
+                    V.img = vimg_temp;
+                    save_untouch_nii(V,[dti_path,'/noddi_out/',noddi_inprefix,'.nii']);
+                end
+            end
 
             if( ~exist([dti_path,'/noddi_out/NODDI_fit_odi.nii'],'file'))
 
                 % creating .mat ROI set
-                CreateROI( [dti_path,'/noddi_out/DTI_Multi_ec.nii'], [dti_path,'/noddi_out/template_FA_native_thr0.20.nii'], [dti_path,'/noddi_out/DTI_Multi_ROI.mat'] );
+                CreateROI( [dti_path,'/noddi_out/',noddi_inprefix,'.nii'], [dti_path,'/noddi_out/template_FA_native_thr0.20.nii'], [dti_path,'/noddi_out/DTI_Multi_ROI.mat'] );
                 % defining the NODDI protocol
-                protocol = FSL2Protocol([dti_path,'/noddi_out/DTI_Multi_ec.bval'], [dti_path,'/noddi_out/DTI_Multi_ec.bvec']);
+                if(strcmpi(EC_type,'ec'))       protocol = FSL2Protocol([dti_path,'/noddi_out/DTI_Multi_',EC_type,'.bval'], [dti_path,'/noddi_out/DTI_Multi_ec.bvec']);
+                elseif(strcmpi(EC_type,'eddy')) protocol = FSL2Protocol([dti_path,'/noddi_out/DTI_Multi_',EC_type,'.bval'], [dti_path,'/noddi_out/DTI_Multi_eddy.nii.eddy_rotated_bvecs']);
+                end
+
                 % make model
                 noddi = MakeModel('WatsonSHStickTortIsoV_B0');
 
@@ -166,14 +198,42 @@ else %% ================standard, full registration =======================
             end
 
             % 2.noddi steps now:
-            unix(['gunzip ',dti_path,'/noddi_out/DTI_Multi_ec.nii.gz']);
+            unix(['gunzip ',dti_path,'/noddi_out/DTI_Multi_',EC_type,'.nii.gz']);
 
+            if(corrDiffParam==0)
+                noddi_inprefix = ['DTI_Multi_',EC_type];
+            elseif(corrDiffParam==1)
+                noddi_inprefix = ['DTI_Multi_',EC_type,'_adjust']; 
+                % create adjusted file...
+                if(~exist([dti_path,'/noddi_out/DTI_Multi_',EC_type,'_adjust.nii'],'file'))
+                    V=load_untouch_nii([dti_path,'/noddi_out/DTI_Multi_',EC_type,'.nii']);
+                    M=load_untouch_nii([dti_path,'/noddi_out/template_FA_native_thr0.20.nii']); maskvol=double(M.img>0);
+                    N_runs = length(InputStruct(ksub).run(1).Input_nifti_file_prefix);
+                    clear numvol;
+                    for(i=1:N_runs)
+                        hdr=load_nii_hdr([InputStruct(ksub).run(1).Input_nifti_file_path,'/',InputStruct(ksub).run(1).Input_nifti_file_prefix{i},'.nii']);
+                        numvol(i,1) = hdr.dime.dim(5);
+                    end
+                    ncumul     = cumsum(numvol);
+                    numix(:,1) = [0; ncumul(1:end-1)]+1;
+                    numix(:,2) = ncumul(1:end);
+                    vimg_temp = V.img; 
+                    for(i=1:N_runs)
+                        vimg_temp(:,:,:,numix(i,1):numix(i,2)) = bsxfun(@times, bsxfun(@rdivide,  vimg_temp(:,:,:,numix(i,1):numix(i,2)), vimg_temp(:,:,:,numix(i,1))  ), maskvol);
+                    end
+                    V.img = vimg_temp;
+                    save_untouch_nii(V,[dti_path,'/noddi_out/',noddi_inprefix,'.nii']);
+                end
+            end
+            
             if( ~exist([dti_path,'/noddi_out/NODDI_fit_odi.nii'],'file'))
 
                 % creating .mat ROI set
-                CreateROI( [dti_path,'/noddi_out/DTI_Multi_ec.nii'], [dti_path,'/noddi_out/template_FA_native_thr0.20.nii'], [dti_path,'/noddi_out/DTI_Multi_ROI.mat'] );
+                CreateROI( [dti_path,'/noddi_out/',noddi_inprefix,'.nii'], [dti_path,'/noddi_out/template_FA_native_thr0.20.nii'], [dti_path,'/noddi_out/DTI_Multi_ROI.mat'] );
                 % defining the NODDI protocol
-                protocol = FSL2Protocol([dti_path,'/noddi_out/DTI_Multi_ec.bval'], [dti_path,'/noddi_out/DTI_Multi_ec.bvec']);
+                if(strcmpi(EC_type,'ec'))       protocol = FSL2Protocol([dti_path,'/noddi_out/DTI_Multi_',EC_type,'.bval'], [dti_path,'/noddi_out/DTI_Multi_ec.bvec']);
+                elseif(strcmpi(EC_type,'eddy')) protocol = FSL2Protocol([dti_path,'/noddi_out/DTI_Multi_',EC_type,'.bval'], [dti_path,'/noddi_out/DTI_Multi_eddy.nii.eddy_rotated_bvecs']);
+                end
                 % make model
                 noddi = MakeModel('WatsonSHStickTortIsoV_B0');
 

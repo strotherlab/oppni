@@ -1,4 +1,4 @@
-function DTI_spat_norm(InputStruct,TEMPLATE_VOL, append_dir)
+function DTI_spat_norm(InputStruct,EC_type, append_dir)
 
 global NUMBER_OF_CORES
 NUMBER_OF_CORES = str2double(getenv('PIPELINE_NUMBER_OF_CORES'));

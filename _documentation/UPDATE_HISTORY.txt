@@ -21,6 +21,16 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 Overview Change Log:
 ------------------------------------------------------------------------------------
 
+[UPDATES 2017/05/16] by Nathan
+
+modifications to enable auto-detrending
+> Pipeline_PART1 (ln.656, 672, 901, 945)
+> Pipeline_PART2 (ln.613, 733)
+> get_pipe_list (ln.110)
+
+interpret_constast_list_str.m
+> earlier error check if incorrect analysis TYPE given
+
 [UPDATES 2017/03/14] by Nathan
 
 * corrected issue in block design modules where contrast SPMs were sign-flipped

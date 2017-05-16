@@ -615,8 +615,14 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
             
             for ik = iklist   % go through pipelines
                 Invol_name = ['m',num2str(pipe_temp(ik,1)),'c',num2str(pipe_temp(ik,2)),'p',num2str(pipe_temp(ik,3)),'t',num2str(pipe_temp(ik,4)),'s',num2str(pipe_temp(ik,5))];
-                nomem = sprintf('m%dc%dp%dt%ds%dd%dr%dx%dg%dl%dy%d',pipe_temp(ik,:));
-                NR = load(sprintf('%s/intermediate_metrics/regressors/reg%s/m%dc%dp%dt%ds%dd%dr%dx%dg%dl%dy%d.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).subjectprefix,pipe_temp(ik,:)));
+                if(pipe_temp(ik,6)==-1)
+                     nomem = sprintf('m%dc%dp%dt%ds%ddAr%dx%dg%dl%dy%d',pipe_temp(ik,[1:5 7:end]));
+                     NR = load(sprintf('%s/intermediate_metrics/regressors/reg%s/m%dc%dp%dt%ds%ddAr%dx%dg%dl%dy%d.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).subjectprefix,pipe_temp(ik,[1:5 7:end])));
+                else
+                     nomem = sprintf('m%dc%dp%dt%ds%dd%dr%dx%dg%dl%dy%d',pipe_temp(ik,:));
+                     NR = load(sprintf('%s/intermediate_metrics/regressors/reg%s/m%dc%dp%dt%ds%dd%dr%dx%dg%dl%dy%d.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).subjectprefix,pipe_temp(ik,:)));
+                end
+                
 
                 for krun = 1:Nrun(ksub)
 
@@ -735,9 +741,15 @@ else %% If only 1 pipeline being tested, this becomes the default output
 
             for ik = 1   % Only pipe1 files are generated
                 Invol_name = ['m',num2str(pipe_temp(ik,1)),'c',num2str(pipe_temp(ik,2)),'p',num2str(pipe_temp(ik,3)),'t',num2str(pipe_temp(ik,4)),'s',num2str(pipe_temp(ik,5))];
-                nomem = sprintf('m%dc%dp%dt%ds%dd%dr%dx%dg%dl%dy%d',pipe_temp(ik,:));
-                NR = load(sprintf('%s/intermediate_metrics/regressors/reg%s/m%dc%dp%dt%ds%dd%dr%dx%dg%dl%dy%d.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).subjectprefix,pipe_temp(ik,:)));
-
+                
+                if(pipe_temp(ik,6)==-1)
+                    nomem = sprintf('m%dc%dp%dt%ds%ddAr%dx%dg%dl%dy%d',pipe_temp(ik,[1:5 7:end]));
+                     NR = load(sprintf('%s/intermediate_metrics/regressors/reg%s/m%dc%dp%dt%ds%ddAr%dx%dg%dl%dy%d.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).subjectprefix,pipe_temp(ik,[1:5 7:end])));
+                else
+                    nomem = sprintf('m%dc%dp%dt%ds%dd%dr%dx%dg%dl%dy%d',pipe_temp(ik,:));
+                    NR = load(sprintf('%s/intermediate_metrics/regressors/reg%s/m%dc%dp%dt%ds%dd%dr%dx%dg%dl%dy%d.mat',InputStruct(ksub).run(1).Output_nifti_file_path,InputStruct(ksub).run(1).subjectprefix,pipe_temp(ik,:)));
+                end
+                
                 for krun = 1:Nrun(ksub)
 
                     aligned_suffix_alt = '_aligned';

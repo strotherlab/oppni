@@ -658,7 +658,11 @@ Subject_OutputDirOptimize = [OutputDirPrefix '/optimization_results'];
 N_run = length(volmat);
 EmptyCell = cell(1,N_run);
 % build pipeline prefix name -- and define current noise matrix
-nomen=[PipeHalfList 'd' num2str(DET)];
+if(DET==-1)
+nomen=[PipeHalfList 'dA'];
+else
+nomen=[PipeHalfList 'd' num2str(DET)];  
+end
 
 %%% ==== Step 2.3(b): regression-based preprocessing ==== %%%
 %
@@ -674,10 +678,15 @@ end
 for run_counter = 1:N_run
     Regressors{run_counter}.MP       = Xnoi_curr{run_counter};
     Regressors{run_counter}.Signal   = Xsig_curr{run_counter};
-    Regressors{run_counter}.NOISEROI = [];    
-    Regressors{run_counter}.DET      = DET;
+    Regressors{run_counter}.NOISEROI = []; 
+    if( DET==-1 )
+        Regressors{run_counter}.DET = 1+floor( (split_info_set{1}.TR_MSEC./1000) * (Ntime/2) ./ 150 );    
+    else
+        Regressors{run_counter}.DET      = DET;
+    end    
     Regressors{run_counter}.GSPC1    = [];
     Regressors{run_counter}.PHYPLUS  = [];
+    Regressors{run_counter}.TR = (split_info_set{1}.TR_MSEC./1000);
 end
 % General Linear Model regression:
 out_vol_denoi  = apply_glm( volmat, Regressors);
@@ -903,7 +912,11 @@ Ntime = size(volmat,2);
 split_info = split_info_set{1};
 
 % build pipeline prefix name -- and define current noise matrix
-nomen=[PipeHalfList 'd' num2str(DET)];
+if(DET==-1)
+nomen=[PipeHalfList 'dA'];
+else
+nomen=[PipeHalfList 'd' num2str(DET)];  
+end
 
 %%% ==== Step 2.3(b): regression-based preprocessing ==== %%%
 %
@@ -947,11 +960,14 @@ else
 end
 
 % General Linear Model regression on splits:
-Regressors.DET     = DET;
+if( DET==-1 )
+    Regressors.DET = 1+floor( (split_info_set{1}.TR_MSEC./1000) * (Ntime/2) ./ 150 );    
+else
+    Regressors.DET     = DET;
+end
 Regressors.NOISEROI= [];
 Regressors.GSPC1   = [];
 Regressors.PHYPLUS = [];
-
 
 %%% ==== Step 2.3(c): global signal removed ==== %%%
 %

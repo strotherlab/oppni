@@ -23,6 +23,9 @@ Overview Change Log:
 
 [UPDATES 2017/05/16] by Nathan
 
+automatically skips optimization if intermediate metrics not found
+> Pipeline_PART2.m (ln. 206)
+
 modifications to enable auto-detrending
 > Pipeline_PART1 (ln.656, 672, 901, 945)
 > Pipeline_PART2 (ln.613, 733)

@@ -38,7 +38,7 @@ def count_variations_pipeline_step(pipelineFile, descr):
         return len(digits.findall(stepLine))
 
 
-def is_done_spnorm(sub_prefix, out_dir):
+def is_done_spnorm(sub_prefix, out_dir, options = None):
     """
     Checks for the completeness of processing, according to the documentation provided in Pipeline_Part1.m
 
@@ -66,8 +66,14 @@ def is_done_spnorm(sub_prefix, out_dir):
 
     must_exist_list = list()
     must_exist_list.append(os.path.join(intProcFolder, 'spat_norm', 'Transmat_EPItoREF_'+ sub_prefix + '.mat'))
-    must_exist_list.append(os.path.join(optim_dir, 'spms', 'rSPM_' + sub_prefix + '_CON_FIX_IND_sNorm.nii'))
-    for scheme in cfg_pronto.CODES_OPTIM_SCHEMES:
+    # if options.analysis not in ["None", None, '']:
+    if options is None or options.opt_scheme.upper() == "ALL":
+        must_exist_list.append(os.path.join(optim_dir, 'spms', 'rSPM_' + sub_prefix + '_CON_FIX_IND_sNorm.nii'))
+        scheme_list = cfg_pronto.CODES_OPTIM_SCHEMES
+    elif options is not None:
+        scheme_list = [options.opt_scheme.upper(), ]
+
+    for scheme in scheme_list:
         must_exist_list.append(os.path.join(optim_dir, 'processed', 'Proc_' + sub_prefix + '_' + scheme + '_sNorm.nii'))
 
     exist_bool = map(os.path.exists, must_exist_list)
@@ -77,7 +83,7 @@ def is_done_spnorm(sub_prefix, out_dir):
         return True , " spat. norm : Done.      " + tick_mark
 
 
-def is_done_part1_afni(subPrefix, outFolder, numPipelineSteps):
+def is_done_part1_afni(subPrefix, outFolder, numPipelineSteps, options = None):
     """
     Checks for the completeness of processing, according to the documentation provided in Pipeline_Part1.m
 
@@ -111,7 +117,7 @@ def is_done_part1_afni(subPrefix, outFolder, numPipelineSteps):
         return True , " preproc : Done.      " + tick_mark
 
 
-def is_done_part1_stats(subPrefix, outFolder):
+def is_done_part1_stats(subPrefix, outFolder, options = None):
     """
     Checks for the completeness of processing in the fixed part of Part 1,
         according to the documentation provided in Pipeline_Part1.m
@@ -123,18 +129,21 @@ def is_done_part1_stats(subPrefix, outFolder):
     """
     intMetricFolder = os.path.join(outFolder, 'intermediate_metrics')
     param_file1 = os.path.join(intMetricFolder, 'res0_params', 'params_' + subPrefix + '.mat')
-    metricFile1 = os.path.join(intMetricFolder, 'res1_spms'  , 'spms_'   + subPrefix + '.mat')
-    metricFile2 = os.path.join(intMetricFolder, 'res2_temp'  , 'temp_'   + subPrefix + '.mat')
-    metricFile3 = os.path.join(intMetricFolder, 'res3_stats' , 'stats_'  + subPrefix + '.mat')
+    mustExistList = [param_file1]
 
-    mustExistList = (param_file1, metricFile1, metricFile2, metricFile3)
+    if options is not None and options.analysis not in ["None", None, '']:
+        metricFile1 = os.path.join(intMetricFolder, 'res1_spms'  , 'spms_'   + subPrefix + '.mat')
+        metricFile2 = os.path.join(intMetricFolder, 'res2_temp'  , 'temp_'   + subPrefix + '.mat')
+        metricFile3 = os.path.join(intMetricFolder, 'res3_stats' , 'stats_'  + subPrefix + '.mat')
+        mustExistList.extend([metricFile1, metricFile2, metricFile3])
+
     if not all_files_exist_in(mustExistList):
         return False, " Metrics : Incomplete " + crossed
     else:
         return True , " Metrics : Done.      " + tick_mark
 
 
-def is_done_group_mask_gen(out_dir):
+def is_done_group_mask_gen(out_dir, options = None):
     """
     Checks for the successful generation of group mask
 
@@ -157,7 +166,7 @@ def is_done_group_mask_gen(out_dir):
         return True
 
 
-def is_done_QC_part_one(out_dir):
+def is_done_QC_part_one(out_dir, options = None):
     """
     Checks for the completeness of Quality Control (Part 1)
 
@@ -186,7 +195,7 @@ def is_done_QC_part_one(out_dir):
         return False
 
 
-def is_done_QC_part_two(out_dir):
+def is_done_QC_part_two(out_dir, options = None):
     """
     Checks for the completeness of Quality Control (Part 2)
 
@@ -215,7 +224,7 @@ def is_done_QC_part_two(out_dir):
         return False
 
 
-def is_done_part_two_opt_summary(out_dir):
+def is_done_part_two_opt_summary(out_dir, options = None):
     """
     Checks for the completeness of processing in optimization (Part 2),
         according to the documentation provided in Pipeline_Part2.m.
@@ -224,6 +233,10 @@ def is_done_part_two_opt_summary(out_dir):
     :param out_dir:
     :rtype: bool
     """
+
+    # when the analysis model is None, no opt summary is produced.
+    if options is not None and options.analysis in ["None", None, '']:
+        return True
 
     optim_dir = os.path.join(out_dir, 'optimization_results')
     file1 = os.path.join(optim_dir, 'matfiles', 'optimization_summary.mat')
@@ -278,7 +291,7 @@ def parse_args_check(input_args):
     return inputFile, pipFile, args.not_verbose
 
 
-def run(input_args):
+def run(input_args, options = None):
     """
     Checks for the completeness of processing in both initial preprocessing stage (Part 1),
         as well as in the optimization stage (Part 2), and builds the list of failed subjects for reprocessing.
@@ -352,10 +365,10 @@ def run(input_args):
                     # pronto saves the optimization results in the output folder specified for the first subject
                     common_out_dir = out_dir
 
-                part1_preproc_done, msg1 = is_done_part1_afni(subjectPrefix, out_dir, numPipelineSteps)
-                part1_stats_done  , msg2 = is_done_part1_stats(subjectPrefix, out_dir)
+                part1_preproc_done, msg1 = is_done_part1_afni(subjectPrefix, out_dir, numPipelineSteps, options)
+                part1_stats_done  , msg2 = is_done_part1_stats(subjectPrefix, out_dir, options)
 
-                spnorm_done, msg3 = is_done_spnorm(subjectPrefix, out_dir)
+                spnorm_done, msg3 = is_done_spnorm(subjectPrefix, out_dir, options)
 
                 print('{:>15}:  {} \t {} \t {}'.format(subjectPrefix, msg1, msg2, msg3))
 
@@ -392,7 +405,7 @@ def run(input_args):
             print "\t resubmit list : ", resubmit_part1_file
 
         # part 2
-        proc_status.optimization = (failed_count_stats == 0) and is_done_part_two_opt_summary(common_out_dir)
+        proc_status.optimization = (failed_count_stats == 0) and is_done_part_two_opt_summary(common_out_dir, options)
         if not proc_status.optimization:
             print "P2 : Incomplete \n\t # sbujects whose stats need to be computed: {}".format(failed_count_stats)
         else:
@@ -416,11 +429,11 @@ def run(input_args):
             print "\t resubmit list : ", resubmit_spnorm_file
 
         # GMASK
-        proc_status.gmask = is_done_group_mask_gen(common_out_dir)
+        proc_status.gmask = is_done_group_mask_gen(common_out_dir, options)
 
         # QC
-        proc_status.QC1 = is_done_QC_part_one(common_out_dir)
-        proc_status.QC2 = is_done_QC_part_two(common_out_dir)
+        proc_status.QC1 = is_done_QC_part_one(common_out_dir, options)
+        proc_status.QC2 = is_done_QC_part_two(common_out_dir, options)
 
         if writable:
             resub_spnorm.close()

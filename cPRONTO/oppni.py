@@ -1086,7 +1086,10 @@ def update_status_and_exit(out_dir):
         prev_proc_status, prev_options, prev_input_file_all, \
         failed_sub_file, failed_spnorm_file, all_subjects = update_proc_status(out_dir)
 
-        estimate_processing_times(prev_input_file_all, prev_options, all_subjects)
+        try:
+            estimate_processing_times(prev_input_file_all, prev_options, all_subjects)
+        except:
+            print('Processing time could not be estimated.')
 
         if not prev_proc_status.all_done:
             print('Previous processing is incomplete.')
@@ -1121,7 +1124,7 @@ def update_proc_status(out_dir):
     with open(opt_file, 'rb') as of:
         all_subjects, options, new_input_file, _ = pickle.load(of)
         proc_status, failed_sub_file, failed_spnorm_file = check_proc_status.run(
-            [new_input_file, options.pipeline_file, '--skip_validation'])
+            [new_input_file, options.pipeline_file, '--skip_validation'], options)
     return proc_status, options, new_input_file, failed_sub_file, failed_spnorm_file, all_subjects
 
 
@@ -1701,7 +1704,7 @@ def submit_jobs():
         # notice the inputs are combined as a list
         print('\n Running a status check on previous processing ...')
         proc_status, rem_input_file, rem_spnorm_file = check_proc_status.run(
-            [input_file, options.pipeline_file, '--skip_validation', '--not_verbose'])
+            [input_file, options.pipeline_file, '--skip_validation', '--not_verbose'], options)
         for step in cfg_pronto.STEPS_PROCESSING_STATUS:
             if step is not 'all_done':
                 if not getattr(proc_status, step):
@@ -1794,13 +1797,18 @@ def submit_jobs():
             spnorm_step1_completed = True
 
     # submitting jobs for optimization
-    if run_part_two and options.analysis != "None" and proc_status.optimization is False:
+    if options.analysis in [ "None", None, '' ]:
+        print "WARNING: analysis model is NOT specified (specified by switch -a)"
+        print "\tNO optimization will be performed, OPPNI will generate ONLY the preprocessed data.\n"
+    elif run_part_two and proc_status.optimization is False:
         # optimization is done for ALL the subjects in the input file,
         # even though part 1 may have been rerun just for failed/unfinished subjects
         print('stats and optimization :')
         status_p2, job_ids_pTwo = run_optimization(unique_subjects, options, input_file, cur_garage)
         if options.run_locally is True and (status_p2 is False or status_p2 is None):
             raise Exception('Optimization failed.')
+    else:
+        raise ValueError('Unexpected or invalid state of flags in the wrapper.')
 
     # finishing up the spatial normalization
     if run_sp_norm:

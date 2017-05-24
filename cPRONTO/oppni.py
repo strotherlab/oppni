@@ -63,7 +63,7 @@ reCustReg = re.compile(r"CUSTOMREG=([\w\./+_-]+)[\s]*")
 
 # for the pipeline file
 rePip = re.compile('([0-9A-Z\s]+)=.+', re.IGNORECASE)
-rePip2 = re.compile(r'([0-9A-Z\s]+)=\[([\d,]*)\][\s]*')
+rePip2 = re.compile(r'([0-9A-Z\s]+)=\[([aA\d,]*)\][\s]*')
 
 
 def get_out_dir_line(line):
@@ -95,7 +95,7 @@ def validate_pipeline_file(pipeline_file):
     steps_list_file = []
     with open(pipeline_file) as pip_f:
         for line in pip_f.readlines():
-            steps_list_file.append(line.rstrip(' '))
+            steps_list_file.append(line.strip())
 
     steps_spec = rePip2.findall(' '.join(steps_list_file).upper())
     # steps_no_spec = map( lambda str1: str1.strip(' \n'), steps_no_spec)
@@ -104,7 +104,9 @@ def validate_pipeline_file(pipeline_file):
         if not step[0] in cfg_pronto.CODES_PREPROCESSING_STEPS:
             print('Error in pipeline file: %s' % pipeline_file)
             raise TypeError('Unrecognized pipeline step: %s' % step[0])
-        steps_dict[step[0]] = map(int, step[1].replace(',', ''))
+
+        step_values = step[1].replace(',', '')
+        steps_dict[step[0]] = [ int(val) if val.isdigit() else val for val in step_values]
 
     print('  Done.')
 

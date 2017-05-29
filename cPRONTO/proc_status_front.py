@@ -70,11 +70,9 @@ def is_done_spnorm(sub_prefix, out_dir, options = None):
     if options is None or options.opt_scheme.upper() == "ALL":
         must_exist_list.append(os.path.join(optim_dir, 'spms', 'rSPM_' + sub_prefix + '_CON_FIX_IND_sNorm.nii'))
         scheme_list = cfg_pronto.CODES_OPTIM_SCHEMES
-    elif options is not None:
-        scheme_list = [options.opt_scheme.upper(), ]
 
-    for scheme in scheme_list:
-        must_exist_list.append(os.path.join(optim_dir, 'processed', 'Proc_' + sub_prefix + '_' + scheme + '_sNorm.nii'))
+        for scheme in scheme_list:
+            must_exist_list.append(os.path.join(optim_dir, 'processed', 'Proc_' + sub_prefix + '_' + scheme + '_sNorm.nii'))
 
     exist_bool = map(os.path.exists, must_exist_list)
     if not all(exist_bool):

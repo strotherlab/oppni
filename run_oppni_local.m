@@ -1,4 +1,4 @@
-function run_oppni_local( subject_inputs, pipelines, analysis_model, TR_MSEC, contrast_list, TEMPLATE_VOL, VOXDIMS, DEOBLIQUE, TPATTERN, TOFWHM, opt_metric )
+function run_oppni_local( subject_inputs, pipelines, analysis_model, TR_MSEC, contrast_list, TEMPLATE_VOL, VOXDIMS, DEOBLIQUE, TPATTERN, TOFWHM, opt_metric, KEEPMEAN )
 %
 % RUN_OPPNI_LOCAL: script for running pipelines directly in matlab, for
 % instance where SGE system is not available.
@@ -40,6 +40,10 @@ else
     def_flag   = 0;
 end
 
+if nargin<12
+   KEEPMEAN = 0; 
+end
+
 %quick check to see if split_info specified, if not add it
 [subject_inputs make_splitfile] = Read_Inputs(subject_inputs,analysis_model);
 % now create the split_info file
@@ -56,11 +60,11 @@ if( isempty(pipelines) )
 end
 
 % run preprocessing pipeline
-Pipeline_PART1(subject_inputs,pipelines,analysis_model,[],0,contrast_list,false,DEOBLIQUE,TPATTERN);
+Pipeline_PART1(subject_inputs,pipelines,analysis_model,[],0,contrast_list,false,DEOBLIQUE,TPATTERN,TOFWHM,KEEPMEAN);
 % run optimization, if analysis model included
 if( ~strcmp(analysis_model ,'NONE') )
     if(def_flag>0) disp('WARNING: pipeline optimization uses default metric of dPR'); end
-    Pipeline_PART2(subject_inputs,opt_metric,[1 0],1,0);
+    Pipeline_PART2(subject_inputs,opt_metric,[1 0],1,KEEPMEAN);
 end
 
 % run spatial normalization

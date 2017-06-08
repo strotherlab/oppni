@@ -21,6 +21,23 @@ Can be used to track changes in code, and identify ongoing pipeline issues.
 Overview Change Log:
 ------------------------------------------------------------------------------------
 
+[UPDATES 2017/06/07] by Nathan
+
+* option to now retain voxel means if no analysis model is used
+
+Pipeline_PART1
+> add KEEPMEAN input argument (ln.1)
+> check for keepmean arguemtn (ln.211)
+> pass keepmean on to GLM (ln.503)
+> keepmean input for group GLM (ln.646)
+> store mean image (ln.662)
+> re-add mean if KEEPMEAN on, group (ln.781)
+> re-add mean if KEEPMEAN on, group, phyplus (ln.781)
+> keepmean input for indiv GLM (ln.897)
+> store mean image (ln.923)
+> re-add mean if KEEPMEAN on, group (ln.1061)
+> re-add mean if KEEPMEAN on, group, phyplus (ln.1152)
+
 [UPDATES 2017/05/16] by Nathan
 
 automatically skips optimization if intermediate metrics not found

@@ -1345,7 +1345,7 @@ def run_preprocessing(subjects, opt, input_file, garage):
     # matlab: Pipeline_PART1(InputStruct, input_pipeset, analysis_model, modelparam, niiout, contrast_list_str, dospnormfirst, DEOBLIQUE, TPATTERN, TOFWHM)
     # input file will be prepended in the process module
     arg_list = [opt.pipeline_file, opt.analysis, opt.model_param_list_str, opt.output_nii_also,
-                opt.contrast_list_str, str_dospnormfirst, opt.DEOBLIQUE, opt.TPATTERN, opt.BlurToFWHM]
+                opt.contrast_list_str, str_dospnormfirst, opt.DEOBLIQUE, opt.TPATTERN, opt.BlurToFWHM, opt.keepmean]
     proc_status, job_id_list = process_module_generic(subjects, opt, 'PART1', 'Pipeline_PART1', arg_list, garage, None)
 
     return proc_status, job_id_list

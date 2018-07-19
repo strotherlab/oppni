@@ -1324,6 +1324,10 @@ def local_exec(script_path):
     # logger = logging.getLogger(script_path + '.log')
 
     # make it executable
+
+    #adlofts add jun 26 2018
+    script_path = list(script_path)
+    script_path = script_path[0]
     st = os.stat(script_path)
     #st = os.stat(script_path)            #replaced with lines above
     print('Check the log file for progress:')
@@ -1663,6 +1667,13 @@ def run_jobs(job_paths, run_locally, num_procs, depends_on_step):
 
             # list of all script paths
 
+            print('JobValues')
+            print(job_paths)
+            print(job_paths.values())
+
+            #add by adlofts Jun 26 2018
+            jobs_list = list(job_paths.values())
+            #pool = Pool(len(jobs_list))
             pool = Pool()
 
             #removed

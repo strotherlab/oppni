@@ -1662,7 +1662,7 @@ def submit_queue(job, depends_on_steps):
     """ Helper to submit jobs to the queue, taking care of the inter-dependencies. Returns the job ID."""
     global hpc
 
-    qsub_path = 'qsub'  # find_executable('qsub')
+    qsub_path = which(hpc['spec']['submit_cmd'])  # find_executable('qsub')
 
     # encoding dependencies
     if depends_on_steps is not None:

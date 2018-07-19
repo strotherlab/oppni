@@ -2,7 +2,7 @@
 # OPPNI Tool: for fMRI pReprocessing and OptimizatioN Toolkit
 # Author: Pradeep Reddy Raamana <praamana@research.baycrest.org>
 # Version 0.6 (May 2016)
-
+from __future__ import print_function
 import argparse
 import json
 import os
@@ -15,10 +15,12 @@ import sys
 import tempfile
 import math
 import time
+import traceback
 import warnings
 from collections import OrderedDict
 from copy import copy
 from distutils.spawn import find_executable
+from shutil import which
 from multiprocessing import Pool
 from shutil import rmtree
 from time import localtime, strftime
@@ -39,7 +41,7 @@ DONE = True
 # noinspection PyGlobalUndefined
 global hpc
 hpc = {'type': 'SGE',
-       'shell': '#!/usr/bin/env bash',
+       'shell': '/bin/bash',
        'prefix': '#$',
        'spec': None,
        'header': '',
@@ -145,9 +147,11 @@ def version_strings_differ(ver1, ver2):
     "Method to control the level of version match."
 
     # removing new lines and spaces to make comparison easy
-    ver1 = ver1.lower().strip()
-    ver2 = ver2.lower().strip()
+    ver1 = ver1.lower().strip().decode('utf-8')
+    ver2 = ver2.lower().strip().decode('utf-8')
 
+    print(ver1)
+    print(ver2)
     versions_differ = not ver1.startswith(ver2)
 
     return versions_differ
@@ -196,7 +200,7 @@ def validate_input_file(input_file, options=None, new_input_file=None, cond_name
     if (new_input_file is None) or (options is None) or (options.use_prev_processing_for_QC):
         # in case of resubmission, or when applying QC on an existing processing from older versions of OPPNI,
         # this should not append additional layer
-        new_file = tempfile.TemporaryFile()
+        new_file = tempfile.TemporaryFile(mode='w')
         # in case of resubmission, this should not append additional layer
         cur_suffix = None
     else:
@@ -219,8 +223,8 @@ def validate_input_file(input_file, options=None, new_input_file=None, cond_name
                 subject['line'] = new_line
                 # if the key doesnt exist, dict returns None
                 if unique_subjects.get(subject['prefix']) is not None:
-                    print "Potential duplicate prefix in line {}: {}".format(line_count, subject['prefix'])
-                    print " \t Previously processed line contained this prefix."
+                    print("Potential duplicate prefix in line {}: {}".format(line_count, subject['prefix']))
+                    print(" \t Previously processed line contained this prefix.")
                     dupl_prefix_count += 1
                 unique_subjects[subject['prefix']] = subject
                 new_file.write(new_line)
@@ -311,19 +315,19 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
 
     # IN part
     if "IN=" not in LINE:
-        print "IN= section not defined."
+        print("IN= section not defined.")
         return (False, "")
     else:
         nii = reIn.search(line).group(1)
         if not os.path.isfile(nii):
-            print "Input file not found: " + nii
+            print("Input file not found: " + nii)
             return (False, "")
         else:
             subject['nii'] = nii
 
     # OUT part
     if "OUT=" not in LINE:
-        print "OUT= section not defined."
+        print("OUT= section not defined.")
         return (False, "")
     else:
         out = reOut.search(line).group(1)
@@ -351,17 +355,17 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
 
     # DROP part
     if "DROP=" not in LINE:
-        print "DROP= section not defined."
+        print("DROP= section not defined.")
         return (False, "")
     else:
         idx = reDrop.search(line).groups()
         if not len(idx) == 2:
-            print "Atleast two indices must be specified to drop from the start and end."
+            print("Atleast two indices must be specified to drop from the start and end.")
             return (False, "")
         elif (not all([ii.isdigit() for ii in idx])):
-            print "DROP indices must be numeric!"
+            print("DROP indices must be numeric!")
             return (False, "")
-        elif not all([ii >= 0 for ii in idx]):
+        elif not all([int(ii) >= 0 for ii in idx]):
             print("All the DROP indices must be non-negative.")
         else:
             subject['drop_beg'] = idx[0]
@@ -372,7 +376,7 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
     if "TASK=" in line:
         task = reTask.search(line).group(1)
         if not os.path.isfile(task):
-            print "Task file " + task + " not found."
+            print("Task file " + task + " not found.")
             return None, None
         else:
             validate_task_file(task, cond_names_in_contrast)
@@ -382,7 +386,7 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
     if "PHYSIO=" in LINE:
         physio = rePhysio.search(line).group(1)
         if not os.path.isfile(physio + '.puls.1D') or not os.path.isfile(physio + '.resp.1D'):
-            print "PHYSIO files (puls and/or resp) at " + physio + " not found."
+            print("PHYSIO files (puls and/or resp) at " + physio + " not found.")
             return None, None
         else:
             subject['physio'] = physio
@@ -391,7 +395,7 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
     if "STRUCT=" in LINE:
         struct = reStruct.search(line).group(1)
         if not os.path.isfile(struct):
-            print "STRUCT file " + struct + " not found."
+            print("STRUCT file " + struct + " not found.")
             return None, None
         else:
             subject['struct'] = struct
@@ -400,7 +404,7 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
     if "CUSTOMREG=" in LINE:
         mask = reCustReg.search(line).group(1)
         if not os.path.isfile(mask):
-            print "Binary mask " + mask + " not found."
+            print("Binary mask " + mask + " not found.")
             return None, None
         else:
             subject['mask'] = mask

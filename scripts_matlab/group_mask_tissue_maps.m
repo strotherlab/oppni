@@ -63,7 +63,6 @@ if nargin < 2
 end
 
 %% Load individual masks
-
 % opens the inputfile (includes subject/dataset names that preprocessing is performed on...
 fid   = fopen(inputfile);
 tline = fgetl(fid);
@@ -297,6 +296,7 @@ brain_volumes.MASK_fract = maskFract_vect;
 
 % save results to matfile
      % matlab-compatible
+     disp('END OF GMASK')
 save([newmaskname,'_spat_norm_qc.mat'],'brain_volumes','volume_stats', '-v7');
 
 
@@ -318,3 +318,4 @@ else
     thresh   = gaminv( 0.95, par_ab(1), par_ab(2) );
 end
 
+display('Checkpoint GMASK ALL DONE');

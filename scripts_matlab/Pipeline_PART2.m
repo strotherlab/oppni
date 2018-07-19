@@ -322,14 +322,30 @@ if(length(METRIC_set)>1) %% if more than one pipeline found, we do optimization.
     if( mot_gs_control(1)>0 && sum(pipeset(:,1)==1)>0 && sum(pipeset(:,1)==0)>0 )
        im0 = find( pipeset(:,1) ==0 );
        im1 = find( pipeset(:,1) ==1 );
-       for(j=1:length(im0)) Pm(j,1) = signrank( spat_mot( im0(j) ,:) - spat_mot( im1(j) ,:) ); end
+       inOctave = in_octave();
+       for (j=1:length(im0))
+            if inOctave
+                 disp('Modified signrank call to custom signrank_octave version');
+                 Pm(j,1) = signrank_octave( spat_mot(im0(j),:) - spat_mot( im1(j),:));
+            else     
+                 Pm(j,1) = signrank( spat_mot(im0(j),:) - spat_mot( im1(j) ,:));
+            end    
+       end
        KEEPFIX(im0,2) = double(Pm>0.05);       
     end
     % global signal
     if( mot_gs_control(2)>0 && sum(pipeset(:,9)==1)>0 && sum(pipeset(:,9)==0)>0 )
        im0 = find( pipeset(:,9) ==0 );
        im1 = find( pipeset(:,9) ==1 );
-       for(j=1:length(im0)) Pm(j,1) = signrank( spat_gsf( im0(j) ,:) - spat_gsf( im1(j) ,:) ); end
+       inOctave = in_octave(); 
+       for(j=1:length(im0))
+            if inOctave
+                 disp('Modified signrank call to custom signrank_octave version');
+                 Pm(j,1) = signrank_octave( spat_gsf( im0(j) ,:) - spat_gsf( im1(j) ,:) );
+            else
+                 Pm(j,1) = signrank( spat_gsf( im0(j) ,:) - spat_gsf( im1(j) ,:) );
+            end    
+       end
        KEEPFIX(im0,3) = double(Pm>0.05);       
     end   
     % combining
@@ -820,6 +836,10 @@ else %% If only 1 pipeline being tested, this becomes the default output
 end
 
 end
+
+
+disp('PART II IS NOW AT THE VERY END');
+
     
 function x = get_numvols(file)
 
@@ -832,3 +852,15 @@ else %otherwise need to inflate and load .nii
 end
 
 x = hdr.dime.dim(5);
+
+
+function inOctave = in_octave()
+
+try
+    ver_num = OCTAVE_VERSION;
+    inOctave = 1;
+    version_str = ['OCTAVE ' ver_num];
+catch
+    inOctave = 0;
+    version_str  = ['MATLAB ' version];
+end

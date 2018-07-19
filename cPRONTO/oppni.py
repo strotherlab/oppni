@@ -1474,7 +1474,7 @@ def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=N
         mfile_path = os.path.join(job_dir, mfile_name + '.m')
         with open(mfile_path, 'w') as mfile:
             mfile.write('\n')
-            mfile.write("try, {0}({1}); catch ME, display(ME.message); exit(1); end; exit;".format(step_cmd_matlab,
+            mfile.write("try, {0}({1}); catch ME, exc_report = getReport(ME); display('--->>> reporting exception details ..'); display(exc_report); display(' <<--- Done.'); exit(1); end; exit;".format(step_cmd_matlab,
                                                                                                    cmd_options))
             mfile.write('\n')
 

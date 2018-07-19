@@ -1,13 +1,13 @@
 function out = OPPNI_version_check( InputFile1, InputFile2, out_name, distatis_flag )
 %
 %
-% Syntax: 
+% Syntax:
 %             out = OPPNI_version_check( InputFile1, InputFile2, out_name, distatis_flag );
 %
-% Input:       
+% Input:
 %             InputFile1, InputFile2: strings, giving path+name of the input text-files
 %                                     used to generate OPPNI outputs being compared
-%             out_name              : name of output textfile summarizing comparison 
+%             out_name              : name of output textfile summarizing comparison
 %                                     between OPPNI outputs
 %             distatis_flag         : (optional) argument specifying if DISTATIS should be run
 %                                     to compare optimized SPMs.
@@ -34,12 +34,12 @@ fprintf(fin,'============== 1. CONSISTENCY CHECKS ==============\n\n');
 
 if( Nsubject1 ~= Nsubject2 ) %% check if number of subjects matches
     %
-    disp('Early termination. Number of subjects does not agree between versions'); 
+    disp('Early termination. Number of subjects does not agree between versions');
     fprintf(fin,'Number of data runs: %u (Output-1) %u (Output-2)..................[X] \n\tINCONSISTENT NUMBER OF LINES. ENDING EARLY.\n',Nsubject1,Nsubject2);
     clear Nsubject1 Nsubject2;
 else
-    fprintf(fin,'Number of data runs: %u (Output-1) %u (Output-2)..................[OK]\n',Nsubject1,Nsubject2);    
-    Nsubject= Nsubject1; 
+    fprintf(fin,'Number of data runs: %u (Output-1) %u (Output-2)..................[OK]\n',Nsubject1,Nsubject2);
+    Nsubject= Nsubject1;
     clear Nsubject1 Nsubject2;
 
     %% PART-1: checking optimization results
@@ -55,68 +55,71 @@ else
     Nspm2 = size( dout2.SPM_opt{1}.con,2 );
 
     if( Nspm1 ~= Nspm2 )
-        disp('Early termination. Inconsistent number of contrast SPMs'); 
-        fprintf(fin,'Number of contrast SPMs: %u (Output-1) %u (Output-2)................[X] \n\tINCONSISTENT NUMBER OF SPMS. ENDING EARLY.\n',Nspm1,Nspm2);        
+        disp('Early termination. Inconsistent number of contrast SPMs');
+        fprintf(fin,'Number of contrast SPMs: %u (Output-1) %u (Output-2)................[X] \n\tINCONSISTENT NUMBER OF SPMS. ENDING EARLY.\n',Nspm1,Nspm2);
         clear Nspm1 Nspm2;
     else
-        fprintf(fin,'Number of contrast SPMs: %u (Output-1) %u (Output-2)................[OK]\n',Nspm1,Nspm2);        
+        fprintf(fin,'Number of contrast SPMs: %u (Output-1) %u (Output-2)................[OK]\n',Nspm1,Nspm2);
         Nspm = Nspm1; clear Nspm1 Nspm2;
-        
+
         % consistency checking: available metrics
         metric_names1 = fieldnames( dout1.METRIC_opt.con );
         metric_names2 = fieldnames( dout2.METRIC_opt.con );
         metric_names  = intersect( metric_names1, metric_names2 );
 
         if( isempty(metric_names) )
-            disp('Early termination. No consistent metrics between code sets'); 
-            fprintf(fin,'All metrics consistent?...........................................[X] \n\t NO COMMON METRIC NAMES BETWEEN OUTPUTS. ENDING EARLY.\n');        
+            disp('Early termination. No consistent metrics between code sets');
+            fprintf(fin,'All metrics consistent?...........................................[X] \n\t NO COMMON METRIC NAMES BETWEEN OUTPUTS. ENDING EARLY.\n');
         else
-            
+
             % non-fatal consistency checks
-            
+
             % Number of matching metrics
             diff = setdiff( metric_names1,metric_names2 ); %% in 1 but not 2
-            if(~isempty(diff)) 
+            if(~isempty(diff))
                  out.flags.missing_metr_1 =diff;
             else out.flags.missing_metr_1 =[];
             end
             diff = setdiff( metric_names2,metric_names1 ); %% in 2 but not 1
-            if(~isempty(diff)) 
+            if(~isempty(diff))
                  out.flags.missing_metr_2 =diff;
             else out.flags.missing_metr_2 =[];
             end
             if( isempty(out.flags.missing_metr_1) &&  isempty(out.flags.missing_metr_2) )
-                      fprintf(fin,'All metrics consistent?...........................................[OK]\n');    
-            else      fprintf(fin,'All metrics consistent?...........................................[!!]\n');  
+                      fprintf(fin,'All metrics consistent?...........................................[OK]\n');
+            else      fprintf(fin,'All metrics consistent?...........................................[!!]\n');
                       if(~isempty(out.flags.missing_metr_1))
-                        fprintf(fin,'\tOutput-1 metrics (%s) not found in Output-2, omitted from comparisons.\n',strjoin(out.flags.missing_metr_1(:)',',')); 
+                        fprintf(fin,'\tOutput-1 metrics (%s) not found in Output-2, omitted from comparisons.\n',strjoin(out.flags.missing_metr_1(:)',','));
                       end
                       if(~isempty(out.flags.missing_metr_2))
-                        fprintf(fin,'\tOutput-2 metrics (%s) not found in Output-1, omitted from comparison.\n',strjoin(out.flags.missing_metr_2(:)',',')); 
+                        fprintf(fin,'\tOutput-2 metrics (%s) not found in Output-1, omitted from comparison.\n',strjoin(out.flags.missing_metr_2(:)',','));
                       end
-            end   
+            end
             clear metric_names1 metric_names2;
 
             % Voxel consistency testing
             Nvox1=zeros(Nsubject,1);
-            Nvox2=zeros(Nsubject,1);            
+            Nvox2=zeros(Nsubject,1);
             for(i=1:Nsubject)
                 Nvox1(i,1) = size( dout1.SPM_opt{i}.con, 1 );
                 Nvox2(i,1) = size( dout2.SPM_opt{i}.con, 1 );
             end
-            if( sum(Nvox1 == Nvox2)<Nsubject ) 
-                fprintf(fin,'Same number of brain voxels?......................................[!!]\n');    
-                fprintf(fin,'\tMismatched voxels for %u of %u subjects - have the brain masks changed?\n\tSPM comparisons will not be performed\n',sum(Nvox1 == Nvox2),Nsubject);  
+            if( sum(Nvox1 == Nvox2)<Nsubject )
+                fprintf(fin,'Same number of brain voxels?......................................[!!]\n');
+                fprintf(fin,'\tMismatched voxels for %u of %u subjects - have the brain masks changed?\n\tSPM comparisons will not be performed\n',sum(Nvox1 == Nvox2),Nsubject);
                 out.flags.diffvox=1;
+                disp([Nvox1, Nvox2])
+                disp(InputStruct1(:).run(1))
+                return
             else
                 fprintf(fin,'Same number of brain voxels?......................................[OK]\n');
                 out.flags.diffvox=0;
             end
-            
+
             % Tested pipeline set consistency
             pipe_names1 = dout1.pipeline_sets.pipenames;
             pipe_names2 = dout2.pipeline_sets.pipenames;
-            pipe_names  = intersect( pipe_names1, pipe_names2,'stable' );  
+            pipe_names  = intersect( pipe_names1, pipe_names2,'stable' );
             % for later examination of pipes
             pipe_idx12  = zeros( length(pipe_names),2 );
             for(i=1:size(pipe_idx12,1))
@@ -124,36 +127,36 @@ else
             end
             % checking for specific discrepancies
             diff = setdiff( pipe_names1,pipe_names2 ); %% in 1 but not 2
-            if(~isempty(diff)) 
+            if(~isempty(diff))
                  out.flags.missing_pipe_1 =diff;
             else out.flags.missing_pipe_1 =[];
             end
             diff = setdiff( pipe_names2,pipe_names1 ); %% in 2 but not 1
-            if(~isempty(diff)) 
+            if(~isempty(diff))
                  out.flags.missing_pipe_2 =diff;
             else out.flags.missing_pipe_2 =[];
             end
             if( isempty(out.flags.missing_pipe_1) &&  isempty(out.flags.missing_pipe_2) )
-                      fprintf(fin,'Number of pipeline steps consistent?..............................[OK]\n');    
-            else      fprintf(fin,'Number of pipeline steps consistent?..............................[!!]\n');  
+                      fprintf(fin,'Number of pipeline steps consistent?..............................[OK]\n');
+            else      fprintf(fin,'Number of pipeline steps consistent?..............................[!!]\n');
                       if(~isempty(diff_struct.checks.missing_metr_1))
-                        fprintf(fin,'\tOutput-1 steps (%s) not found in Output-2\n\tFurther testing only examines consistent steps.\n',strjoin(out.flags.missing_pipe_1(:)',',')); 
+                        fprintf(fin,'\tOutput-1 steps (%s) not found in Output-2\n\tFurther testing only examines consistent steps.\n',strjoin(out.flags.missing_pipe_1(:)',','));
                       end
                       if(~isempty(out.flags.missing_metr_2))
-                        fprintf(fin,'\tOutput-2 steps (%s) not found in Output-1\n\tFurther testing only examines consistent steps.\n',strjoin(out.flags.missing_pipe_2(:)',',')); 
+                        fprintf(fin,'\tOutput-2 steps (%s) not found in Output-1\n\tFurther testing only examines consistent steps.\n',strjoin(out.flags.missing_pipe_2(:)',','));
                       end
-            end     
+            end
             clear pipe_names1 pipe_names2;
 
-            if( ~strcmp(dout1.pipeline_sets.optimize_metric,dout2.pipeline_sets.optimize_metric) ) 
-                fprintf(fin,'Same optimization metric?.........................................[!!]\n');    
-                fprintf(fin,'\tOutput-1 optimizes on (%s) but Output-2 optimizes on (%s).\n',dout1.pipeline_sets.optimize_metric,dout2.pipeline_sets.optimize_metric); 
+            if( ~strcmp(dout1.pipeline_sets.optimize_metric,dout2.pipeline_sets.optimize_metric) )
+                fprintf(fin,'Same optimization metric?.........................................[!!]\n');
+                fprintf(fin,'\tOutput-1 optimizes on (%s) but Output-2 optimizes on (%s).\n',dout1.pipeline_sets.optimize_metric,dout2.pipeline_sets.optimize_metric);
             else
                 fprintf(fin,'Same optimization metric?.........................................[OK]\n');
             end
 
             fprintf(fin,'\n============== 2. OPTIMIZATION OUTPUTS ==============\n\n');
-                        
+
             % consistency checking: number of pipeline steps
 
             % diff on pipelines
@@ -163,16 +166,16 @@ else
             diffs_ppl = [max(abs(diffs_con)) max(abs(diffs_fix)) max(max(abs(diffs_ind)))];
 
             if( max(diffs_ppl) > 1E-6 ) %% any major differences in pipes
-                      
-                fprintf(fin,'Comparing optimal pipelines.......................................[!!]\n');    
+
+                fprintf(fin,'Comparing optimal pipelines.......................................[!!]\n');
                 fprintf(fin,'\tDifferences in: ');
                 if(max(abs(diffs_con))     >1E-6) fprintf(fin,'CON, '); end
                 if(max(abs(diffs_fix))     >1E-6) fprintf(fin,'FIX, '); end
                 if(max(max(abs(diffs_ind)))>1E-6) olix = find(max(abs(diffs_ind),[],2) > 1E-6 );
-                                                  fprintf(fin,'IND (%u of %u runs): %s\n',length(olix),Nsubject,num2str(olix(:)','%u,')); 
+                                                  fprintf(fin,'IND (%u of %u runs): %s\n',length(olix),Nsubject,num2str(olix(:)','%u,'));
                 end
             else
-                fprintf(fin,'Comparing optimal pipelines.......................................[OK]\n');                    
+                fprintf(fin,'Comparing optimal pipelines.......................................[OK]\n');
             end
 
             % diff on metrics
@@ -186,42 +189,42 @@ else
             end
 
             if( max(diffs_metric(:)) > 1E-6 ) %% any major differences in pipes
-                      
-                fprintf(fin,'Comparing optimized metrics.......................................[!!]\n');    
+
+                fprintf(fin,'Comparing optimized metrics.......................................[!!]\n');
                 fprintf(fin,'\tDifferences in: \n');
-                if(max(max(diffs_metric(:,:,1))) >1E-6) 
+                if(max(max(diffs_metric(:,:,1))) >1E-6)
                     olix=find( max(diffs_metric(:,:,1),[],2) > 1E-6);
                     fprintf(fin,'\tCON (%u of %u runs): %s\n',length(olix),Nsubject,num2str(olix(:)','%u,'));
                     cato=[];
-                    for(i=1:length(metric_names)) cato = [cato,sprintf( '(%s)=%0.3f, ',metric_names{i},mean(diffs_metric(olix,i,1)) )]; end
+                    for(i=1:length(metric_names)) cato = [cato,sprintf( '(%s)=%f, ',metric_names{i},mean(diffs_metric(olix,i,1)) )]; end
                     fprintf(fin,'\t\tMean abs. difference, in runs showing changes: %s\n',cato);
                 end
-                if(max(max(diffs_metric(:,:,2))) >1E-6) 
+                if(max(max(diffs_metric(:,:,2))) >1E-6)
                     olix=find( max(diffs_metric(:,:,2),[],2) > 1E-6);
                     fprintf(fin,'\tFIX (%u of %u runs): %s\n',length(olix),Nsubject,num2str(olix(:)','%u,'));
                     cato=[];
-                    for(i=1:length(metric_names)) cato = [cato,sprintf( '(%s)=%0.3f, ',metric_names{i},mean(diffs_metric(olix,i,2)) )]; end
+                    for(i=1:length(metric_names)) cato = [cato,sprintf( '(%s)=%f, ',metric_names{i},mean(diffs_metric(olix,i,2)) )]; end
                     fprintf(fin,'\t\tMean abs. difference, in runs showing changes: %s\n',cato);
                 end
                 if(max(max(diffs_metric(:,:,3))) >1E-6)
                     olix=find( max(diffs_metric(:,:,3),[],2) > 1E-6);
                     fprintf(fin,'\tIND (%u of %u runs): %s\n',length(olix),Nsubject,num2str(olix(:)','%u,'));
                     cato=[];
-                    for(i=1:length(metric_names)) cato = [cato,sprintf( '(%s)=%0.3f, ',metric_names{i},mean(diffs_metric(olix,i,3)) )]; end
+                    for(i=1:length(metric_names)) cato = [cato,sprintf( '(%s)=%f, ',metric_names{i},mean(diffs_metric(olix,i,3)) )]; end
                     fprintf(fin,'\t\tMean abs. difference, in runs showing changes: %s\n',cato);
-                end                
+                end
             else
-                fprintf(fin,'Comparing optimized metrics.......................................[OK]\n');                    
+                fprintf(fin,'Comparing optimized metrics.......................................[OK]\n');
             end
-            
+
             % diff on spms
             if( Nvox1 == Nvox2 )
-                
+
                 for i = 1:Nsubject
                     for j = 1:length(ppltype)
 
-                        val1 = dout1.SPM_opt{i}.(ppltype{j});            
-                        val2 = dout2.SPM_opt{i}.(ppltype{j});           
+                        val1 = dout1.SPM_opt{i}.(ppltype{j});
+                        val2 = dout2.SPM_opt{i}.(ppltype{j});
                         diff_spms(i,:,j) = max( abs(val1 - val2) ); %./abs(val1 + val2) );
                         corr_spms(i,:,j) = diag(corr(val1,val2));
                     end
@@ -229,16 +232,16 @@ else
 
                 if( max(diff_spms(:)) > 1E-6 ) %% any major differences in pipes
 
-                    fprintf(fin,'Comparing optimized SPMs..........................................[!!!]\n');    
+                    fprintf(fin,'Comparing optimized SPMs..........................................[!!!]\n');
                     fprintf(fin,'\tDifferences in: \n');
-                    if(max(max(diff_spms(:,:,1))) >1E-6) 
+                    if(max(max(diff_spms(:,:,1))) >1E-6)
                         olix=find( max(diff_spms(:,:,1),[],2) > 1E-6);
                         fprintf(fin,'\tCON (%u of %u runs): %s\n',length(olix),Nsubject,num2str(olix(:)','%u,'));
                         cato=[];
                         for(i=1:size(diff_spms,2)) cato = [cato,sprintf( '(contrast-%u)=%0.3f, ',i,mean(corr_spms(olix,i,1)) )]; end
                         fprintf(fin,'\t\tMean SPM corr., in runs showing changes: %s\n',cato);
                     end
-                    if(max(max(diff_spms(:,:,2))) >1E-6) 
+                    if(max(max(diff_spms(:,:,2))) >1E-6)
                         olix=find( max(diff_spms(:,:,2),[],2) > 1E-6);
                         fprintf(fin,'\tFIX (%u of %u runs): %s\n',length(olix),Nsubject,num2str(olix(:)','%u,'));
                         cato=[];
@@ -251,35 +254,35 @@ else
                         cato=[];
                         for(i=1:size(diff_spms,2)) cato = [cato,sprintf( '(contrast-%u)=%0.3f, ',i,mean(corr_spms(olix,i,3)) )]; end
                         fprintf(fin,'\t\tMean SPM corr., in runs showing changes: %s\n',cato);
-                    end                
+                    end
                 else
-                    fprintf(fin,'Comparing optimized SPMs..........................................[OK]\n');                    
-                end  
-                
+                    fprintf(fin,'Comparing optimized SPMs..........................................[OK]\n');
+                end
+
                 %%%%%%%%%%% OPTIONAL DISTATIS PREP. %%%%%%%%%%%%%%%%
-                
+
                 % On spms
                 CCmat=[];
                 if( distatis_flag>0 ) %% any major differences in metrics
                     if( max(diff_spms(:)) > 1E-6 )
-                        
-                        disp('Setting up DISTATIS...');                        
-                        %    
+
+                        disp('Setting up DISTATIS...');
+                        %
                         CCmat = zeros( 6,6, Nsubject );
                         for i = 1:Nsubject
                             vall12set = zeros( Nvox1(i), 2*Nspm );
                             for j = 1:length(ppltype)
-                                vall12set(:, j ) = dout1.SPM_opt{i}.(ppltype{j})(:);            
-                                vall12set(:,j+3) = dout2.SPM_opt{i}.(ppltype{j})(:);          
+                                vall12set(:, j ) = dout1.SPM_opt{i}.(ppltype{j})(:);
+                                vall12set(:,j+3) = dout2.SPM_opt{i}.(ppltype{j})(:);
                             end
                             CCmat(:,:,i) = corr( vall12set );
-                        end 
+                        end
                     else
                         disp('Skipping DISTATIS - no significant differences in SPMs');
                     end
                 end
                 %%%%%%%%%%% OPTIONAL DISTATIS PREP %%%%%%%%%%%%%%%%
-                
+
             end
 
             fprintf(fin,'\n============== 3. INTERMEDIATE OUTPUTS ==============\n\n');
@@ -287,7 +290,7 @@ else
             % first check if mismatched on metrics
             dout1 = load([InputStruct1(1).run(1).Output_nifti_file_path, '/intermediate_metrics/res3_stats/stats' InputStruct1(1).run(1).subjectprefix '.mat']);
             dout2 = load([InputStruct2(1).run(1).Output_nifti_file_path, '/intermediate_metrics/res3_stats/stats' InputStruct2(1).run(1).subjectprefix '.mat']);
-            
+
             % checking to see if pipeline steps being tested are consistent
             if( size(dout1.pipeset,1) ~= size(dout2.pipeset,1) )
                 fprintf(fin,'Same set of tested steps?.........................................[X]\n');
@@ -299,8 +302,8 @@ else
                 fprintf(fin,'Same set of tested steps?.........................................[X]\n');
                 fprintf(fin,'\Same total #pipelines, but not using common set of steps - check your input files\n');
             else
-                fprintf(fin,'Same set of tested steps?.........................................[OK]\n');                
-                
+                fprintf(fin,'Same set of tested steps?.........................................[OK]\n');
+
                 % -- common pipeline list --
                 pipeset = dout1.pipeset;
                 clear diffx;
@@ -317,21 +320,21 @@ else
                         end
                     end
                 end
-                
+
                 diffx = permute( max(diffx,[],1), [3 2 1]);
-            
+
                 if( max(diffx(:)) > 1E-6 ) %% any major differences in pipes (subj x ppln x metric)
 
-                    fprintf(fin,'Comparing all pipeline metrics....................................[!!]\n');    
+                    fprintf(fin,'Comparing all pipeline metrics....................................[!!]\n');
                     fprintf(fin,'\tDifferences in: \n');
-                    
+
                     olix=find( max(max(diffx,[],3),[],2) > 1E-6);
                     fprintf(fin,'\tRuns (%u of %u): %s\n',length(olix),Nsubject,num2str(olix(:)','%u,'));
                     olix=find( max(max(diffx,[],3),[],1) > 1E-6);
                     fprintf(fin,'\tPipelines (%u of %u)\n',length(olix),size(pipeset,1));
-                
+
                     %============= more detailed determination
-                    diffx_ppl = max(max( diffx,[],1 ),[],3 );       
+                    diffx_ppl = max(max( diffx,[],1 ),[],3 );
                     for(t=1:size(pipeset,2))
                         uniq=unique(pipeset(:,t));
                         if( length(uniq)>1 )
@@ -346,17 +349,17 @@ else
                     end
                     cato=[];
                     for(i=1:length(effecte)) if(effecte(i)) cato=[cato pipe_names{i},',']; end; end
-                    fprintf(fin,'\tSteps that alter output: %s\n',cato);  
+                    fprintf(fin,'\tSteps that alter output: %s\n',cato);
                     fprintf(fin,'\ti.e., step OFF sometimes gives identical outputs,\n\t ON always causes difference; or vice-versa)\n');
                 else
-                    fprintf(fin,'Comparing all pipeline metrics....................................[OK]\n');    
+                    fprintf(fin,'Comparing all pipeline metrics....................................[OK]\n');
                 end
-               
+
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % diff on spms
                 if( Nvox1 == Nvox2 )
-                 
-                    clear diffx corrx;                    
+
+                    clear diffx corrx;
                     for( ksub=1:Nsubject )
 
                         disp(['runs_,',num2str(ksub),'_of_',num2str(Nsubject)]),
@@ -373,7 +376,7 @@ else
 
                     if( max(diffx(:)) > 1E-6 ) %% any major differences in pipes (subj x ppln x contr)
 
-                        fprintf(fin,'Comparing all pipeline SPMs.......................................[!!]\n');    
+                        fprintf(fin,'Comparing all pipeline SPMs.......................................[!!]\n');
                         fprintf(fin,'\tDifferences in: \n');
 
                         olix=find( max(max(diffx,[],3),[],2) > 1E-6);
@@ -382,7 +385,7 @@ else
                         fprintf(fin,'\tPipelines (%u of %u)\n',length(olix),size(pipeset,1));
 
                         %============= more detailed determination
-                        diffx_ppl = max(max( diffx,[],1 ),[],3 );       
+                        diffx_ppl = max(max( diffx,[],1 ),[],3 );
                         for(t=1:size(pipeset,2))
                             uniq=unique(pipeset(:,t));
                             if( length(uniq)>1 )
@@ -397,13 +400,13 @@ else
                         end
                         cato=[];
                         for(i=1:length(effecte)) if(effecte(i)) cato=[cato pipe_names{i},',']; end; end
-                        fprintf(fin,'\tSteps that alter output: %s\n',cato);  
+                        fprintf(fin,'\tSteps that alter output: %s\n',cato);
                         fprintf(fin,'\ti.e., step OFF sometimes gives identical outputs,\n\t ON always causes difference; or vice-versa)\n');
                     else
-                        fprintf(fin,'Comparing all pipeline SPMs.......................................[OK]\n');    
+                        fprintf(fin,'Comparing all pipeline SPMs.......................................[OK]\n');
                     end
 
-                    
+
                 end
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
             end
@@ -412,7 +415,7 @@ else
 end
 
 if( distatis_flag>0 )
-    fprintf(fin,'\n\nChecking average cross-correlations between optimized SPMs...\n');   
+    fprintf(fin,'\n\nChecking average cross-correlations between optimized SPMs...\n');
     if( isempty(CCmat) )
         fprintf(fin,'No measurable differences (all correlations ~1)\n');
     else
@@ -421,24 +424,28 @@ if( distatis_flag>0 )
         colist={'CON(1)','FIX(1)','IND(1)','CON(2)','FIX(2)','IND(2)'};
         for(l=1:6)
             cvct = mean( CCmat(l,:,:),3 );
-            fprintf(fin,' %s|   %s|\n',colist{l},num2str(cvct,'%0.2f   '));  
+            fprintf(fin,' %s|   %s|\n',colist{l},num2str(cvct,'%0.2f   '));
             if(l<6)
             fprintf(fin,'       |                                          |\n');
             end
         end
-        fprintf(fin,'       --------------------------------------------\n');        
+        fprintf(fin,'       --------------------------------------------\n');
         fprintf(fin,'\n');
     end
-end
 
-fclose(fin); 
 
 %%%====================================================%%%
 if( ~isempty(CCmat) )
 % running distatis to test for differences
-out = DISTATIS_quick( CCmat, 'dist', 'krbkrb', '---:::', 500 );   
+out = DISTATIS_quick( CCmat, 'dist', 'krbkrb', '---:::', 500 );
 end
 %%%====================================================%%%
+
+end
+
+fclose(fin);
+
+
 
 %%
 function x = get_numvols(file)
@@ -468,23 +475,23 @@ function out = DISTATIS_quick( CCmat, type, colorset, typestr, Niter )
 %         (e.g. a correlation matix), between K different conditions.
 %         It requires a (KxK) matrix per subject, with at least 5 input
 %         subjects, to obtain a stable solution
-%         
-%          CCmat    : 3D matrix of "stacked" 2D distance/similarity matrices. 
+%
+%          CCmat    : 3D matrix of "stacked" 2D distance/similarity matrices.
 %                     For N subjects, CCmat has dimensions (K x K x N)
 %          type     : string specifying what type of measure CCmat contains.
 %                       'sim' = similarity matrix (e.g. correlations)
 %                       'dist'= distance matrix   (e.g. euclidean distance)
 %
 %          colorset : a (K x 3) matrix, where the kth row denotes the RGB colour
-%                     when plotting condition k (k=1...K). 
+%                     when plotting condition k (k=1...K).
 %                     If colorset=[], colour values are randomly assigned
-%          typestr  : vector of characters, where the kth element determines 
+%          typestr  : vector of characters, where the kth element determines
 %                     the line formatting for the ellipse of condition k (k=1...K)
 %                     If typestr=[], all ellipses have format '-'
 %          Niters   : number of bootstrap resamples, used to estimate
 %                     components (at least Niters=50 recommended)
 %
-% Output: 
+% Output:
 %          Produces a multidimensional scaling plot of the K 95% CI ellipses
 %          of each condition (obtained via Boostrap resampling). This plot
 %          shows the first 2PCs of greatest variance in DISTATIS space.
@@ -525,14 +532,14 @@ if( isempty(Niter)    ) Niter    = 1000; end
 E = eye(K) - ones(K)./K;
 % initialize scp matrix
 SCP = zeros( size(CCmat) );
-% 
+%
 if    ( strcmp(type, 'sim' ) ) for(n=1:N) SCP(:,:,n) = 0.5*E*CCmat(:,:,n)*E; end
 elseif( strcmp(type, 'dist') ) for(n=1:N) SCP(:,:,n) =-0.5*E*CCmat(:,:,n)*E; end
 else                           error('invalid datatype');
 end
 % normalize each matrix by first eigenvalue
 for(n=1:N)
-    [v l] = svd(SCP(:,:,n)); 
+    [v l] = svd(SCP(:,:,n));
     SCP(:,:,n) = SCP(:,:,n) ./ l(1,1);
 end
 
@@ -570,13 +577,13 @@ RP     = V(:,1:PCmax) * sqrt(inv(L(1:PCmax,1:PCmax)));
 F_boot = zeros( K, PCmax, Niter );
 
 for( bb=1:Niter )
-    
+
     disp(['boostrap iter:_',num2str(bb),'/',num2str(Niter)]);
-    
+
     % bootstrapped SCP matrix
     list     = ceil(N*rand(N,1));
     SCP_boot = SCP(:,:,list);
-    
+
     % initialize RV matrix
     RVmat = ones(N);
     % populate RV matrix
@@ -615,7 +622,7 @@ pc12lim = max([pc1lim pc2lim]);
 
 % go through and estimate CI parameters
 for(k=1:K)
-    
+
     % bootstrapped
     F_temp = F_boot(:,:,k);
 
@@ -641,7 +648,7 @@ for(k=1:K)
     % point on CI boundary in pc-space
     qx_bnd = q(ibound,1);
     qy_bnd = q(ibound,2);
-    
+
     % NB: 'a' = major (x) axis, 'b' = minor (y) axis
     % fractional scaling ratio 'c' of b/a
     c = l(2,2)./l(1,1);
@@ -649,7 +656,7 @@ for(k=1:K)
     a = sqrt( qx_bnd.^2 + (qy_bnd.^2)./(c.^2) );
     % scaling on 'b'
     b = a.*c;
-    
+
     % angle of major axis (relative to x)
     phi = atan( v(2,1) ./ v(1,1) );
     % degrees in rad.
@@ -657,7 +664,7 @@ for(k=1:K)
     % trace of ellipse in (x,y) coordinates
     xe = xo + a*cos(t)*cos(phi) - b*sin(t)*sin(phi);
     ye = yo + a*cos(t)*sin(phi) + b*sin(t)*cos(phi);
-    
+
     plot( xo,yo,'ok', 'markersize',4, 'markerfacecolor', colorset(k,:) ); hold on;
     plot( xe,ye, typestr(k), 'color', colorset(k,:), 'linewidth', 2);
 end

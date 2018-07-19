@@ -1503,7 +1503,8 @@ def process_group_mask_generation(subjects, opt, input_file, garage):
 
 def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=None, job_dir=None):
     """Helper to construct the necessary complete commands for various parts of the OPPNI processing."""
-    if environment.lower() in ('matlab', 'octave'):
+    if environment.lower() in ('matlab'):
+        oppni_matlab_path = os.getenv('OPPNI_PATH_MATLAB_ORIG')
         single_quoted = lambda s: r"'{}'".format(s)
 
         cmd_options = ', '.join(map(single_quoted, arg_list))
@@ -1514,8 +1515,8 @@ def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=N
         mfile_path = os.path.join(job_dir, mfile_name + '.m')
         with open(mfile_path, 'w') as mfile:
             mfile.write('\n')
-            mfile.write("try, {0}({1}); catch ME, exc_report = getReport(ME); display('--->>> reporting exception details ..'); display(exc_report); display(' <<--- Done.'); exit(1); end; exit;".format(step_cmd_matlab,
-                                                                                                   cmd_options))
+            mfile.write("addpath(genpath('{}'));".format(oppni_matlab_path))
+            mfile.write("try, {0}({1}); catch ME, exc_report = getReport(ME); display('--->>> reporting exception details ..'); display(exc_report); display(' <<--- Done.'); exit(1); end; exit;".format(step_cmd_matlab,cmd_options))
             mfile.write('\n')
 
         # # problem: -nojvm omitted to allow future comptibility

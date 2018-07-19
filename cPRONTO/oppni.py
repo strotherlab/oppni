@@ -660,6 +660,7 @@ def parse_args_check():
     # updating the status to the user if requested.
     if options.status_update_in is not None and options.input_data_orig is None:
         cur_garage = os.path.abspath(options.status_update_in)
+        print('PLASE GET HERE')
         update_status_and_exit(cur_garage)
     elif options.val_input_file_path is not None and options.input_data_orig is None:
         # performing a basic validation
@@ -1140,14 +1141,16 @@ def update_status_and_exit(out_dir):
     # update_Q_status(out_dir)
     print('\nNow checking the outputs on disk ...')
     try:
+        print('Checkpoint W')
         prev_proc_status, prev_options, prev_input_file_all, \
         failed_sub_file, failed_spnorm_file, all_subjects = update_proc_status(out_dir)
-
+        print('Checkpoint Wa')
         try:
             estimate_processing_times(prev_input_file_all, prev_options, all_subjects)
         except:
             print('Processing time could not be estimated.')
-
+        print('Checkpoint Wb')
+        print(prev_proc_status.all_done)
         if not prev_proc_status.all_done:
             print('Previous processing is incomplete.')
             if failed_sub_file is not None and failed_spnorm_file is not None:
@@ -1181,6 +1184,7 @@ def update_proc_status(out_dir):
     with open(opt_file, 'rb') as of:
         all_subjects, options, new_input_file, _ = pickle.load(of)
         print(new_input_file)
+        print('YEEEEEEEEEEEEEEEE')
         proc_status, failed_sub_file, failed_spnorm_file = check_proc_status.run(
             [new_input_file, options.pipeline_file, '--skip_validation'], options)
     return proc_status, options, new_input_file, failed_sub_file, failed_spnorm_file, all_subjects
@@ -1277,6 +1281,7 @@ def make_job_file_and_1linecmd(file_path):
         hpc_directives.append('{0} {1} {2}'.format(hpc['prefix'], hpc['spec']['workdir'], os.path.dirname(file_path)))
     else:
         # for jobs to run locally, no hpc directives are needed.
+
         hpc_directives.append('#!/bin/bash')
 
         #add adlofts Jun 26 2018
@@ -1340,6 +1345,7 @@ def local_exec(script_path):
 
     os.chmod(script_path, st.st_mode | stat.S_IXGRP)
 
+    print('B')
     proc = subprocess.Popen(script_path, shell=True, stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
@@ -1620,10 +1626,14 @@ def process_module_generic(subjects, opt, step_id, step_cmd_matlab, arg_list, ga
             jobs_dict[subject['prefix']] = make_single_job(opt.environment, step_id, step_cmd_matlab, prefix,
                                                            arg_list_subset, job_dir)
 
+    print('Ready to RUN')
+    print(jobs_dict)
     jobs_status, job_id_list = run_jobs(jobs_dict, opt.run_locally, int(opt.numcores), depends_on_step)
     # storing the job ids by group to facilitate a status update in future
     hpc['job_ids_grouped'][step_id] = job_id_list
-
+    print('JOB ID LIST')
+    print(job_id_list)
+    print(jobs_status)
     return jobs_status, job_id_list
 
 
@@ -1644,6 +1654,8 @@ def make_single_job(environment, step_id, step_cmd_matlab, prefix, arg_list_subs
     # hpc_directives.append('cd {0} '.format(job_dir))
     hpc_dir_2.append(r"{0}".format(full_cmd))
 
+
+
     with open(job_path, 'a') as jID:
         # remove any single quotes
         if environment.lower() in ('matlab', 'octave'):
@@ -1656,6 +1668,10 @@ def make_single_job(environment, step_id, step_cmd_matlab, prefix, arg_list_subs
     qsub_opt = hpc_dir_1 + hpc_dir_2
     # ensuring unnecessary prefix #$ #PBS is removed
     qsub_opt = [strg.replace(hpc['prefix'], '') for strg in qsub_opt]
+
+    print('JOB PATH')
+    print(job_path)
+    print(qsub_opt)
 
     return job_path, qsub_opt
 
@@ -1961,6 +1977,10 @@ def submit_jobs():
             raise Exception('Spatial normalization - steps 2 and later failed.')
 
     # group mask
+    print('YOOOOO')
+    print(run_gmask)
+
+    #print(proc_status.gmask)
     if proc_status.gmask is False and run_gmask is True:
         print('group mask generation: Submitting jobs ..')
         status_gm = process_group_mask_generation(unique_subjects, options, input_file, cur_garage)

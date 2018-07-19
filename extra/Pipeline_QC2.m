@@ -563,6 +563,7 @@ if(~isempty(Npcs))
     %
     %
     savestring = [QC2_folder,'/IND_group_PCs1-',num2str(Npcs),'.nii'];
+    display('END OF QC2')
     save_untouch_nii(nii,savestring);
 
 end

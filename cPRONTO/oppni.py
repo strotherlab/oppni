@@ -646,9 +646,10 @@ def parse_args_check():
         # performing a basic validation
         try:
             _ = validate_input_file(options.val_input_file_path)
-            print " validation succesful."
+            print(" validation succesful.")
         except:
-            print " validation failed."
+            traceback.print_exc()
+            print(" validation failed.")
         sys.exit(0)
     elif options.print_options_path is not None and options.input_data_orig is None:
         print_options(options.print_options_path)
@@ -690,17 +691,17 @@ def parse_args_check():
 
     if hpc['type'] in (None, 'LOCAL'):
         if options.run_locally == False:
-            print "Sun grid engine (SGE) has not been detected!"
-            print "Use --run_locally switch if you want to run OPPNI without HPC cluster on your computer locally."
+            print("Sun grid engine (SGE) has not been detected!")
+            print("Use --run_locally switch if you want to run OPPNI without HPC cluster on your computer locally.")
             exit(1)
         else:
-            print "Running jobs to the current node"
-            print "The code will wait until the jobs are finished."
+            print("Running jobs to the current node")
+            print("The code will wait until the jobs are finished.")
             # even though it will be run locally, we will generate the job file
             # which will be executed in a subshell
             hpc['type'] = 'SGE'
     else:
-        print "Submitting jobs to Sun Grid Engine (SGE)"
+        print("Submitting jobs to Sun Grid Engine (SGE)")
 
     if options.dry_run:
         hpc['dry_run'] = True
@@ -775,8 +776,8 @@ def parse_args_check():
         options.reference = ""
 
     if options.analysis is None or options.analysis == "None":
-        print "WARNING: without an analysis model (specified by switch -a), no optimization will be performed"
-        print "  OPPNI will only generate the preprocessed data"
+        print("WARNING: without an analysis model (specified by switch -a), no optimization will be performed")
+        print("  OPPNI will only generate the preprocessed data")
         options.contrast_list_str = "None"
 
     if hasattr(options, 'DEOBLIQUE') and (options.DEOBLIQUE == 1 or options.DEOBLIQUE is True):
@@ -787,40 +788,40 @@ def parse_args_check():
     ## --------------  Checking the switches --------------
     analysis = options.analysis
     if (analysis.upper() == "LDA") and (options.drf == "None"):
-        print "WARNING (Deprecated usage): --drf switch not defined for LDA model. OPPNI will check TASK files for parameter(s)"
+        print("WARNING (Deprecated usage): --drf switch not defined for LDA model. OPPNI will check TASK files for parameter(s)")
 
     if (analysis.upper() == "ERCVA") and (options.drf == "None"):
-        print "WARNING (Deprecated usage): --drf switch not defined for erCVA model. OPPNI will check TASK files for parameter(s)"
+        print("WARNING (Deprecated usage): --drf switch not defined for erCVA model. OPPNI will check TASK files for parameter(s)")
     if (analysis.upper() == "ERCVA") and (options.Nblock == "None"):
-        print "WARNING (Deprecated usage): --Nblock switch not defined for erCVA model. OPPNI will check TASK files for parameter(s)"
+        print("WARNING (Deprecated usage): --Nblock switch not defined for erCVA model. OPPNI will check TASK files for parameter(s)")
     if (analysis.upper() == "ERCVA") and (options.WIND == "None"):
-        print "WARNING (Deprecated usage): --WIND switch not defined for erCVA model. OPPNI will check TASK files for parameter(s)"
+        print("WARNING (Deprecated usage): --WIND switch not defined for erCVA model. OPPNI will check TASK files for parameter(s)")
     if (analysis.upper() == "ERCVA") and (options.subspace == "None"):
-        print "WARNING (Deprecated usage): --subspace switch not defined for erCVA model. OPPNI will check TASK files for parameter(s)"
+        print("WARNING (Deprecated usage): --subspace switch not defined for erCVA model. OPPNI will check TASK files for parameter(s)")
 
     if (analysis.upper() == "GNB") and (options.decision_model == "None"):
-        print "WARNING (Deprecated usage): --decision_model switch not defined for GNB model. OPPNI will check TASK files for parameter(s)"
+        print("WARNING (Deprecated usage): --decision_model switch not defined for GNB model. OPPNI will check TASK files for parameter(s)")
     if (analysis.upper() == "ERGNB") and (options.Nblock == "None"):
-        print "WARNING (Deprecated usage): --Nblock switch not defined for erGNB model. OPPNI will check TASK files for parameter(s)"
+        print("WARNING (Deprecated usage): --Nblock switch not defined for erGNB model. OPPNI will check TASK files for parameter(s)")
     if (analysis.upper() == "ERGNB") and (options.WIND == "None"):
-        print "WARNING (Deprecated usage): --WIND switch not defined for erGNB model. OPPNI will check TASK files for parameter(s)"
+        print("WARNING (Deprecated usage): --WIND switch not defined for erGNB model. OPPNI will check TASK files for parameter(s)")
 
     if (analysis.upper() == "SCONN") and (options.spm == "None"):
-        print "WARNING (Deprecated usage): --spm switch has to be used with the SCONN model. OPPNI will check TASK files for parameter(s)"
+        print("WARNING (Deprecated usage): --spm switch has to be used with the SCONN model. OPPNI will check TASK files for parameter(s)")
 
     if (analysis.upper() == "GLM") and (options.convolve == "None"):
-        print "WARNING (Old style usage): --convolve switch has to be used with the GLM model. OPPNI will check TASK files for parameter(s)"
+        print("WARNING (Old style usage): --convolve switch has to be used with the GLM model. OPPNI will check TASK files for parameter(s)")
     if (analysis.upper() == "GPCA") and (options.num_PCs == "None"):
-        print "WARNING (Deprecated usage): --num_PCs switch not defined for gPCA model. OPPNI will check TASK files for parameter(s)"
+        print("WARNING (Deprecated usage): --num_PCs switch not defined for gPCA model. OPPNI will check TASK files for parameter(s)")
 
     if not (options.convolve in ["1", "0", "None"]):
-        print "WARNING (Deprecated usage): --convolve has to be 0 or 1"
+        print("WARNING (Deprecated usage): --convolve has to be 0 or 1")
     if not (options.decision_model.lower() in ["linear", "nonlinear", "none"]):
-        print "WARNING (Deprecated usage): --decision_model has to be linear or nonlinear"
+        print("WARNING (Deprecated usage): --decision_model has to be linear or nonlinear")
     if not (options.subspace.lower() in ["onecomp", "multicomp", "none"]):
-        print "WARNING (Deprecated usage): --subspace has to be onecomp or multicomp"
+        print("WARNING (Deprecated usage): --subspace has to be onecomp or multicomp")
     if not (options.spm.lower() in ["corr", "zscore", "none"]):
-        print "WARNING (Deprecated usage): --spm has to be corr or zscore"
+        print("WARNING (Deprecated usage): --spm has to be corr or zscore")
 
     options.model_param_list_str = "keepmean " + options.keepmean \
                                    + " vasc_mask " + options.vasc_mask \
@@ -845,11 +846,11 @@ def parse_args_check():
     os.environ["FSLOUTPUTTYPE"] = "NIFTI"
 
     print("Chosen options: ")
-    print options
+    print(options)
 
     saved_cfg_path = os.path.join(cur_garage, file_name_prev_options)
     with open(saved_cfg_path, 'wb') as cfg:
-        pickle.dump([unique_subjects, options, new_input_file, cur_garage], cfg)
+        pickle.dump([unique_subjects, options, new_input_file, cur_garage], cfg, protocol=2)
 
     return unique_subjects, options, new_input_file, cur_garage, time_stamp, proc_out_dir
 
@@ -866,7 +867,7 @@ def organize_output_folders(options):
     time_stamp = make_time_stamp()
 
     if options.use_prev_processing_for_QC:
-        print 'Using the existing processing...'
+        print('Using the existing processing...')
         cur_garage = proc_out_dir
         suffix = ''
     else:
@@ -885,7 +886,7 @@ def organize_output_folders(options):
         cur_garage = os.path.join(proc_out_dir, suffix)
         if os.path.exists(cur_garage):
             if options.force_rerun:
-                user_confirmation = raw_input("Are you sure you want to delete previous results? (y/[N])")
+                user_confirmation = input("Are you sure you want to delete previous results? (y/[N])")
                 if user_confirmation.lower() in ['y', 'yes', 'ye']:
                     print('Removing any existing preprocessing, as requested!')
                     rmtree(cur_garage)
@@ -895,7 +896,7 @@ def organize_output_folders(options):
         else:
             os.mkdir(cur_garage)
 
-    print "Output processing folder: " + cur_garage
+    print("Output processing folder: " + cur_garage)
 
     return cur_garage, time_stamp, proc_out_dir, suffix
 
@@ -1040,12 +1041,12 @@ def print_options(proc_path):
             if not attr.startswith('_'):
                 attr_val = prev_options.__getattribute__(attr)
                 if attr == 'pipeline_steps':
-                    print "{:>{}} : ".format(attr, attr_width)
+                    print("{:>{}} : ".format(attr, attr_width))
                     for step, step_choices in attr_val.items():
-                        print " {:>{}}  {:>{}} : {}".format(' ', attr_width, step, step_width, step_choices)
-                    print " "
+                        print(" {:>{}}  {:>{}} : {}".format(' ', attr_width, step, step_width, step_choices))
+                    print(" ")
                 else:
-                    print "{:>{}} : {}".format(attr, attr_width, attr_val)
+                    print("{:>{}} : {}".format(attr, attr_width, attr_val))
 
 
 def estimate_processing_times(input_file_all, options, all_subjects):
@@ -1104,7 +1105,7 @@ def update_status_and_exit(out_dir):
         if not prev_proc_status.all_done:
             print('Previous processing is incomplete.')
             if failed_sub_file is not None and failed_spnorm_file is not None:
-                user_confirmation = raw_input("Would you like to resubmit jobs for failed subjects/runs?  y / [N] : ")
+                user_confirmation = input("Would you like to resubmit jobs for failed subjects/runs?  y / [N] : ")
                 if user_confirmation.lower() in ['y', 'yes', 'ye']:
                     print(' Yes. \n\nAttempting resubmission ... \n')
                     try:
@@ -1116,7 +1117,7 @@ def update_status_and_exit(out_dir):
                         raise
                 else:
                     # presenting the user with chosen option.
-                    print ' No.'
+                    print(' No.')
             else:
                 print('Unable to create input files for failed subjects/runs - make sure you have write permissions.')
     except:
@@ -1195,7 +1196,7 @@ def update_proc_status(out_dir):
 #             # when jobid has been flushed out of the scheduler memory!
 #             job_state = drmaa.JobState.UNDETERMINED
 #         else:
-#             print "error quering the job status"
+#             print("error quering the job status"
 #             raise
 #
 #         print('\t {}: {} '.format(prefix, job_state))
@@ -1278,9 +1279,9 @@ def local_exec(script_path):
 
     # communicate waits for the subprocess to finish
     std_output, _ = proc.communicate()
-    # # print outputs and logs
+    # # print(outputs and logs
     # logger.info('\n%s\n', std_output)
-    print std_output
+    print(std_output)
 
     return -random.randrange(1000)  # proc.returncode
 
@@ -1475,7 +1476,7 @@ def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=N
         # enclosing the args with quotes only when needed
         quoted_args = list([])
         for arg in arg_list:
-            if isinstance(arg, basestring) and set('[~!@#$%^&*()+{}":;-\' \t]+$').intersection(
+            if isinstance(arg, str) and set('[~!@#$%^&*()+{}":;-\' \t]+$').intersection(
                     arg):  # primitive: ' ' not in arg:
                 # when special characters are present, enclose it in quotes
                 quoted_args.append(strong_quoted(arg))
@@ -1516,7 +1517,7 @@ def process_module_generic(subjects, opt, step_id, step_cmd_matlab, arg_list, ga
                                                     job_dir)
 
     else:
-        for idx, subject in enumerate(subjects.itervalues()):
+        for idx, subject in enumerate(iter(subjects.values())):
             # subject-wise processing
             # TODO input file doesnt change with step, try refactoring this to have only one input file per run/subject
             prefix = '{1}_s{0:0>3}_{2}'.format(idx + 1, step_id.lower(), subject['prefix'])
@@ -1722,11 +1723,11 @@ def submit_jobs():
                 else:
                     bool_str = '    done.'
                 print('{:>15} is {}'.format(step, bool_str))
-        print ' '
+        print(' ')
 
         if proc_status.all_done:
-            print "All of preprocessing, optimization and QC seem to be finished already."
-            print " if you'd like to force preprocessing, please rename/remove/move the existing outputs and rerun."
+            print("All of preprocessing, optimization and QC seem to be finished already.")
+            print(" if you'd like to force preprocessing, please rename/remove/move the existing outputs and rerun.")
             return
     else:
         print('This is just a dry run - generating jobs for all steps regardless of their processing status.')
@@ -1768,7 +1769,7 @@ def submit_jobs():
             run_sp_norm = True
             run_gmask = True
         else:
-            print 'A reference atlas is not specified - skipping spatial normalization..'
+            print('A reference atlas is not specified - skipping spatial normalization..')
             run_sp_norm = False
             run_gmask = False
         run_qc1 = False
@@ -1784,7 +1785,7 @@ def submit_jobs():
     if options.part in [1, 2, 4]:
         run_sp_norm = False
         if options.reference_specified:
-            print 'A reference atlas is specified although SPNORM is not requested - ignoring the atlas.'
+            print('A reference atlas is specified although SPNORM is not requested - ignoring the atlas.')
 
     # submitting jobs for preprocessing for all combinations of pipelines
     if run_part_one and proc_status.preprocessing is False:
@@ -1808,8 +1809,8 @@ def submit_jobs():
 
     # submitting jobs for optimization
     if options.analysis in [ "None", None, '' ]:
-        print "WARNING: analysis model is NOT specified (specified by switch -a)"
-        print "\tNO optimization will be performed, OPPNI will generate ONLY the preprocessed data.\n"
+        print("WARNING: analysis model is NOT specified (specified by switch -a)")
+        print("\tNO optimization will be performed, OPPNI will generate ONLY the preprocessed data.\n")
     elif run_part_two and proc_status.optimization is False:
         # optimization is done for ALL the subjects in the input file,
         # even though part 1 may have been rerun just for failed/unfinished subjects
@@ -1864,14 +1865,14 @@ def save_hpc_cfg_and_jod_ids(cur_garage):
     job_id_file = os.path.join(cur_garage, file_name_job_ids_by_group)
     if os.path.isfile(job_id_file):
         os.remove(job_id_file)
-    with open(job_id_file, 'wb') as jlist:
+    with open(job_id_file, 'w') as jlist:
         json.dump(hpc['job_ids_grouped'], jlist, indent=2)
 
     # saving the config
     cfg_file = os.path.join(cur_garage, file_name_hpc_config)
     if os.path.isfile(cfg_file):
         os.remove(cfg_file)
-    with open(cfg_file, 'wb') as hcf:
+    with open(cfg_file, 'w') as hcf:
         json.dump(hpc, hcf, indent=2)
 
 

@@ -1048,6 +1048,7 @@ def get_hpc_spec(h_type=None, options=None):
         spec['export_user_env'] = ('--export=', 'ALL')
         spec['workdir'] = '--workdir'
         spec['jobname'] = '--job-name'
+        spec['jobname_frontenac'] = '--output=%x_%j.log'
         spec['submit_cmd'] = 'sbatch'
         # slurm does not allow any shell specification
         shell=None
@@ -1062,6 +1063,10 @@ def get_hpc_spec(h_type=None, options=None):
             continue
         else:
             header.append('{0} {1}{2}'.format(prefix, val[0], val[1]))
+
+    if h_type in ('FRONTENAC', 'SLURM'):
+        # controlling the output job name
+        header.append('{0} --output=%x_%j.log'.format(prefix))
 
     # not joining them for later use
     # header = '\n'.join(header)

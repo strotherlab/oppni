@@ -675,16 +675,17 @@ def parse_args_check():
 
     # sanity checks
     # on HPC inputs and obtaining the cfg of hpc
+    options.numcores = int(options.numcores)
     hpc['type'] = options.hpc_type
     if options.run_locally is False:
 
-        if int(options.numcores) > 1:
+        if options.numcores > 1:
             setattr(options, 'numcores', int(1))
             warnings.warn(
                 '--numcores is specified. This flag is deprecated, and is restricted to 1 in favor of single-core jobs.')
 
         hpc['type'] = find_hpc_type(options.hpc_type, options.run_locally)
-        hpc['spec'], hpc['header'], hpc['prefix'] = get_hpc_spec(hpc['type'], options)
+        hpc['spec'], hpc['header'], hpc['prefix'], hpc['shell'] = get_hpc_spec(hpc['type'], options)
     else:
         if not hpc['type'] in (None, 'LOCAL'):
             raise ValueError('Conflicting options specified: specify either of --run_locally or --cluster CLUSTERTYPE.')
@@ -761,7 +762,7 @@ def parse_args_check():
         new_input_file = options.input_data_orig
 
     # making sure user environment is properly setup before even submitting jobs
-    validate_user_env(options)
+    # validate_user_env(options)
 
     ## -------------- Check the Input parameters  --------------
 
@@ -924,7 +925,8 @@ def find_hpc_type(user_supplied_type=None, run_locally=False):
     return h_type
 
 
-def set_defaults_hpc(options, input_memory, input_queue, input_numcores, input_parallel_env):
+def set_defaults_hpc(options, input_memory, input_queue, input_numcores, input_parallel_env,
+        input_walltime='30:00:00'):
     """Assigns known defaults to HPC parameters"""
 
     if options.memory is None:
@@ -950,7 +952,12 @@ def set_defaults_hpc(options, input_memory, input_queue, input_numcores, input_p
     else:
         parallel_env = None
 
-    return memory, queue, numcores, parallel_env
+    if options.walltime is None:
+        walltime = input_walltime
+    else:
+        walltime = options.walltime
+
+    return memory, queue, numcores, parallel_env, walltime
 
 
 def get_hpc_spec(h_type=None, options=None):
@@ -959,6 +966,8 @@ def get_hpc_spec(h_type=None, options=None):
 
     if h_type is None:
         h_type = find_hpc_type().upper()
+
+    shell = '/bin/bash'
 
     # assigning defaults to make it easy for the end user
     # TODO need to tease out the lists of names for different HPC environments into cfg_oppni.py
@@ -993,31 +1002,44 @@ def get_hpc_spec(h_type=None, options=None):
         spec['memory'] = ('-l mf=', memory + 'G')
         spec['numcores'] = ('-pe shm.pe ', numcores)
         spec['queue'] = ('-q ', queue)
+        spec['export_user_env'] = ('-V', '')
+        spec['workdir'] = '-wd'
+        spec['jobname'] = '-N'
+        spec['submit_cmd'] = 'qsub'
     elif h_type in ('BRAINCODE-SGE', 'BRAINCODE', 'BCODE'):
         prefix = '#$'
         spec['memory'] = ('-l mf=', memory + 'G')
         spec['numcores'] = ('-pe {} '.format(parallel_env), numcores)
         spec['queue'] = ('-q ', queue)
+        spec['export_user_env'] = ('-V', '')
+        spec['workdir'] = '-wd'
+        spec['jobname'] = '-N'
+        spec['submit_cmd'] = 'qsub'
     elif h_type in ('SCINET', 'PBS', 'TORQUE'):
         prefix = '#PBS'
         spec['memory'] = ('-l mem=', memory)
         spec['numcores'] = ('-l ppn=', numcores)
         spec['queue'] = ('-q ', queue)
-    elif h_type in ('SLURM'):
+    elif h_type in ('FRONTENAC', 'SLURM'):
         prefix = '#SBATCH'
-        spec['memory'] = ('--mem=', memory)
-        spec['numcores'] = ('--n ', numcores)
+        spec['memory'] = ('--mem=', int(memory)*1024) #
+        spec['numcores'] = ('-c ', numcores)
         spec['queue'] = ('-p ', queue)
+        spec['walltime'] = ('-t ', walltime)
+        spec['export_user_env'] = ('--export=', 'ALL')
+        spec['workdir'] = '--workdir'
+        spec['jobname'] = '--job-name'
+        spec['submit_cmd'] = 'sbatch'
+        # slurm does not allow any shell specification
+        shell=None
     else:
         raise ValueError('HPC type {} unrecognized or not implemented.'.format(h_type))
 
     header = list()
-    header.append('{0} -V'.format(prefix))
-    header.append('{0} -b y'.format(prefix))
-    header.append('{0} -j y'.format(prefix))
-    for key, val in spec.items():
+    for key in ['export_user_env', 'queue', 'memory', 'numcores', 'walltime']:
         # avoiding unnecessary specifications
-        if (key == 'numcores' and int(numcores) == 1) or (key == 'queue' and queue is None):
+        val = spec[key]
+        if (key == 'numcores' and int(numcores) == 1) or (key == 'queue' and queue is None) or val is None:
             continue
         else:
             header.append('{0} {1}{2}'.format(prefix, val[0], val[1]))
@@ -1025,7 +1047,7 @@ def get_hpc_spec(h_type=None, options=None):
     # not joining them for later use
     # header = '\n'.join(header)
 
-    return spec, header, prefix
+    return spec, header, prefix, shell
 
 
 def print_options(proc_path):
@@ -1134,6 +1156,7 @@ def update_proc_status(out_dir):
 
     with open(opt_file, 'rb') as of:
         all_subjects, options, new_input_file, _ = pickle.load(of)
+        print(new_input_file)
         proc_status, failed_sub_file, failed_spnorm_file = check_proc_status.run(
             [new_input_file, options.pipeline_file, '--skip_validation'], options)
     return proc_status, options, new_input_file, failed_sub_file, failed_spnorm_file, all_subjects
@@ -1222,13 +1245,16 @@ def make_job_file_and_1linecmd(file_path):
     hpc_directives = list()
     job_name = os.path.splitext(os.path.basename(file_path))[0]
     if not hpc['type'].upper() == "LOCAL":
-        # hpc_directives.append('{0} -S '.format(hpc['shell']))
+        hpc_directives.append('#!/bin/bash')
+        if hpc['shell'] is not None:
+            hpc_directives.append('{0} -S {1}'.format(hpc['prefix'], hpc['shell']))
         hpc_directives.extend(hpc['header'])
-        hpc_directives.append('{0} -N {1}'.format(hpc['prefix'], job_name))
-        hpc_directives.append('{0} -wd {1}'.format(hpc['prefix'], os.path.dirname(file_path)))
+        hpc_directives.append('{0} {1} {2}'.format(hpc['prefix'], hpc['spec']['jobname'], job_name))
+        hpc_directives.append('{0} {1} {2}'.format(hpc['prefix'], hpc['spec']['workdir'], os.path.dirname(file_path)))
     else:
         # for jobs to run locally, no hpc directives are needed.
-        hpc_directives.append('{0} -S '.format(hpc['shell']))
+        hpc_directives.append('#!/bin/bash')
+        # hpc_directives.append('{0} -S {1}'.format(hpc['prefix'], hpc['shell']))
 
     with open(file_path, 'w') as jID:
         # one directive per line
@@ -1247,7 +1273,7 @@ def make_job_file(file_path):
     job_name = os.path.splitext(os.path.basename(file_path))[0]
     if not hpc['type'].upper() == "LOCAL":
         if hpc.get('spec') is None:
-            hpc['spec'], hpc['header'], hpc['prefix'] = get_hpc_spec(hpc['type'])
+            hpc['spec'], hpc['header'], hpc['prefix'], hpc['shell'] = get_hpc_spec(hpc['type'])
 
         hpc_directives.extend(hpc['header'])
         hpc_directives.append('{0} -N {1}'.format(hpc['prefix'], job_name))

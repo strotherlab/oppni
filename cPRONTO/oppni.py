@@ -1629,10 +1629,14 @@ def run_jobs(job_paths, run_locally, num_procs, depends_on_step):
         txt_out = list()
         for prefix, (job_path, job_details) in job_paths.items():
             job_details_str = ' '.join(job_details)
-            job_id_list[prefix] = submit_queue(job_details_str, depends_on_step)
+            # job_id_list[prefix] = submit_queue(job_details_str, depends_on_step)
+            job_id_list[prefix] = submit_queue(job_path, depends_on_step)
             txt_out.append('{} (job id: {})'.format(prefix, job_id_list[prefix]))
 
-        tty_height, tty_width = subprocess.check_output(['stty', 'size']).split()
+        try:
+            tty_height, tty_width = subprocess.check_output(['stty', 'size']).split()
+        except:
+            tty_height, tty_width = 120, 80
         max_width = max(map(len,txt_out))
         num_sets  = int(math.floor( int(tty_width) / (max_width+4)))
         for idx in range(0, len(txt_out), num_sets):

@@ -964,17 +964,17 @@ def get_hpc_spec(h_type=None, options=None):
     # TODO need to tease out the lists of names for different HPC environments into cfg_oppni.py
     if options is not None:
         if h_type in ('ROTMAN', 'ROTMAN-SGE', 'SGE'):
-            memory, queue, numcores, parallel_env = set_defaults_hpc(options, 2, 'all.q', 1, 'npairs')
+            memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'all.q', 1, 'npairs')
         elif h_type in ('CAC', 'HPCVL', 'QUEENSU'):
-            memory, queue, numcores, parallel_env = set_defaults_hpc(options, 2, 'abaqus.q', 1, 'shm.pe')
+            memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'abaqus.q', 1, 'shm.pe')
         elif h_type in ('BRAINCODE-SGE', 'BRAINCODE', 'BCODE'):
-            memory, queue, numcores, parallel_env = set_defaults_hpc(options, 2, 'common.q', 1, '')
+            memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'common.q', 1, '')
         elif h_type in ('SCINET', 'PBS', 'TORQUE'):
             warnings.warn('HPC {} has not been tested fully. Use at your own risk!'.format(h_type))
-            memory, queue, numcores, parallel_env = set_defaults_hpc(options, 2, 'batch', 1, '')
-        elif h_type in ('SLURM'):
-            warnings.warn('HPC {} has not been tested fully. Use at your own risk!'.format(h_type))
-            memory, queue, numcores, parallel_env = set_defaults_hpc(options, 2, '', 1, '')
+            memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'batch', 1, '')
+        elif h_type in ('FRONTENAC', 'SLURM'):
+            memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'standard', 1, '',
+                                                                               input_walltime='30:00:00')
     else:
         memory = '2'
         numcores = 1

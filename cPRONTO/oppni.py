@@ -20,11 +20,30 @@ import warnings
 from collections import OrderedDict
 from copy import copy
 from distutils.spawn import find_executable
-from shutil import which
+#from shutil import which -adlofts
 from multiprocessing import Pool
 from shutil import rmtree
 from time import localtime, strftime
 from datetime import timedelta
+
+
+# Testing making my own which to allow ver < 3.3 - adlofts
+import platform
+if platform.python_version() < '3.3':
+    print('Using older version of Python ...  defining which function')
+    print(platform.python_version())
+
+    def which(file):
+        for path in os.environ["PATH"].split(os.pathsep):
+            if os.path.exists(os.path.join(path, file)):
+                return os.path.join(path, file)
+
+        #return None
+else:
+    print('Using new version of Python ... using shutil import')
+    print(platform.python_version())
+    from shutil import which 
+
 
 # OPPNI related
 import cfg_front as cfg_pronto

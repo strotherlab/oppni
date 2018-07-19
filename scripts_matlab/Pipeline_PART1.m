@@ -99,6 +99,7 @@ function Pipeline_PART1(InputStruct, input_pipeset, analysis_model, modelparam, 
 % CODE_DATE    = '$Date: 2014-12-04 18:33:31 -0500 (Thu, 04 Dec 2014) $';
 % ------------------------------------------------------------------------%
 
+
 % Check Parameters
 %%
 global NUMBER_OF_CORES
@@ -262,6 +263,7 @@ for ksub = 1:numel(InputStruct)
     end
 end
 clear split_info
+
 
 %%
 for ksub = 1:numel(InputStruct)
@@ -457,6 +459,9 @@ for ksub = 1:numel(InputStruct)
         %  iterate through already-processed pipelines,
         %  load, run further processing and analyze...
         kall = 0;
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%ANDREW
+ aa = 1;
+ 
         for i=1:Nhalf
 
             PipeHalfList = strcat( 'm',num2str( pipeset_half(i,1) ), ...
@@ -494,13 +499,14 @@ for ksub = 1:numel(InputStruct)
                     noise_roi{krun} = nifti_to_mat(VV,MM);
                 else
                     noise_roi{krun}= [];
-                end
+		 end
                 % 
             end
 
             %%%%% III. Third iteration level. run through each pipeline combination that
             %%%%%      is performed on pre-loaded data, analyze + save results
 
+            
             %% run through additional proccessing choices
             for DET = detSet
                 for MPR = mprSet
@@ -509,15 +515,22 @@ for ksub = 1:numel(InputStruct)
                             for LP = lpSet
 
                             kall = kall + 1;
+                            
+                            disp(['kall: ' num2str(kall)]);
+                            disp(['aa: ' num2str(aa)]);
+
                             % full list of preprocessing choices for this pipeline step
                             pipeset_full(kall,:) = [pipeset_half(i,:) DET MPR TASK GS LP];
 
                             if N_run>1
+disp('Checkpoint Ba')
                                   [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV,KEEPMEAN);
-                            else  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal{1}, Xnoise{1}, noise_roi{1}, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV,KEEPMEAN);
-
+                            else
+disp('Checkpoint Baa') 
+				 [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype,aa] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal{1}, Xnoise{1}, noise_roi{1}, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV,KEEPMEAN,aa);
+disp('Checkpoint Bab')
                             end
-
+disp('Checkpoint Bb')
                             end
                         end
                     end
@@ -525,7 +538,7 @@ for ksub = 1:numel(InputStruct)
             end
         end
 
-
+disp('Checkpoint Bc')
         % pipeline information
         pipechars = ['m' 'c' 'p' 't' 's' 'd' 'r' 'x' 'g' 'l' 'y'];
         pipenames = {'MOTCOR', 'CENSOR', 'RETROICOR', 'TIMECOR', 'SMOOTH', 'DETREND', 'MOTREG', 'TASK', 'GSPC1', 'LOWPASS', 'PHYPLUS'};    
@@ -534,7 +547,7 @@ for ksub = 1:numel(InputStruct)
         elseif( phySet == 0 )    pipeset = [ pipeset_full zeros(Nfull,1) ];
         elseif( phySet == 1 )    pipeset = [ pipeset_full ones(Nfull,1) ];
         end
-
+disp('Checkpoint C');
         if( ~strcmpi(analysis_model,'NONE') )
 
             %% Step 2.4: consolidate results for output
@@ -580,7 +593,7 @@ for ksub = 1:numel(InputStruct)
                 % fraction of voxels >0 (global signal effects)
                 METRIC_set{n}.artifact_prior.GS_fract = sum( IMAGE_set{n}>0 )./Nvox;
             end
-
+disp('Checkpoint Ca');
             % save output matfiles
             %
             suffix = '';
@@ -611,7 +624,7 @@ for ksub = 1:numel(InputStruct)
                         tmp=mask;tmp(tmp>0)=IMAGE_set{n};
                         TMPVOL(:,:,:,n) = tmp;
                     end
-
+disp('Checkpoint Caa');
                     nii=VV;
                     nii.img = TMPVOL;
                     nii.hdr.dime.datatype = 16;
@@ -631,7 +644,7 @@ for ksub = 1:numel(InputStruct)
                             tmp=mask;tmp(tmp>0)=IMAGE_set{n}(:,p);
                             TMPVOL(:,:,:,p) = tmp;
                         end
-
+disp('Checkpoint Cab');
                         nii=VV;
                         nii.img = TMPVOL;
                         nii.hdr.dime.datatype = 16;
@@ -648,16 +661,19 @@ for ksub = 1:numel(InputStruct)
     end
 end
 
+disp('Checkpoint THE SCRIPT ENDS HERE');
 %%
 %%
 function name = generate_pipeline_name(pipechars,pipeset)
+disp('Checkpoint F1S');
 for i = 1:length(pipechars)
     name(i*2-1) = pipechars(i);
     name(i*2) = pipeset(i);
 end
+disp('Checkpoint F1E');
 
 function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix,subjectprefix,Contrast_List,VV,KEEPMEAN)
-
+disp('Checkpoint F2S');
 global CODE_PROPERTY
 
 Subject_OutputDirIntermed = [OutputDirPrefix '/intermediate_metrics'];
@@ -924,9 +940,10 @@ else
     TEMP_set_y   = [];
     METRIC_set_y = [];
 end
+disp('Checkpoint F2E');
 
-function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet,Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix, subjectprefix, Contrast_List,VV,KEEPMEAN)
-
+function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype,aa] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet,Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix, subjectprefix, Contrast_List,VV,KEEPMEAN,aa)
+disp('Checkpoint F3S');
 % build pipeline prefix name -- and define current noise matrix
 global CODE_PROPERTY
 
@@ -1050,6 +1067,7 @@ else
 end
 
 %%% ==== Step 2.3(e): run analysis with multiple contrasts==== %%%
+% save('indiscriminate_dump.mat')
 
 if( ~strcmpi(analysis_model,'NONE') )
 
@@ -1063,7 +1081,27 @@ if( ~strcmpi(analysis_model,'NONE') )
         if strcmpi(split_info.type,'event')
             split_info.onsetlist    = split_info.cond(max(Contrast_List(contrast_counter,:))).onsetlist;
         end
+       
+%         if strcmp(nomen,'m1c0p1t0s6d2r0x0g0l0')
+%             andrew = 1;
+%             save('352RunOctave','vol_filt','split_info','analysis_model')
+%         end
+
+%OCTAVE TEST
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  %load('FindPo.mat');
+%  
+%  save(['FindPat_' num2str(aa) '_Octave.mat'],'vol_filt', 'split_info', 'analysis_model');
+ %aa = aa + 1;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                disp('THE LINE 1097 RUN!')
+        
         output_temp = run_analyses_wrapper( vol_filt, split_info, analysis_model );
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        save([subjectprefix 'Outtemp_indx_' num2str(aa) '.mat'],'output_temp' ,'vol_filt' ,'split_info');
+        aa = aa + 1;
+        
         if contrast_counter>1
             output.images = [output.images output_temp.images];
             output.temp   = [output.temp output_temp.temp];
@@ -1165,8 +1203,22 @@ if( ~strcmpi(analysis_model,'NONE') )
             split_info.idx_cond2_sp1 = split_info.single.idx_cond(contrast_counter,2).sp1;
             split_info.idx_cond2_sp2 = split_info.single.idx_cond(contrast_counter,2).sp2;
         end
+        
+        
+        %OCTAVE TEST
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %save(['FindPat_' num2str(aa) 'a_Octave.mat'],'vol_filt', 'split_info', 'analysis_model');
+% aa = aa + 1;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        disp('THE LINE 1202 RUN!')
+        
+        
         output_temp = run_analyses_wrapper( vol_filt, split_info, analysis_model );
 
+         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        save([subjectprefix 'Outtemp_indx_' num2str(aa) '.mat'],'output_temp','vol_filt', 'split_info');
+        aa = aa + 1;
+        
         if contrast_counter>1
             output.images = [output.images output_temp.images];
             output.temp   = [output.temp output_temp.temp];
@@ -1221,3 +1273,20 @@ else
     TEMP_set_y   = [];
     METRIC_set_y = [];
 end
+disp('Checkpoint F3E');
+
+% end
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%ADDED
+% function inOctave = in_octave()
+%     try
+%         ver_num = OCTAVE_VERSION;
+%         inOctave = 1;
+%         version_str = ['OCTAVE' ver_num];
+%     catch
+%         inOctave = 0;
+%         version_str = ['MATLAB' version];
+%     end
+% end

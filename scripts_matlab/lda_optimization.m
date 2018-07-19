@@ -17,6 +17,21 @@ function result_set = lda_optimization ( data_sp1, data_sp2, design_sp1, design_
 % CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
 % ------------------------------------------------------------------------%
 
+
+%OCTAVE TEST
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% load('FindPo.mat');
+% data_sp1_l = cat(3,data_sp1_l,data_sp2);
+% data_sp2_l = cat(3,data_sp2_l,data_sp2);
+% design_sp1_l = [design_sp1_l design_sp1];
+% design_sp2_l = [design_sp2_l design_sp2];
+% drf_l = [drf_l drf];
+% save('FindPo.mat','data_sp1_l', 'data_sp2_l', 'design_sp1_l', 'design_sp2_l', 'drf_l');
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
 %% 1. drop censored scans + concatenate
 
 Nvox    = size(data_sp1,1);
@@ -45,6 +60,7 @@ design_full = [design_sp1;  design_sp2];
 
 % initial SVD -> run on full dataset
 [v s temp] = svd( data_full'*data_full ); s = sqrt(s);
+
 % now reduce dimensionality before further steps
 
 % first round feature selection
@@ -69,8 +85,6 @@ Z_full         = s*v'; % [pcs x time] matrix
 Z_full         = bsxfun(@minus,Z_full,mean (Z_full, 2));
 [u_full, s, v] = svd (Z_full, 0);
 Z_reproj_full  = s*v';
-
-
 
 %% 3. define split1/2 data halves after initial feature reduction
 
@@ -110,10 +124,12 @@ dx_full = u_full(:,1:K_max) * lin_discr;  % discriminant in PC space
 CV_avg_sc1 = mean(Z_full_class1' * dx_full); % mean cv, class 1
 CV_avg_sc2 = mean(Z_full_class2' * dx_full); % mean cv, class 2
 CV_dif = CV_avg_sc2 - CV_avg_sc1;
+
 % flipem so that sign matches direction
 CV_dif = CV_dif.*sign( CV_dif );
 % recording CV scores::
 res_cv = Z_full' * dx_full;
+
 
 % SPLIT #1
 % calculating SPM for the 1st set
@@ -128,6 +144,7 @@ CV_dif_sp1 = CV_avg_sc2 - CV_avg_sc1;
 CV_flip = sign( CV_dif_sp1 .* CV_dif );
 %
 map_sp1=map_sp1*diag( CV_flip );
+
 
 % SPLIT #2
 % calculating SPM for the 2nd set
@@ -177,6 +194,18 @@ sum_prob_sp2on1 = (  sum( pp1_priors_norm(design_sp2<0,:) ) + sum( pp2_priors_no
 % simple classification accuracy
 sum_correct_sp2on1 = (  sum( pp1_priors_norm(design_sp2<0,:) >0.5 ) + sum( pp2_priors_norm(design_sp2>0,:) >0.5 )  )';
 
+if( min(pp1_nopriors(:))<1E-6 )
+   fprintf('OPPNI LDA debug: prediction of split2 on split1\n posterior prob. of class 1 (unnormalized) is <10-6\n Value is: %f\n', ( min(pp1_nopriors(:))));
+end
+if( min(pp2_nopriors(:))<1E-6 )
+   fprintf('OPPNI LDA debug: prediction of split2 on split1\n posterior prob. of class 2 (unnormalized) is <10-6\n Value is: %f\n', ( min(pp2_nopriors(:))));
+end
+
+result_set.temp.pp1_2on1 = pp1_nopriors;
+result_set.temp.pp2_2on1 = pp2_nopriors;
+result_set.temp.sc1_2on1 = ((scores_sp2 - repmat(CV_sp1_avg_sc1, [size(scores_sp2,1) 1])).^2);
+result_set.temp.sc2_2on1 = ((scores_sp2 - repmat(CV_sp1_avg_sc2, [size(scores_sp2,1) 1])).^2);
+
 % (I) PREDICTION sp1 on sp2
 % mean CVscores, sp2 --- 1xK-size
 CV_sp2_avg_sc1 = mean(Z_sp2_class1' * dx_sp2); % mean cv, class 1
@@ -199,6 +228,18 @@ pp2_priors_norm(~isfinite(pp2_priors_norm)) = 0.50;
 sum_prob_sp1on2 = (  sum( pp1_priors_norm(design_sp1<0,:) ) + sum( pp2_priors_norm(design_sp1>0,:) )  )';
 % simple classification accuracy
 sum_correct_sp1on2 = (  sum( pp1_priors_norm(design_sp1<0,:) >0.5 ) + sum( pp2_priors_norm(design_sp1>0,:) >0.5 )  )';
+
+if( min(pp1_nopriors(:))<1E-6 )
+   fprintf('OPPNI LDA debug: prediction of split1 on split2\n posterior prob. of class 1 (unnormalized) is <10-6\n Value is: %f\n', ( min(pp1_nopriors(:))));
+end
+if( min(pp2_nopriors(:))<1E-6 )
+   fprintf('OPPNI LDA debug: prediction of split1 on split2\n posterior prob. of class 2 (unnormalized) is <10-6\n Value is: %f\n', ( min(pp2_nopriors(:))));
+end
+
+result_set.temp.pp1_1on2 = pp1_nopriors;
+result_set.temp.pp2_1on2 = pp2_nopriors;
+result_set.temp.sc1_1on2 = ((scores_sp1 - repmat(CV_sp2_avg_sc1, [size(scores_sp1,1) 1])).^2);
+result_set.temp.sc2_1on2 = ((scores_sp1 - repmat(CV_sp2_avg_sc2, [size(scores_sp1,1) 1])).^2);
 
 warning on;
 
@@ -228,8 +269,13 @@ result_set.OPT.RPD = [res_r(i) res_p(i) dv];
 result_set.OPT.CV  = res_cv(:,i);
 result_set.OPT.eig = res_rSPMZ(:,i);
 
+
 function [lin_discr,Kmax_out] = LDA_train_mini (data, T_class, Range)
 % performs compact linear discriminant:
+
+size(data)
+size(T_class)
+Range
 
 warning off;
 
@@ -239,22 +285,34 @@ coord0 = data (:, T_class < 0);
 coord_norm  = bsxfun(@minus,data,  mean (data, 2));
 coord1_norm = bsxfun(@minus,coord1,mean (coord1, 2));
 coord0_norm = bsxfun(@minus,coord0,mean (coord0, 2));
-
+disp('Check R')
 lin_discr = zeros( Range, Range );
 Kmax_out = Range;
 for(k=1:Range)
-    % -----
+ % -----
     W_ssp = coord1_norm(1:k,:)*coord1_norm(1:k,:)' + coord0_norm(1:k,:)*coord0_norm(1:k,:)';
     T_ssp = coord_norm(1:k,:)*coord_norm(1:k,:)';
     B_ssp = T_ssp - W_ssp;
-    if rank(W_ssp)==length(W_ssp)
-        [e, l, temp] = svd (inv (W_ssp) * B_ssp, 0);
+    if rank(W_ssp)==length(W_ssp)  
+        
+        %Octave Adjustment
+        % [e, l, temp] = svd (inv (W_ssp) * B_ssp, 0);
+        [e, l, temp] = svd (W_ssp \ B_ssp);
+ 
+        % Add a double check to confirm that the svd was done correctly
+        if any(any(((W_ssp \ B_ssp) - (e*l*temp')) >= 0.001))
+            error('SVD done incorrectly in this version of MATLAB or OCTAVE is off by >1, check lda_optimization.');
+        end
+      
         ee = e (:, 1);
-        % -----
+       
+ % -----
         lin_discr(1:k,k) = ee / (sqrt (ee' * W_ssp * ee / (N - 2)));
-    else
+    
+else
         Kmax_out = k-1;
-        break;
+       
+ break;
     end
 end
 

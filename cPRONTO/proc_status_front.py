@@ -6,7 +6,7 @@ import os
 import re
 import sys
 from argparse import ArgumentParser
-from cStringIO import StringIO
+from io import StringIO
 
 import oppni
 import cfg_front as cfg_pronto
@@ -76,9 +76,9 @@ def is_done_spnorm(sub_prefix, out_dir, options = None):
 
     exist_bool = map(os.path.exists, must_exist_list)
     if not all(exist_bool):
-        return False, " spat. norm : Incomplete " + crossed
+        return False, " spat. norm : Incomplete {}".format(crossed)
     else:
-        return True , " spat. norm : Done.      " + tick_mark
+        return True , " spat. norm : Done.      {}".format(tick_mark)
 
 
 def is_done_part1_afni(subPrefix, outFolder, numPipelineSteps, options = None):
@@ -110,9 +110,9 @@ def is_done_part1_afni(subPrefix, outFolder, numPipelineSteps, options = None):
         PipelineStepsComplete = True
 
     if (not PipelineStepsComplete) or (not all_files_exist_in(mustExistList)):
-        return False, " preproc : Incomplete " + crossed
+        return False, " preproc : Incomplete {}".format(crossed)
     else:
-        return True , " preproc : Done.      " + tick_mark
+        return True , " preproc : Done.      {}".format(tick_mark)
 
 
 def is_done_part1_stats(subPrefix, outFolder, options = None):
@@ -136,9 +136,9 @@ def is_done_part1_stats(subPrefix, outFolder, options = None):
         mustExistList.extend([metricFile1, metricFile2, metricFile3])
 
     if not all_files_exist_in(mustExistList):
-        return False, " Metrics : Incomplete " + crossed
+        return False, " Metrics : Incomplete {}".format(crossed)
     else:
-        return True , " Metrics : Done.      " + tick_mark
+        return True , " Metrics : Done.      {}".format(tick_mark)
 
 
 def is_done_group_mask_gen(out_dir, options = None):
@@ -348,8 +348,8 @@ def run(input_args, options = None):
                 if out_results is not None:
                     outFolderSpec = out_results.group(1)
                 else:
-                    print 'Either OUT= not specifed or contains an invalid path that can not be parsed.'
-                    print 'Only Alphanumeric, underscore (_), hyphen (-) and plus (+) characters are allowed. skipping this line {}'.format(num_subjects)
+                    print('Either OUT= not specifed or contains an invalid path that can not be parsed.')
+                    print('Only Alphanumeric, underscore (_), hyphen (-) and plus (+) characters are allowed. skipping this line {}'.format(num_subjects))
                     continue
 
                 # sometimes the output prefixes are specified with .nii extention
@@ -382,12 +382,12 @@ def run(input_args, options = None):
                         resub_spnorm.write(inputLine)
 
         # print out summary
-        print "\nSummary: \n# subjects: ", num_subjects
+        print("\nSummary: \n# subjects: ", num_subjects)
         # part 1
         if failed_count_preproc == 0:
             proc_status.preprocessing = True
             proc_status.stats = True
-            print "P1 : all finished."
+            print("P1 : all finished.")
             if resubmit_part1_file is not None:
                 os.remove(resubmit_part1_file)
             if not writable:
@@ -398,21 +398,21 @@ def run(input_args, options = None):
             proc_status.preprocessing = False
             proc_status.stats = False
             proc_status.rem_input_file = resubmit_part1_file
-            print "P1 : incomplete \t  # subjects/runs failed: {} / {} ({:.0f}%)".format(
-                failed_count_preproc, num_subjects, (100 * failed_count_preproc / num_subjects))
-            print "\t resubmit list : ", resubmit_part1_file
+            print("P1 : incomplete \t  # subjects/runs failed: {} / {} ({:.0f}%)".format(
+                failed_count_preproc, num_subjects, (100 * failed_count_preproc / num_subjects)))
+            print("\t resubmit list : ", resubmit_part1_file)
 
         # part 2
         proc_status.optimization = (failed_count_stats == 0) and is_done_part_two_opt_summary(common_out_dir, options)
         if not proc_status.optimization:
-            print "P2 : Incomplete \n\t # sbujects whose stats need to be computed: {}".format(failed_count_stats)
+            print("P2 : Incomplete \n\t # sbujects whose stats need to be computed: {}".format(failed_count_stats))
         else:
-            print "P2 : all finished.  "
+            print("P2 : all finished.  ")
 
         # spnorm
         if failed_count_spnorm == 0:
             proc_status.spnorm = True
-            print "SPNORM : all finished."
+            print("SPNORM : all finished.")
             if resubmit_spnorm_file is not None:
                 os.remove(resubmit_spnorm_file)
             if not writable:
@@ -422,9 +422,9 @@ def run(input_args, options = None):
         else:
             proc_status.spnorm = False
             proc_status.rem_spnorm_file = resubmit_spnorm_file
-            print "SPNORM : incomplete \t  # subjects/runs failed: {} / {} ({:.0f}%)".format(
-                failed_count_spnorm, num_subjects, (100 * failed_count_spnorm / num_subjects))
-            print "\t resubmit list : ", resubmit_spnorm_file
+            print("SPNORM : incomplete \t  # subjects/runs failed: {} / {} ({:.0f}%)".format(
+                failed_count_spnorm, num_subjects, (100 * failed_count_spnorm / num_subjects)))
+            print("\t resubmit list : ", resubmit_spnorm_file)
 
         # GMASK
         proc_status.gmask = is_done_group_mask_gen(common_out_dir, options)
@@ -438,7 +438,7 @@ def run(input_args, options = None):
             resub_part1.close()
 
     except Exception as e:
-        print "following exception occurred: \n{}".format(e)
+        print("following exception occurred: \n{}".format(e))
         raise
 
     finally:

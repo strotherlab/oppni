@@ -1486,7 +1486,10 @@ def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=N
         # to simplify the trouble with quotes and escape sequences etc
         # -nojvm flag to matlab is very important so it doesnt crash
         # time -p command is removed as it was failing on HPCVL
-        full_cmd = r"matlab -nodesktop -nojvm  -nosplash -r {0} ".format(mfile_name)
+        setup_cmd = ''
+        # if hpc['type'] == 'CAC':
+        #    setup_cmd = r'use matlab'
+        full_cmd = setup_cmd + "\n" + r"matlab -nodesktop -nosplash -r {0}".format(mfile_name)
 
     elif environment.lower() in ('standalone', 'compiled'):
         # first single quote is bash to protect from expansion or globbing

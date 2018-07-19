@@ -1319,7 +1319,7 @@ def reprocess_failed_subjects(prev_proc_status, prev_options, failed_sub_file, f
 
     try:
         hpc_cfg_file = os.path.join(garage, file_name_hpc_config)
-        with open(hpc_cfg_file, 'rb') as hpc_f:
+        with open(hpc_cfg_file, 'r') as hpc_f:
             hpc = json.load(hpc_f)
     except:
         print('hpc config was not saved previously or proerly! Unable to resubmit.')
@@ -1363,7 +1363,7 @@ def reprocess_failed_subjects(prev_proc_status, prev_options, failed_sub_file, f
     job_id_file = os.path.join(garage, file_name_job_ids_by_group)
     if os.path.isfile(job_id_file):
         os.remove(job_id_file)
-    with open(job_id_file, 'wb') as jlist:
+    with open(job_id_file, 'w') as jlist:
         json.dump(hpc['job_ids_grouped'], jlist)
 
 
@@ -1713,7 +1713,7 @@ def submit_queue(job, depends_on_steps):
 
     if not hpc['dry_run']:
         job_id = subprocess.check_output(arg_list)
-        job_id = job_id.strip()
+        job_id = job_id.strip().decode('utf-8')
     else:
         job_id = make_dry_run(full_cmd)
 

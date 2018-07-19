@@ -1273,6 +1273,14 @@ def make_job_file_and_1linecmd(file_path):
     else:
         # for jobs to run locally, no hpc directives are needed.
         hpc_directives.append('#!/bin/bash')
+
+        #add adlofts Jun 26 2018
+        #must add a directoty change so that the file can be found using MATLAB m file loading scheme
+        #if environment.lower() in ('matlab'):
+        print(os.path.dirname(file_path))
+        print('FOUND MATLAB LOCAL')
+        hpc_directives.append('cd {0} '.format(os.path.dirname(file_path)))
+
         # hpc_directives.append('{0} -S {1}'.format(hpc['prefix'], hpc['shell']))
 
     with open(file_path, 'w') as jID:
@@ -1317,6 +1325,10 @@ def local_exec(script_path):
 
     # make it executable
     st = os.stat(script_path)
+    #st = os.stat(script_path)            #replaced with lines above
+    print('Check the log file for progress:')
+    print(script_path + '.log')
+
     os.chmod(script_path, st.st_mode | stat.S_IXGRP)
 
     proc = subprocess.Popen(script_path, shell=True, stdin=subprocess.PIPE,
@@ -1652,11 +1664,35 @@ def run_jobs(job_paths, run_locally, num_procs, depends_on_step):
             # list of all script paths
 
             pool = Pool()
+
+            #removed
+            #jobs_list = job_paths.values()
+            # pool = Pool()
+
+            print('JobList')
+            print(len(jobs_list))
             for idx_beg in range(0, len(jobs_list), num_procs):
+
+                #pool = Pool(num_procs + 1)   #added
+
+                print('Index')
+                print(idx_beg)
+                print('Added')
+                print(num_procs)
+                print('Iteration')
+                print(jobs_list[idx_beg:idx_beg + num_procs])
                 # running only on a specified num cores, one subject at a time
                 pool.map(local_exec, jobs_list[idx_beg:idx_beg + num_procs])
-                pool.close()
-                pool.join()
+                #print('Finished pool map')
+                #pool.close()
+                #print('Finished close')
+                #pool.join()
+                #print('Finished join')
+            print('Finished pool map')
+            pool.close()
+            print('Finished close')
+            pool.join()
+            print('Finished join')
         else:
             for prefix, job_path in job_paths.items():
                 job_id_list[prefix] = make_dry_run(job_path)

@@ -112,12 +112,18 @@ Nhalf = size( pipeset_half, 1 );
 % PIPE-6:Detrend --------------------------------------------
 detSet = [];
 K=6;
-fulidx  = [1  strfind(substr{K},',')  length(substr{K})];
-numscal = length(fulidx)-1;
-for(i=1:numscal)
-    scaltok = substr{K}( fulidx(i)+1:fulidx(i+1)-1 );
-    detSet = [detSet str2num(scaltok)];
+if( ~isempty(strfind(substr{K},'-1')) || ~isempty(strfind(substr{K},'A')) )
+    if( ~isempty(strfind(substr{K},',')) ) error('automatic detrending detected - cannot include other options'); end
+    detSet = -1;
+else
+    fulidx  = [1  strfind(substr{K},',')  length(substr{K})];
+    numscal = length(fulidx)-1;
+    for(i=1:numscal)
+        scaltok = substr{K}( fulidx(i)+1:fulidx(i+1)-1 );
+        detSet = [detSet str2num(scaltok)];
+    end
 end
+
 % PIPE-7:Motreg --------------------------------------------
 mprSet = [];
 K=7;

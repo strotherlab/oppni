@@ -45,6 +45,15 @@ for ksub = 1:numel(InputStruct)
         filename = InputStruct(ksub).run(krun).split_info_file;
         [split_info] = Parse_Split_Info(  InputStruct(ksub).run(krun).split_info_file  );
         
+        if( ~strcmpi(split_info.type,'event') && ~strcmpi(split_info.type,'block') && ~strcmpi(split_info.type,'nocontrast') )
+            if( strcmpi(split_info.type,'none') )
+                disp('contrast "none" specified --> resetting to "nocontrast"');
+                split_info.type = 'nocontrast';
+            else
+                error('You must specify the field split_info.type (event, block or nocontrast)');
+            end
+        end
+        
         % read command-line switches and to the split_info structure
         for paramcount = 1:2:(fix(length(paramlist)/2)*2)
             if strcmpi(paramlist{paramcount+1},'NONE')
@@ -71,12 +80,14 @@ for ksub = 1:numel(InputStruct)
             
             % concat all non-baseline conditions
             ccat = [];
+            if ~strcmpi(split_info.type,'nocontrast')
             for(i=1:length(split_info.cond))
                 if(~strcmpi(split_info.cond(i).name,'baseline'))
                     if(i==1)  ccat = [split_info.cond(i).name];
                     else      ccat = [ccat, '+', split_info.cond(i).name]; 
                     end
                 end
+            end
             end
             
             if     strcmpi(split_info.type,'event')
@@ -85,8 +96,6 @@ for ksub = 1:numel(InputStruct)
                 contrast_list_str = [ccat,'-baseline'];
             elseif strcmpi(split_info.type,'nocontrast')
                 contrast_list_str = '00';
-            else
-                error('You must specify the field split_info.type (event, block or nocontrast)');
             end         
         end
 

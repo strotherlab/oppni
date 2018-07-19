@@ -82,11 +82,12 @@ fid = fopen(inputfile);
 % read in first line
 tline = fgetl(fid);
 ksub=0;
-while ischar(tline) && ksub<2 % for every input line in textfile...
+while ischar(tline) % for every input line in textfile...
 
     % index #subjects(/datasets)
     ksub=ksub+1,
        
+    if(ksub==1)
     %% Read in subject paths
 
     % parse output directory
@@ -118,13 +119,20 @@ while ischar(tline) && ksub<2 % for every input line in textfile...
         %%% make sure mask-name terminates with .nii string
         newmaskname = [apath,'/',aprefix];
     end
+    end
+    % then get next line (subject)...
+    tline = fgetl(fid);
 end
 fclose(fid);
 
-if( isempty(Npcs) || Npcs < 2 )
-    disp('# reproducible SVD PCs must be be at least 2. Resetting...');
-    Npcs = 2; 
+if( ksub < 4 )
+    disp(['Only ',num2str(ksub),' subjects. Insufficient for group-level brain maps - skipping this step']);
+    Npcs = [];
+elseif( Npcs > floor(ksub/2) )
+    disp(['Too many PCs for sample size. Requested ',num2str(Npcs),', but maximum is ',num2str(floor(ksub/2)),'. Resetting...']);
+    Npcs = floor(ksub/2);
 end
+
 
 %% 1: plotting pipeline lists
 
@@ -334,6 +342,8 @@ mask = double(MM.img);
 % imwrite(img.cdata, [savestring]);
 print_to_file(gcf, QC2_folder,'FIG4_inter_subject_SPM_similarity');
 
+if(~isempty(Npcs))
+
 %%---------------- CON
 
     [ out ] = rSVD_splithalf( spm_set(:,:,1), Npcs, 50, [] );
@@ -480,6 +490,7 @@ print_to_file(gcf, QC2_folder,'FIG4_inter_subject_SPM_similarity');
         print_to_file(gcf, QC2_folder, out_fig_name);
         
     end
+    
     %% -------- making plots -------- %%
     
     % store results
@@ -487,7 +498,9 @@ print_to_file(gcf, QC2_folder,'FIG4_inter_subject_SPM_similarity');
     group_pca.ind.rep    = out.R_match;    
     group_pca.ind.scores = out.subj_weights;
     group_pca.ind.var    = out.Var_match;
-       
+
+end
+    
 %% Recording outputs to save:
 
 % re-store metrics
@@ -501,51 +514,55 @@ output_qc2.spm_ovl       = spm_ovl;
 % save results --> must be in Matlab format, so no Octave checking required
 savestring = [QC2_folder,'/output_qc2.mat'];
 save(savestring,'output_qc2');
-% save results --> must be in Matlab format, so no Octave checking required
-savestring = [QC2_folder,'/group_pca.mat'];
-save(savestring,'group_pca');
 
-% also: make into nifti volumes
-%
-% (CON)
-TMPVOL = zeros( [size(mask), Npcs] );
-for(pc=1:Npcs)  
-    tmp=mask; 
-    tmp(tmp>0)= group_pca.con.rSPMZs(:,pc);  
-    TMPVOL(:,:,:,pc) = tmp;
-end
-nii     = VV; % copy nifti struct
-nii.img = TMPVOL; % replace volume
-nii.hdr.dime.dim(5) = Npcs; % adjust for #timepoints
-%
-savestring = [QC2_folder,'/CON_group_PCs1-',num2str(Npcs),'.nii'];
-save_untouch_nii(nii,savestring);
+if(~isempty(Npcs))
+    % save results --> must be in Matlab format, so no Octave checking required
+    savestring = [QC2_folder,'/group_pca.mat'];
+    save(savestring,'group_pca');
 
-% (FIX)
-TMPVOL = zeros( [size(mask), Npcs] );
-for(pc=1:Npcs)  
-    tmp=mask; 
-    tmp(tmp>0)= group_pca.fix.rSPMZs(:,pc);  
-    TMPVOL(:,:,:,pc) = tmp;
-end
-nii     = VV; % copy nifti struct
-nii.img = TMPVOL; % replace volume
-nii.hdr.dime.dim(5) = Npcs; % adjust for #timepoints
-%
-savestring = [QC2_folder,'/FIX_group_PCs1-',num2str(Npcs),'.nii'];
-save_untouch_nii(nii,savestring);
+    % also: make into nifti volumes
+    %
+    % (CON)
+    TMPVOL = zeros( [size(mask), Npcs] );
+    for(pc=1:Npcs)  
+        tmp=mask; 
+        tmp(tmp>0)= group_pca.con.rSPMZs(:,pc);  
+        TMPVOL(:,:,:,pc) = tmp;
+    end
+    nii     = VV; % copy nifti struct
+    nii.img = TMPVOL; % replace volume
+    nii.hdr.dime.dim(5) = Npcs; % adjust for #timepoints
+    %
+    savestring = [QC2_folder,'/CON_group_PCs1-',num2str(Npcs),'.nii'];
+    save_untouch_nii(nii,savestring);
 
-% (IND)
-TMPVOL = zeros( [size(mask), Npcs] );
-for(pc=1:Npcs)  
-    tmp=mask; 
-    tmp(tmp>0)= group_pca.ind.rSPMZs(:,pc);  
-    TMPVOL(:,:,:,pc) = tmp;
+    % (FIX)
+    TMPVOL = zeros( [size(mask), Npcs] );
+    for(pc=1:Npcs)  
+        tmp=mask; 
+        tmp(tmp>0)= group_pca.fix.rSPMZs(:,pc);  
+        TMPVOL(:,:,:,pc) = tmp;
+    end
+    nii     = VV; % copy nifti struct
+    nii.img = TMPVOL; % replace volume
+    nii.hdr.dime.dim(5) = Npcs; % adjust for #timepoints
+    %
+    savestring = [QC2_folder,'/FIX_group_PCs1-',num2str(Npcs),'.nii'];
+    save_untouch_nii(nii,savestring);
+
+    % (IND)
+    TMPVOL = zeros( [size(mask), Npcs] );
+    for(pc=1:Npcs)  
+        tmp=mask; 
+        tmp(tmp>0)= group_pca.ind.rSPMZs(:,pc);  
+        TMPVOL(:,:,:,pc) = tmp;
+    end
+    nii     = VV; % copy nifti struct
+    nii.img = TMPVOL; % replace volume
+    nii.hdr.dime.dim(5) = Npcs; % adjust for #timepoints
+    %
+    %
+    savestring = [QC2_folder,'/IND_group_PCs1-',num2str(Npcs),'.nii'];
+    save_untouch_nii(nii,savestring);
+
 end
-nii     = VV; % copy nifti struct
-nii.img = TMPVOL; % replace volume
-nii.hdr.dime.dim(5) = Npcs; % adjust for #timepoints
-%
-%
-savestring = [QC2_folder,'/IND_group_PCs1-',num2str(Npcs),'.nii'];
-save_untouch_nii(nii,savestring);

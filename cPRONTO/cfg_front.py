@@ -21,6 +21,8 @@ CODES_OPTIM_SCHEMES_OPTIONS = [ 'CON', 'FIX', 'IND', 'ALL' ] # ['CON', 'FIX', 'I
 
 CODES_SUBSPACES = [ 'onecomp','multicomp' ]
 
+WARP_TYPES = [ "affine", "nonlinear" ]
+
 CODES_SPM_TYPES = ['zscore', 'corr']
 
 SLICE_TIMING_PATTERNS = ['alt+z', 'alt+z2', 'alt-z', 'alt-z2', 'seq+z', 'seq-z', 'auto_hdr']
@@ -50,3 +52,6 @@ def initialize_proc_status():
         setattr(proc_status, flag, False)
 
     return proc_status
+
+if __name__ == '__main__':
+    pass

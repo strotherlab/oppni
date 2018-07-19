@@ -348,5 +348,5 @@ if flag_step==0 || flag_step==2 || flag_step==3
     end
 end
 
-
+display('Checkpoint COMPLETED SPNORM END OF SCRIPT');
 

@@ -210,6 +210,8 @@ function output = run_analyses_wrapper( datamat, split_info, analysis_model )
 % ------------------------------------------------------------------------%
 
 
+disp('Checkpoint II');
+
 % list of univariate models to exclude
 univar_list = {'gnb', 'glm', 'erglm', 'ergnb', 'sconn', 'falff', 'gconn', 'hurst' };
 

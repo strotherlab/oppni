@@ -585,7 +585,7 @@ def parse_args_check():
     # HPC related
     parser.add_argument("-e", "--environment", action="store", dest="environment",
                         default="compiled",
-                        choices=('matlab', 'compiled'),
+                        choices=('matlab','octave','compiled'),
                         help="(optional) determine which software to use to run the code: matlab or compiled(default)")
 
     parser.add_argument("--cluster", action="store", dest="hpc_type",
@@ -1509,6 +1509,25 @@ def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=N
         # if hpc['type'] == 'CAC':
         #    setup_cmd = r'use matlab'
         full_cmd = setup_cmd + "\n" + r"matlab -nodesktop -nosplash -r {0}".format(mfile_name)
+    elif environment.lower() in ('octave'):
+         
+        # Same as Matlab but change out the full_cmd call and replace the getReport
+         single_quoted = lambda s: r"'{}'".format(s)
+         cmd_options = ', '.join(map(single_quoted, arg_list))
+         oppni_octave_path = os.getenv('OPPNI_PATH') # The original path now defaults to octave use
+
+         # make an m-file script
+         mfile_name = prefix.replace('-', '_')
+         mfile_path = os.path.join(job_dir, mfile_name + '.m')
+         with open(mfile_path, 'w') as mfile:
+            mfile.write('\n')
+            mfile.write("addpath(genpath('{}'));".format(oppni_octave_path))
+            mfile.write("try, {0}({1}); catch ; exc_report = lasterror; display('reporting exception details ..'); display(exc_report.message); display(exc_report.identifier); display(exc_report.stack(1).file); display(exc_report.stack(1).line); display(' <<--- Done.'); end; ".format(step_cmd_matlab,cmd_options))
+            mfile.write('\n')
+
+         setup_cmd = ''
+         full_cmd = setup_cmd + "\n" + r"octave -W --traditional -q {0}".format(mfile_path)
+
 
     elif environment.lower() in ('standalone', 'compiled'):
         # first single quote is bash to protect from expansion or globbing
@@ -1631,7 +1650,6 @@ def run_jobs(job_paths, run_locally, num_procs, depends_on_step):
             #     raise OSError('Error executing the {} job locally.'.format(step_id))
 
             # list of all script paths
-            jobs_list = job_paths.values()
 
             pool = Pool()
             for idx_beg in range(0, len(jobs_list), num_procs):

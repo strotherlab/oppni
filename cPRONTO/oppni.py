@@ -491,7 +491,7 @@ def parse_args_check():
                         help="Toggles estimation of subject-specific vascular mask that would be excluded prior to analysis (0: disble, 1: enable). Recommended.")
 
     parser.add_argument("-k", "--keepmean", action="store", dest="keepmean",
-                        default="0",
+                        default="0", choices = ("0", "1"),
                         help="(optional) determine whether the ouput nifti files contain the mean scan "
                              "(Default keepmean=0, i.e. remove the mean)")
 
@@ -508,8 +508,7 @@ def parse_args_check():
                              "nonlinear for class-specific covariances", metavar="MODEL")
     parser.add_argument("--drf", action="store", dest="drf",
                         default="None",
-                        help="FRACTION=Scalar value of range (0,1), indicating the fraction of full-date PCA subspace to keep during PCA-LDA analysis. "
-                             "A drf of 0.3 is recommended as it has been found to be optimal in previous studies.",
+                        help="FRACTION=Scalar value of range (0,1), indicating the fraction of full-date PCA subspace to keep during PCA-LDA analysis. A drf of 0.3 is recommended as it has been found to be optimal in previous studies.",
                         metavar="FRACTION")
     parser.add_argument("--Nblock", action="store", dest="Nblock",
                         default="None",
@@ -571,12 +570,17 @@ def parse_args_check():
                         help="(optional) determine which software to use to run the code: matlab or compiled(default)")
 
     parser.add_argument("--cluster", action="store", dest="hpc_type",
-                        default=None, choices=('ROTMAN', 'BRAINCODE', 'CAC', 'SCINET', 'SHARCNET', 'CBRAIN', 'SGE'),
+                        default=None, choices=('FRONTENAC', 'BRAINCODE', 'CAC', 'SCINET', 'SHARCNET', 'CBRAIN'),
                         help="Please specify the type of cluster you're running the code on.")
 
     parser.add_argument("--memory", action="store", dest="memory",
                         default="4",
                         help="(optional) determine the minimum amount RAM needed for the job, e.g. --memory 8 (in gigabytes)!")
+
+    parser.add_argument("--walltime", action="store", dest="walltime",
+                        default="30:00:00",
+                        help="(optional) specify total run time needed for each job, e.g. --walltime 30:00:00 (in hours:minutes:seconds format)!")
+
     parser.add_argument("-n", "--numcores", action="store", dest="numcores",
                         default=1,
                         help=argparse.SUPPRESS)

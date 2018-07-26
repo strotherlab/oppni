@@ -1180,7 +1180,6 @@ def update_status_and_exit(out_dir):
 def update_proc_status(out_dir):
     """Helper to the original update_status routine."""
     opt_file = os.path.join(out_dir, file_name_prev_options)
-
     with open(opt_file, 'rb') as of:
         all_subjects, options, new_input_file, _ = pickle.load(of)
         print(new_input_file)
@@ -2000,6 +1999,12 @@ def submit_jobs():
         status_qc2, job_ids_qc2 = run_qc_part_two(unique_subjects, options, input_file, cur_garage)
         if options.run_locally is True and (status_qc2 is False or status_qc2 is None):
             raise Exception('QC part 2 failed.')
+
+    # preforms a status check once all jobs are complete on local computer
+    if options.run_locally and not options.dry_run:
+        print('Performing Status Check after local completion')
+        proc_status, failed_sub_file, failed_spnorm_file = check_proc_status.run([input_file, options.pipeline_file,
+                                                                                   '--skip_validation'], options)
 
     # saving the job ids and hpc cfg to facilitate a status update in future
     save_hpc_cfg_and_jod_ids(cur_garage)

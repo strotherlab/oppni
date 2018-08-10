@@ -88,10 +88,14 @@ rePip2 = re.compile(r'([0-9A-Z\s]+)=\[([aA\d,]*)\][\s]*')
 
 
 def get_out_dir_line(line):
+    """Returns the value of OUT=section in the input line."""
+
     return os.path.abspath(reOut.search(line).group(1))
 
 
 def get_out_dir_first_line(input_file):
+    """Returns the value of OUT= section in the first line of the given input file."""
+
     with open(input_file) as fID:
         # read one line
         first_line = fID.readline()

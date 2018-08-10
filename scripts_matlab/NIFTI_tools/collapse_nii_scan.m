@@ -33,10 +33,10 @@ function collapse_nii_scan(scan_pattern, fileprefix, scan_path)
 
    %  Check file extension. If .gz, unpack it into temp folder
    %
-   if length(filename) > 2 & strcmp(filename(end-2:end), '.gz')
+   if length(filename) > 2 && strcmp(filename(end-2:end), '.gz')
 
-      if ~strcmp(filename(end-6:end), '.img.gz') & ...
-	 ~strcmp(filename(end-6:end), '.hdr.gz') & ...
+      if ~strcmp(filename(end-6:end), '.img.gz') && ...
+	 ~strcmp(filename(end-6:end), '.hdr.gz') && ...
 	 ~strcmp(filename(end-6:end), '.nii.gz')
 
          error('Please check filename.');
@@ -48,8 +48,8 @@ function collapse_nii_scan(scan_pattern, fileprefix, scan_path)
          gzFile = 1;
       end
    else
-      if ~strcmp(filename(end-3:end), '.img') & ...
-	 ~strcmp(filename(end-3:end), '.hdr') & ...
+      if ~strcmp(filename(end-3:end), '.img') && ...
+	 ~strcmp(filename(end-3:end), '.hdr') && ...
 	 ~strcmp(filename(end-3:end), '.nii')
 
          error('Please check filename.');
@@ -66,7 +66,7 @@ function collapse_nii_scan(scan_pattern, fileprefix, scan_path)
    hdr = nii.hdr;
    filetype = nii.filetype;
 
-   if isfield(nii,'ext') & ~isempty(nii.ext)
+   if isfield(nii,'ext') && ~isempty(nii.ext)
       ext = nii.ext;
       [ext, esize_total] = verify_nii_ext(ext);
    else
@@ -158,7 +158,7 @@ function collapse_nii_scan(scan_pattern, fileprefix, scan_path)
       fid = fopen(sprintf('%s.img',fileprefix),'w');
    end
 
-   if filetype == 2 & isempty(ext)
+   if filetype == 2 && isempty(ext)
       skip_bytes = double(hdr.dime.vox_offset) - 348;
    else
       skip_bytes = 0;

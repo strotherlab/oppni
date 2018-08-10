@@ -145,7 +145,7 @@ function export_fig
 
    [selected_file, selected_path] = rri_select_file(curr,'Save As');
 
-   if isempty(selected_file) | isempty(selected_path)
+   if isempty(selected_file) || isempty(selected_path)
       return;
    end
 

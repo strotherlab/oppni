@@ -259,11 +259,11 @@ function status = view_nii(varargin)
 
          opt = varargin{2};
 
-         if isfield(opt,'hdr') & isfield(opt,'img')
+         if isfield(opt,'hdr') && isfield(opt,'img')
             nii = opt;
-         elseif isfield(opt, 'command') & (strcmpi(opt.command,'init') ...
-		| strcmpi(opt.command,'updatenii') ...
-		| strcmpi(opt.command,'updateimg') )
+         elseif isfield(opt, 'command') && (strcmpi(opt.command,'init') ...
+		|| strcmpi(opt.command,'updatenii') ...
+		|| strcmpi(opt.command,'updateimg') )
 
             error('Option here cannot contain "init", "updatenii", or "updateimg" comand');
          end
@@ -277,12 +277,12 @@ function status = view_nii(varargin)
             error('3rd parameter should be option struct');
          end
 
-         if ~isfield(opt,'command') | ~strcmpi(opt.command,'updateimg')
-            if ~isstruct(nii) | ~isfield(nii,'hdr') | ~isfield(nii,'img')
+         if ~isfield(opt,'command') || ~strcmpi(opt.command,'updateimg')
+            if ~isstruct(nii) || ~isfield(nii,'hdr') || ~isfield(nii,'img')
                error('2nd parameter should be nii struct');
             end
 
-            if isfield(nii,'untouch') & nii.untouch == 1
+            if isfield(nii,'untouch') && nii.untouch == 1
                error('Usage: please use ''load_nii.m'' to load the structure.');
             end
          end
@@ -299,18 +299,18 @@ function status = view_nii(varargin)
 
       nii = varargin{1};
 
-      if ~isstruct(nii) | ~isfield(nii,'hdr') | ~isfield(nii,'img')
+      if ~isstruct(nii) || ~isfield(nii,'hdr') || ~isfield(nii,'img')
          error('1st parameter should be either a figure handle or nii struct');
       end
 
-      if isfield(nii,'untouch') & nii.untouch == 1
+      if isfield(nii,'untouch') && nii.untouch == 1
          error('Usage: please use ''load_nii.m'' to load the structure.');
       end
 
       if nargin > 1
          opt = varargin{2};
 
-         if isfield(opt, 'command') & ~strcmpi(opt.command,'init')
+         if isfield(opt, 'command') && ~strcmpi(opt.command,'init')
             error('Option here must use "init" comand');
          end
       end
@@ -375,7 +375,7 @@ function status = view_nii(varargin)
       if isfield(opt,'setcrosshaircolor')
          setcrosshaircolor = opt.setcrosshaircolor;
 
-         if ~isempty(setcrosshaircolor) & (~isnumeric(setcrosshaircolor) | ~isequal(size(setcrosshaircolor),[1 3]) | min(setcrosshaircolor(:))<0 | max(setcrosshaircolor(:))>1)
+         if ~isempty(setcrosshaircolor) && (~isnumeric(setcrosshaircolor) || ~isequal(size(setcrosshaircolor),[1 3]) | min(setcrosshaircolor(:))<0 | max(setcrosshaircolor(:))>1)
             error('Crosshair Color should be a 1x3 matrix with value between 0 and 1');
          end
       end
@@ -383,7 +383,7 @@ function status = view_nii(varargin)
       if isfield(opt,'setcolorindex')
          setcolorindex = round(opt.setcolorindex);
 
-         if ~isnumeric(setcolorindex) | setcolorindex < 1 | setcolorindex > 9
+         if ~isnumeric(setcolorindex) || setcolorindex < 1 || setcolorindex > 9
             error('Colorindex should be a number between 1 and 9');
          end
       end
@@ -391,7 +391,7 @@ function status = view_nii(varargin)
       if isfield(opt,'setcolormap')
          setcolormap = opt.setcolormap;
 
-         if ~isempty(setcolormap) & (~isnumeric(setcolormap) | size(setcolormap,2) ~= 3 | min(setcolormap(:))<0 | max(setcolormap(:))>1)
+         if ~isempty(setcolormap) && (~isnumeric(setcolormap) || size(setcolormap,2) ~= 3 || min(setcolormap(:))<0 | max(setcolormap(:))>1)
             error('Colormap should be a Mx3 matrix with value between 0 and 1');
          end
       end
@@ -399,7 +399,7 @@ function status = view_nii(varargin)
       if isfield(opt,'setcolorlevel')
          setcolorlevel = round(opt.setcolorlevel);
 
-         if ~isnumeric(setcolorlevel) | setcolorlevel > 256 | setcolorlevel < 1
+         if ~isnumeric(setcolorlevel) || setcolorlevel > 256 || setcolorlevel < 1
             error('Colorlevel should be a number between 1 and 256');
          end
       end
@@ -407,7 +407,7 @@ function status = view_nii(varargin)
       if isfield(opt,'sethighcolor')
          sethighcolor = opt.sethighcolor;
 
-         if ~isempty(sethighcolor) & (~isnumeric(sethighcolor) | size(sethighcolor,2) ~= 3 | min(sethighcolor(:))<0 | max(sethighcolor(:))>1)
+         if ~isempty(sethighcolor) && (~isnumeric(sethighcolor) || size(sethighcolor,2) ~= 3 || min(sethighcolor(:))<0 | max(sethighcolor(:))>1)
             error('Highcolor should be a Mx3 matrix with value between 0 and 1');
          end
       end
@@ -415,7 +415,7 @@ function status = view_nii(varargin)
       if isfield(opt,'setcbarminmax')
          setcbarminmax = opt.setcbarminmax;
 
-         if isempty(setcbarminmax) | ~isnumeric(setcbarminmax) | length(setcbarminmax) ~= 2
+         if isempty(setcbarminmax) || ~isnumeric(setcbarminmax) || length(setcbarminmax) ~= 2
             error('Colorbar MinMax should contain 2 values: [min max]');
          end
       end
@@ -423,8 +423,8 @@ function status = view_nii(varargin)
       if isfield(opt,'setvalue')
          setvalue = opt.setvalue;
 
-         if isempty(setvalue) | ~isstruct(setvalue) | ...
-		~isfield(opt.setvalue,'idx') | ~isfield(opt.setvalue,'val')
+         if isempty(setvalue) || ~isstruct(setvalue) || ...
+		~isfield(opt.setvalue,'idx') || ~isfield(opt.setvalue,'val')
             error('setvalue should be a struct contains idx and val');
          end
 
@@ -544,11 +544,11 @@ function status = view_nii(varargin)
          error('The figure should already contain a 3-View plot.');
       end
 
-      if ~isstruct(nii) | ~isfield(nii,'hdr') | ~isfield(nii,'img')
+      if ~isstruct(nii) || ~isfield(nii,'hdr') || ~isfield(nii,'img')
          error('2nd parameter should be nii struct');
       end
 
-      if isfield(nii,'untouch') & nii.untouch == 1
+      if isfield(nii,'untouch') && nii.untouch == 1
          error('Usage: please use ''load_nii.m'' to load the structure.');
       end
 
@@ -600,13 +600,13 @@ function status = view_nii(varargin)
       %  CData must be double() for Matlab 6.5 for Windows
       %
       if axi,
-         if isfield(nii_view.handles,'axial_bg') & ~isempty(nii_view.handles.axial_bg) & nii_view.useinterp
+         if isfield(nii_view.handles,'axial_bg') && ~isempty(nii_view.handles.axial_bg) && nii_view.useinterp
             Saxi = squeeze(nii_view.bgimg(:,:,nii_view.slices.axi));
             set(nii_view.handles.axial_bg,'CData',double(Saxi)');
          end
 
          if isfield(nii_view.handles,'axial_image'),
-            if nii_view.nii.hdr.dime.datatype == 128 | nii_view.nii.hdr.dime.datatype == 511
+            if nii_view.nii.hdr.dime.datatype == 128 || nii_view.nii.hdr.dime.datatype == 511
                Saxi = squeeze(img(:,:,nii_view.slices.axi,:,nii_view.scanid));
                Saxi = permute(Saxi, [2 1 3]);
             else
@@ -623,13 +623,13 @@ function status = view_nii(varargin)
        end
 
        if cor,
-         if isfield(nii_view.handles,'coronal_bg') & ~isempty(nii_view.handles.coronal_bg) & nii_view.useinterp
+         if isfield(nii_view.handles,'coronal_bg') && ~isempty(nii_view.handles.coronal_bg) && nii_view.useinterp
             Scor = squeeze(nii_view.bgimg(:,nii_view.slices.cor,:));
             set(nii_view.handles.coronal_bg,'CData',double(Scor)');
          end
 
          if isfield(nii_view.handles,'coronal_image'),
-            if nii_view.nii.hdr.dime.datatype == 128 | nii_view.nii.hdr.dime.datatype == 511
+            if nii_view.nii.hdr.dime.datatype == 128 || nii_view.nii.hdr.dime.datatype == 511
                Scor = squeeze(img(:,nii_view.slices.cor,:,:,nii_view.scanid));
                Scor = permute(Scor, [2 1 3]);
             else
@@ -647,13 +647,13 @@ function status = view_nii(varargin)
       end;
 
       if sag,
-         if isfield(nii_view.handles,'sagittal_bg') & ~isempty(nii_view.handles.sagittal_bg) & nii_view.useinterp
+         if isfield(nii_view.handles,'sagittal_bg') && ~isempty(nii_view.handles.sagittal_bg) && nii_view.useinterp
             Ssag = squeeze(nii_view.bgimg(nii_view.slices.sag,:,:));
             set(nii_view.handles.sagittal_bg,'CData',double(Ssag)');
          end
 
          if isfield(nii_view.handles,'sagittal_image'),
-            if nii_view.nii.hdr.dime.datatype == 128 | nii_view.nii.hdr.dime.datatype == 511
+            if nii_view.nii.hdr.dime.datatype == 128 || nii_view.nii.hdr.dime.datatype == 511
                Ssag = squeeze(img(nii_view.slices.sag,:,:,:,nii_view.scanid));
                Ssag = permute(Ssag, [2 1 3]);
             else
@@ -693,13 +693,13 @@ function status = view_nii(varargin)
       end
 
       if axi,
-         if isfield(nii_view.handles,'axial_bg') & ~isempty(nii_view.handles.axial_bg) & nii_view.useinterp
+         if isfield(nii_view.handles,'axial_bg') && ~isempty(nii_view.handles.axial_bg) && nii_view.useinterp
             Saxi = squeeze(nii_view.bgimg(:,:,nii_view.slices.axi));
             set(nii_view.handles.axial_bg,'CData',double(Saxi)');
          end
 
          if isfield(nii_view.handles,'axial_image'),
-            if nii_view.nii.hdr.dime.datatype == 128 | nii_view.nii.hdr.dime.datatype == 511
+            if nii_view.nii.hdr.dime.datatype == 128 || nii_view.nii.hdr.dime.datatype == 511
                Saxi = squeeze(img(:,:,nii_view.slices.axi,:,nii_view.scanid));
                Saxi = permute(Saxi, [2 1 3]);
             else
@@ -716,13 +716,13 @@ function status = view_nii(varargin)
       end
 
       if cor,
-         if isfield(nii_view.handles,'coronal_bg') & ~isempty(nii_view.handles.coronal_bg) & nii_view.useinterp
+         if isfield(nii_view.handles,'coronal_bg') && ~isempty(nii_view.handles.coronal_bg) && nii_view.useinterp
             Scor = squeeze(nii_view.bgimg(:,nii_view.slices.cor,:));
             set(nii_view.handles.coronal_bg,'CData',double(Scor)');
          end
 
          if isfield(nii_view.handles,'coronal_image'),
-            if nii_view.nii.hdr.dime.datatype == 128 | nii_view.nii.hdr.dime.datatype == 511
+            if nii_view.nii.hdr.dime.datatype == 128 || nii_view.nii.hdr.dime.datatype == 511
                Scor = squeeze(img(:,nii_view.slices.cor,:,:,nii_view.scanid));
                Scor = permute(Scor, [2 1 3]);
             else
@@ -740,13 +740,13 @@ function status = view_nii(varargin)
       end    
 
       if sag,
-         if isfield(nii_view.handles,'sagittal_bg') & ~isempty(nii_view.handles.sagittal_bg) & nii_view.useinterp
+         if isfield(nii_view.handles,'sagittal_bg') && ~isempty(nii_view.handles.sagittal_bg) && nii_view.useinterp
             Ssag = squeeze(nii_view.bgimg(nii_view.slices.sag,:,:));
             set(nii_view.handles.sagittal_bg,'CData',double(Ssag)');
          end
 
          if isfield(nii_view.handles,'sagittal_image'),
-            if nii_view.nii.hdr.dime.datatype == 128 | nii_view.nii.hdr.dime.datatype == 511
+            if nii_view.nii.hdr.dime.datatype == 128 || nii_view.nii.hdr.dime.datatype == 511
                Ssag = squeeze(img(nii_view.slices.sag,:,:,:,nii_view.scanid));
                Ssag = permute(Ssag, [2 1 3]);
             else
@@ -779,7 +779,7 @@ function status = view_nii(varargin)
          img = nii_view.nii.img;
       end
 
-      if isempty(impos) | ~all(size(impos) ==  [1 3])
+      if isempty(impos) || ~all(size(impos) ==  [1 3])
          msg = 'Please use 3 numbers to represent X,Y and Z';
          msgbox(msg,'Error');
          return;
@@ -811,13 +811,13 @@ function status = view_nii(varargin)
       nii_view = get_slider_position(nii_view);
       update_nii_view(nii_view);
 
-      if isfield(nii_view.handles,'axial_bg') & ~isempty(nii_view.handles.axial_bg) & nii_view.useinterp
+      if isfield(nii_view.handles,'axial_bg') && ~isempty(nii_view.handles.axial_bg) && nii_view.useinterp
          Saxi = squeeze(nii_view.bgimg(:,:,nii_view.slices.axi));
          set(nii_view.handles.axial_bg,'CData',double(Saxi)');
       end
 
       if isfield(nii_view.handles,'axial_image'),
-         if nii_view.nii.hdr.dime.datatype == 128 | nii_view.nii.hdr.dime.datatype == 511
+         if nii_view.nii.hdr.dime.datatype == 128 || nii_view.nii.hdr.dime.datatype == 511
             Saxi = squeeze(img(:,:,nii_view.slices.axi,:,nii_view.scanid));
             Saxi = permute(Saxi, [2 1 3]);
          else
@@ -832,13 +832,13 @@ function status = view_nii(varargin)
          set(nii_view.handles.axial_slider,'Value',nii_view.slices.axi);
       end
 
-      if isfield(nii_view.handles,'coronal_bg') & ~isempty(nii_view.handles.coronal_bg) & nii_view.useinterp
+      if isfield(nii_view.handles,'coronal_bg') && ~isempty(nii_view.handles.coronal_bg) && nii_view.useinterp
          Scor = squeeze(nii_view.bgimg(:,nii_view.slices.cor,:));
          set(nii_view.handles.coronal_bg,'CData',double(Scor)');
       end
 
       if isfield(nii_view.handles,'coronal_image'),
-         if nii_view.nii.hdr.dime.datatype == 128 | nii_view.nii.hdr.dime.datatype == 511
+         if nii_view.nii.hdr.dime.datatype == 128 || nii_view.nii.hdr.dime.datatype == 511
             Scor = squeeze(img(:,nii_view.slices.cor,:,:,nii_view.scanid));
             Scor = permute(Scor, [2 1 3]);
          else
@@ -854,13 +854,13 @@ function status = view_nii(varargin)
          set(nii_view.handles.coronal_slider,'Value',slider_val);
       end
 
-      if isfield(nii_view.handles,'sagittal_bg') & ~isempty(nii_view.handles.sagittal_bg) & nii_view.useinterp
+      if isfield(nii_view.handles,'sagittal_bg') && ~isempty(nii_view.handles.sagittal_bg) && nii_view.useinterp
          Ssag = squeeze(nii_view.bgimg(nii_view.slices.sag,:,:));
          set(nii_view.handles.sagittal_bg,'CData',double(Ssag)');
       end
 
       if isfield(nii_view.handles,'sagittal_image'),
-         if nii_view.nii.hdr.dime.datatype == 128 | nii_view.nii.hdr.dime.datatype == 511
+         if nii_view.nii.hdr.dime.datatype == 128 || nii_view.nii.hdr.dime.datatype == 511
             Ssag = squeeze(img(nii_view.slices.sag,:,:,:,nii_view.scanid));
             Ssag = permute(Ssag, [2 1 3]);
          else
@@ -953,8 +953,8 @@ function status = view_nii(varargin)
 
          redraw_cbar(fig, setcolorlevel, setcolormap, sethighcolor);
 
-         if nii_view.numscan == 1 & ...
-		(custom_colorindex < 2 | custom_colorindex > 3)
+         if nii_view.numscan == 1 && ...
+		(custom_colorindex < 2 || custom_colorindex > 3)
             contrastopt.enablecontrast = 0;
          else
             contrastopt.enablecontrast = 1;
@@ -1074,7 +1074,7 @@ function fig = init(nii, fig, area, setunit, setviewpoint, setscanid, buttondown
       end
    end
 
-   if isempty(color_map) | ischar(color_map)
+   if isempty(color_map) || ischar(color_map)
       color_map = [];
    else
       colorindex = 1;
@@ -1161,7 +1161,7 @@ function fig = init(nii, fig, area, setunit, setviewpoint, setscanid, buttondown
 
    end
 
-   if isempty(highcolor) | ischar(highcolor)
+   if isempty(highcolor) || ischar(highcolor)
       highcolor = [];
       num_highcolor = 0;
    else
@@ -1211,7 +1211,7 @@ function fig = init(nii, fig, area, setunit, setviewpoint, setscanid, buttondown
 
    origin = abs(nii.hdr.hist.originator(1:3));
 
-   if isempty(origin) | all(origin == 0)		% according to SPM
+   if isempty(origin) || all(origin == 0)		% according to SPM
       origin = (dims+1)/2;   
    end;
 
@@ -2139,15 +2139,15 @@ end
    if size(img_slice,1) == 1 | size(img_slice,2) == 1
       set(top_ax,'visible','off');
 
-      if isfield(handles,'sagittal_slider') & ishandle(handles.sagittal_slider)
+      if isfield(handles,'sagittal_slider') && ishandle(handles.sagittal_slider)
          set(handles.sagittal_slider, 'visible', 'off');
       end
 
-      if isfield(handles,'coronal_slider') & ishandle(handles.coronal_slider)
+      if isfield(handles,'coronal_slider') && ishandle(handles.coronal_slider)
          set(handles.coronal_slider, 'visible', 'off');
       end
 
-      if isfield(handles,'axial_slider') & ishandle(handles.axial_slider)
+      if isfield(handles,'axial_slider') && ishandle(handles.axial_slider)
          set(handles.axial_slider, 'visible', 'off');
       end
    end
@@ -2181,15 +2181,15 @@ end
    if size(img_slice,1) == 1 | size(img_slice,2) == 1
       set(front_ax,'visible','off');
 
-      if isfield(handles,'sagittal_slider') & ishandle(handles.sagittal_slider)
+      if isfield(handles,'sagittal_slider') && ishandle(handles.sagittal_slider)
          set(handles.sagittal_slider, 'visible', 'off');
       end
 
-      if isfield(handles,'coronal_slider') & ishandle(handles.coronal_slider)
+      if isfield(handles,'coronal_slider') && ishandle(handles.coronal_slider)
          set(handles.coronal_slider, 'visible', 'off');
       end
 
-      if isfield(handles,'axial_slider') & ishandle(handles.axial_slider)
+      if isfield(handles,'axial_slider') && ishandle(handles.axial_slider)
          set(handles.axial_slider, 'visible', 'off');
       end
    end
@@ -2226,15 +2226,15 @@ end
    if size(img_slice,1) == 1 | size(img_slice,2) == 1
       set(side_ax,'visible','off');
 
-      if isfield(handles,'sagittal_slider') & ishandle(handles.sagittal_slider)
+      if isfield(handles,'sagittal_slider') && ishandle(handles.sagittal_slider)
          set(handles.sagittal_slider, 'visible', 'off');
       end
 
-      if isfield(handles,'coronal_slider') & ishandle(handles.coronal_slider)
+      if isfield(handles,'coronal_slider') && ishandle(handles.coronal_slider)
          set(handles.coronal_slider, 'visible', 'off');
       end
 
-      if isfield(handles,'axial_slider') & ishandle(handles.axial_slider)
+      if isfield(handles,'axial_slider') && ishandle(handles.axial_slider)
          set(handles.axial_slider, 'visible', 'off');
       end
    end
@@ -2251,7 +2251,7 @@ end
 
    %  plot colorbar
    %
-   if ~isempty(cbar_axes) & ~isempty(cbarminmax_axes)
+   if ~isempty(cbar_axes) && ~isempty(cbarminmax_axes)
 
 if 0
       if isempty(color_map)
@@ -2289,8 +2289,8 @@ end
 
    set_coordinates(nii_view,useinterp);	% coord unit
 
-   if ~isfield(nii_view, 'axi_xhair') |  ...
-      ~isfield(nii_view, 'cor_xhair') |  ...
+   if ~isfield(nii_view, 'axi_xhair') ||  ...
+      ~isfield(nii_view, 'cor_xhair') ||  ...
       ~isfield(nii_view, 'sag_xhair')
 
       nii_view.axi_xhair = [];			% top cross hair
@@ -2362,7 +2362,7 @@ function fig = update_img(img, fig, opt)
    nii_view = getappdata(fig,'nii_view');
    change_interp = 0;
 
-   if isfield(opt, 'useinterp') & opt.useinterp ~= nii_view.useinterp
+   if isfield(opt, 'useinterp') && opt.useinterp ~= nii_view.useinterp
       nii_view.useinterp = opt.useinterp;
       change_interp = 1;
    end
@@ -2381,7 +2381,7 @@ function fig = update_img(img, fig, opt)
       end
    end
 
-   if isfield(opt, 'glblocminmax') & ~isempty(opt.glblocminmax)
+   if isfield(opt, 'glblocminmax') && ~isempty(opt.glblocminmax)
       minvalue = opt.glblocminmax(1);
       maxvalue = opt.glblocminmax(2);
    else
@@ -2396,7 +2396,7 @@ function fig = update_img(img, fig, opt)
    if isfield(opt, 'setvalue')
       setvalue = opt.setvalue;
 
-      if isfield(opt, 'glblocminmax') & ~isempty(opt.glblocminmax)
+      if isfield(opt, 'glblocminmax') && ~isempty(opt.glblocminmax)
          minvalue = opt.glblocminmax(1);
          maxvalue = opt.glblocminmax(2);
       else
@@ -2446,7 +2446,7 @@ function fig = update_img(img, fig, opt)
          minvalue = double(min(img(:)));
          maxvalue = double(max(img(:)));
 
-         if isfield(opt,'glblocminmax') & ~isempty(opt.glblocminmax)
+         if isfield(opt,'glblocminmax') && ~isempty(opt.glblocminmax)
             minvalue = opt.glblocminmax(1);
          end
 
@@ -2490,7 +2490,7 @@ function fig = update_img(img, fig, opt)
 
       Saxi = squeeze(nii_view.bgimg(:,:,nii_view.slices.axi));
 
-      if isfield(nii_view.handles,'axial_bg') & ~isempty(nii_view.handles.axial_bg)
+      if isfield(nii_view.handles,'axial_bg') && ~isempty(nii_view.handles.axial_bg)
          set(nii_view.handles.axial_bg,'CData',double(Saxi)');
       else
          axes(nii_view.handles.axial_axes);
@@ -2526,7 +2526,7 @@ function fig = update_img(img, fig, opt)
    if ~isempty(nii_view.bgimg)
       Scor = squeeze(nii_view.bgimg(:,nii_view.slices.cor,:));
 
-      if isfield(nii_view.handles,'coronal_bg') & ~isempty(nii_view.handles.coronal_bg)
+      if isfield(nii_view.handles,'coronal_bg') && ~isempty(nii_view.handles.coronal_bg)
          set(nii_view.handles.coronal_bg,'CData',double(Scor)');
       else
          axes(nii_view.handles.coronal_axes);
@@ -2561,7 +2561,7 @@ function fig = update_img(img, fig, opt)
    if ~isempty(nii_view.bgimg)
       Ssag = squeeze(nii_view.bgimg(nii_view.slices.sag,:,:));
 
-      if isfield(nii_view.handles,'sagittal_bg') & ~isempty(nii_view.handles.sagittal_bg)
+      if isfield(nii_view.handles,'sagittal_bg') && ~isempty(nii_view.handles.sagittal_bg)
          set(nii_view.handles.sagittal_bg,'CData',double(Ssag)');
       else
          axes(nii_view.handles.sagittal_axes);
@@ -2597,7 +2597,7 @@ function fig = update_img(img, fig, opt)
 
    if isfield(opt, 'setvalue')
 
-      if ~isfield(nii_view,'highcolor') | ~isequal(size(nii_view.highcolor),[56 3])
+      if ~isfield(nii_view,'highcolor') || ~isequal(size(nii_view.highcolor),[56 3])
 
          %  55 level for brain structure (paded 0 for highcolor level 1, i.e. normal level 201, to make 56 highcolor)
          %
@@ -2720,7 +2720,7 @@ function [cbar_axes, cbarminmax_axes] = create_cbar_axes(fig, cbar_area, nii_vie
       nii_view = getappdata(fig, 'nii_view');
    end
 
-   if isempty(nii_view) | ~isfield(nii_view.handles,'cbar_axes') | isempty(nii_view.handles.cbar_axes)
+   if isempty(nii_view) || ~isfield(nii_view.handles,'cbar_axes') || isempty(nii_view.handles.cbar_axes)
       cbarminmax_axes = axes('position', cbar_area);
       cbar_axes = axes('position', cbar_area);
    else
@@ -2843,7 +2843,7 @@ function h1 = plot_cbar(fig, cbar_axes, cbarminmax_axes, cbarminmax, ...
       nii_view = getappdata(fig, 'nii_view');
    end
 
-   if isempty(nii_view) | ~isfield(nii_view.handles,'cbar_image') | isempty(nii_view.handles.cbar_image)
+   if isempty(nii_view) || ~isfield(nii_view.handles,'cbar_image') || isempty(nii_view.handles.cbar_image)
 
       %  set colormap first
       %
@@ -2885,15 +2885,15 @@ function set_coordinates(nii_view,useinterp)
        zdata_ax = [imgNlim.vox(3)-0.5 imgPlim.vox(3)+0.5];
     end
 
-    if isfield(nii_view.handles,'axial_image') & ~isempty(nii_view.handles.axial_image)
+    if isfield(nii_view.handles,'axial_image') && ~isempty(nii_view.handles.axial_image)
         set(nii_view.handles.axial_axes,'Xlim',xdata_ax);
         set(nii_view.handles.axial_axes,'Ylim',ydata_ax);
     end;
-    if isfield(nii_view.handles,'coronal_image') & ~isempty(nii_view.handles.coronal_image)
+    if isfield(nii_view.handles,'coronal_image') && ~isempty(nii_view.handles.coronal_image)
         set(nii_view.handles.coronal_axes,'Xlim',xdata_ax);
         set(nii_view.handles.coronal_axes,'Ylim',zdata_ax);
     end;
-    if isfield(nii_view.handles,'sagittal_image') & ~isempty(nii_view.handles.sagittal_image)
+    if isfield(nii_view.handles,'sagittal_image') && ~isempty(nii_view.handles.sagittal_image)
         set(nii_view.handles.sagittal_axes,'Xlim',ydata_ax);
         set(nii_view.handles.sagittal_axes,'Ylim',zdata_ax);
     end;
@@ -2935,7 +2935,7 @@ function set_image_value(nii_view),
        imgvalue = double(img(sag,cor,axi,nii_view.scanid));
        set(nii_view.handles.imval,'Value',imgvalue);
 
-       if isnan(imgvalue) | imgvalue > nii_view.cbarminmax(2)
+       if isnan(imgvalue) || imgvalue > nii_view.cbarminmax(2)
           imgvalue = 0;
        end
 
@@ -3223,7 +3223,7 @@ function hist_eq(fig)
 
    %  remove disp field if un-check 'histeq' button
    %
-   if ~get(nii_view.handles.hist_eq,'value') & isfield(nii_view, 'disp')
+   if ~get(nii_view.handles.hist_eq,'value') && isfield(nii_view, 'disp')
       nii_view = rmfield(nii_view, 'disp');
    end
 
@@ -3438,15 +3438,15 @@ function update_enable(h, opt);
          v = 'off';
       end
 
-      if isfield(handles,'sagittal_slider') & ishandle(handles.sagittal_slider)
+      if isfield(handles,'sagittal_slider') && ishandle(handles.sagittal_slider)
          set(handles.sagittal_slider, 'visible', v);
       end
 
-      if isfield(handles,'coronal_slider') & ishandle(handles.coronal_slider)
+      if isfield(handles,'coronal_slider') && ishandle(handles.coronal_slider)
          set(handles.coronal_slider, 'visible', v);
       end
 
-      if isfield(handles,'axial_slider') & ishandle(handles.axial_slider)
+      if isfield(handles,'axial_slider') && ishandle(handles.axial_slider)
          set(handles.axial_slider, 'visible', v);
       end
    end
@@ -3544,7 +3544,7 @@ function update_usestretch(fig, usestretch)
    y = y + h;
    pos = [x y w h];
 
-   if isfield(handles,'sagittal_slider') & ishandle(handles.sagittal_slider)
+   if isfield(handles,'sagittal_slider') && ishandle(handles.sagittal_slider)
       set(handles.sagittal_slider,'position',pos);
    end
 
@@ -3557,7 +3557,7 @@ function update_usestretch(fig, usestretch)
    y = y + h;
    pos = [x y w h];
 
-   if isfield(handles,'coronal_slider') & ishandle(handles.coronal_slider)
+   if isfield(handles,'coronal_slider') && ishandle(handles.coronal_slider)
       set(handles.coronal_slider,'position',pos);
    end
 
@@ -3569,7 +3569,7 @@ function update_usestretch(fig, usestretch)
    h = top_pos(2) - y;
    pos = [x y w h];
 
-   if isfield(handles,'axial_slider') & ishandle(handles.axial_slider)
+   if isfield(handles,'axial_slider') && ishandle(handles.axial_slider)
       set(handles.axial_slider,'position',pos);
    end
 
@@ -3900,7 +3900,7 @@ function update_useinterp(fig, useinterp)
       order(find(order == nii_view.handles.axial_image)) = [];
       order = [order; nii_view.handles.axial_image];
 
-      if isfield(nii_view.handles,'axial_bg') & ~isempty(nii_view.handles.axial_bg)
+      if isfield(nii_view.handles,'axial_bg') && ~isempty(nii_view.handles.axial_bg)
          order(find(order == nii_view.handles.axial_bg)) = [];
          order = [order; nii_view.handles.axial_bg];
       end
@@ -3908,7 +3908,7 @@ function update_useinterp(fig, useinterp)
       set(gca, 'child', order);
 
       if ~useinterp
-         if isfield(nii_view.handles,'axial_bg') & ~isempty(nii_view.handles.axial_bg)
+         if isfield(nii_view.handles,'axial_bg') && ~isempty(nii_view.handles.axial_bg)
             delete(nii_view.handles.axial_bg);
             nii_view.handles.axial_bg = [];
          end
@@ -3943,7 +3943,7 @@ function update_useinterp(fig, useinterp)
       order(find(order == nii_view.handles.coronal_image)) = [];
       order = [order; nii_view.handles.coronal_image];
 
-      if isfield(nii_view.handles,'coronal_bg') & ~isempty(nii_view.handles.coronal_bg)
+      if isfield(nii_view.handles,'coronal_bg') && ~isempty(nii_view.handles.coronal_bg)
          order(find(order == nii_view.handles.coronal_bg)) = [];
          order = [order; nii_view.handles.coronal_bg];
       end
@@ -3951,7 +3951,7 @@ function update_useinterp(fig, useinterp)
       set(gca, 'child', order);
 
       if ~useinterp
-         if isfield(nii_view.handles,'coronal_bg') & ~isempty(nii_view.handles.coronal_bg)
+         if isfield(nii_view.handles,'coronal_bg') && ~isempty(nii_view.handles.coronal_bg)
             delete(nii_view.handles.coronal_bg);
             nii_view.handles.coronal_bg = [];
          end
@@ -3986,7 +3986,7 @@ function update_useinterp(fig, useinterp)
       order(find(order == nii_view.handles.sagittal_image)) = [];
       order = [order; nii_view.handles.sagittal_image];
 
-      if isfield(nii_view.handles,'sagittal_bg') & ~isempty(nii_view.handles.sagittal_bg)
+      if isfield(nii_view.handles,'sagittal_bg') && ~isempty(nii_view.handles.sagittal_bg)
          order(find(order == nii_view.handles.sagittal_bg)) = [];
          order = [order; nii_view.handles.sagittal_bg];
       end
@@ -3994,7 +3994,7 @@ function update_useinterp(fig, useinterp)
       set(gca, 'child', order);
 
       if ~useinterp
-         if isfield(nii_view.handles,'sagittal_bg') & ~isempty(nii_view.handles.sagittal_bg)
+         if isfield(nii_view.handles,'sagittal_bg') && ~isempty(nii_view.handles.sagittal_bg)
             delete(nii_view.handles.sagittal_bg);
             nii_view.handles.sagittal_bg = [];
          end
@@ -4029,7 +4029,7 @@ function update_useimagesc(fig, useimagesc)
    nii_view = getappdata(fig,'nii_view');
    handles = nii_view.handles;
 
-   if isfield(handles,'cbar_image') & ishandle(handles.cbar_image)
+   if isfield(handles,'cbar_image') && ishandle(handles.cbar_image)
 %      set(handles.cbar_image,'cdatamapping',v);
    end
 
@@ -4078,7 +4078,7 @@ function update_shape(fig, area, usecolorbar, usestretch, useimagesc)
 
    %  Add colorbar
    %
-   if ~isempty(usecolorbar) & usecolorbar & isempty(nii_view.cbar_area)
+   if ~isempty(usecolorbar) && usecolorbar && isempty(nii_view.cbar_area)
 
       colorbarchange = 1;
 
@@ -4104,13 +4104,13 @@ function update_shape(fig, area, usecolorbar, usestretch, useimagesc)
          end
       end
 
-      if isfield(nii_view, 'highcolor') & ~isempty(highcolor)
+      if isfield(nii_view, 'highcolor') && ~isempty(highcolor)
          num_highcolor = size(nii_view.highcolor,1);
       else
          num_highcolor = 0;
       end
 
-      if isfield(nii_view, 'colorlevel') & ~isempty(nii_view.colorlevel)
+      if isfield(nii_view, 'colorlevel') && ~isempty(nii_view.colorlevel)
          colorlevel = nii_view.colorlevel;
       else
          colorlevel = 256 - num_highcolor;
@@ -4157,7 +4157,7 @@ end
 
    %  remove colorbar
    %
-   elseif ~isempty(usecolorbar) & ~usecolorbar & ~isempty(nii_view.cbar_area)
+   elseif ~isempty(usecolorbar) && ~usecolorbar && ~isempty(nii_view.cbar_area)
 
       colorbarchange = 1;
 
@@ -4421,7 +4421,7 @@ function update_highcolor(fig, highcolor, colorlevel)
 
    nii_view = getappdata(fig,'nii_view');
 
-   if ischar(highcolor) & (isempty(colorlevel) | nii_view.colorindex == 1)
+   if ischar(highcolor) && (isempty(colorlevel) || nii_view.colorindex == 1)
       return;
    end
 
@@ -4435,7 +4435,7 @@ function update_highcolor(fig, highcolor, colorlevel)
       highcolor = [];
    end
 
-   if isempty(colorlevel) | nii_view.colorindex == 1
+   if isempty(colorlevel) || nii_view.colorindex == 1
       nii_view.colorlevel = nii_view.colorlevel - size(highcolor,1);
    else
       nii_view.colorlevel = colorlevel;
@@ -4593,7 +4593,7 @@ function [custom_color_map, colorindex] ...
       cbarminmax = nii_view.cbarminmax;
    end
 
-   if isfield(nii_view, 'highcolor') & ~isempty(nii_view.highcolor)
+   if isfield(nii_view, 'highcolor') && ~isempty(nii_view.highcolor)
       highcolor = nii_view.highcolor;
       num_highcolor = size(highcolor,1);
    else
@@ -4625,7 +4625,7 @@ function [custom_color_map, colorindex] ...
       end
    end
 
-   if isfield(nii_view,'color_map') & ~isempty(nii_view.color_map)
+   if isfield(nii_view,'color_map') && ~isempty(nii_view.color_map)
       color_map = nii_view.color_map;
       custom_color_map = color_map;
    elseif colorindex == 1
@@ -4644,8 +4644,8 @@ function [custom_color_map, colorindex] ...
          loadfail = 1;
       end
 
-      if loadfail | isempty(custom_color_map) | size(custom_color_map,2)~=3 ...
-	| min(custom_color_map(:)) < 0 | max(custom_color_map(:)) > 1 
+      if loadfail || isempty(custom_color_map) || size(custom_color_map,2)~=3 ...
+	|| min(custom_color_map(:)) < 0 || max(custom_color_map(:)) > 1 
 
          msg = 'Colormap should be a Mx3 matrix with value between 0 and 1';
          msgbox(msg,'Error in colormap file');
@@ -4687,9 +4687,9 @@ function [custom_color_map, colorindex] ...
       color_map = [zeros(contrast,3); color_map(2:end,:)];
    end
 
-   if get(nii_view.handles.neg_color,'value') & isempty(highcolor)
+   if get(nii_view.handles.neg_color,'value') && isempty(highcolor)
       color_map = flipud(color_map);
-   elseif get(nii_view.handles.neg_color,'value') & ~isempty(highcolor)
+   elseif get(nii_view.handles.neg_color,'value') && ~isempty(highcolor)
       highcolor = flipud(highcolor);
    end
 

@@ -27,10 +27,10 @@ function ext = load_nii_ext(filename)
 
    %  Check file extension. If .gz, unpack it into temp folder
    %
-   if length(filename) > 2 & strcmp(filename(end-2:end), '.gz')
+   if length(filename) > 2 && strcmp(filename(end-2:end), '.gz')
 
-      if ~strcmp(filename(end-6:end), '.img.gz') & ...
-	 ~strcmp(filename(end-6:end), '.hdr.gz') & ...
+      if ~strcmp(filename(end-6:end), '.img.gz') && ...
+	 ~strcmp(filename(end-6:end), '.hdr.gz') && ...
 	 ~strcmp(filename(end-6:end), '.nii.gz')
 
          error('Please check filename.');
@@ -76,16 +76,16 @@ function ext = load_nii_ext(filename)
    machine = 'ieee-le';
    new_ext = 0;
 
-   if findstr('.nii',filename) & strcmp(filename(end-3:end), '.nii')
+   if findstr('.nii',filename) && strcmp(filename(end-3:end), '.nii')
       new_ext = 1;
       filename(end-3:end)='';
    end
 
-   if findstr('.hdr',filename) & strcmp(filename(end-3:end), '.hdr')
+   if findstr('.hdr',filename) && strcmp(filename(end-3:end), '.hdr')
       filename(end-3:end)='';
    end
 
-   if findstr('.img',filename) & strcmp(filename(end-3:end), '.img')
+   if findstr('.img',filename) && strcmp(filename(end-3:end), '.img')
       filename(end-3:end)='';
    end
 
@@ -187,7 +187,7 @@ function ext = read_extension(fid, vox_offset)
       ext.extension = fread(fid,4)';
    end
 
-   if isempty(ext) | ext.extension(1) == 0
+   if isempty(ext) || ext.extension(1) == 0
       ext = [];
       return;
    end

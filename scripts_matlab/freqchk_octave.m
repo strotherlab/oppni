@@ -33,13 +33,13 @@ end
 
 % Check for allowed interval values 
 if strcmp(opt,'z'),
-   if any(wp<=0) | any(wp>=1) | any(ws<=0) | any(ws>=1),
+   if any(wp<=0) || any(wp>=1) || any(ws<=0) || any(ws>=1),
       msgobj = error('Cutoff outside of the frequency see MATLAB version');
       errmsg = getString(msgobj);
       return    
    end
 else % Analog filter design
-   if any(wp<=0) | any(ws<=0),
+   if any(wp<=0) || any(ws<=0),
       msgobj = error('Analog error see MATLAB version');
       errmsg = getString(msgobj);
       return    
@@ -49,13 +49,13 @@ end
 % For Band specifications
 if length(wp)==2,
    % Check for frequencies to be in increasing order
-   if (wp(1)>=wp(2)) | (ws(1)>=ws(2)),
+   if (wp(1)>=wp(2)) || (ws(1)>=ws(2)),
       msgobj = error('Cutoff issue see MATLAB version');
       errmsg = getString(msgobj);
       return
    end    
    % Check for passband and stopband frequency overlaps  
-   if ~( ((wp(1)<ws(1)) & (wp(2)>ws(2))) | ((wp(1)>ws(1)) & (wp(2)<ws(2))) ),
+   if ~( ((wp(1)<ws(1)) && (wp(2)>ws(2))) || ((wp(1)>ws(1)) && (wp(2)<ws(2))) ),
       msgobj = error('No Overlaps see MATLAB version');
       errmsg = getString(msgobj); 
       return

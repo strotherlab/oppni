@@ -17,7 +17,7 @@
 %
 function save_untouch_header_only(hdr, filename)
 
-   if ~exist('hdr','var') | isempty(hdr) | ~exist('filename','var') | isempty(filename)
+   if ~exist('hdr','var') || isempty(hdr) || ~exist('filename','var') || isempty(filename)
       error('Usage: save_untouch_header_only(hdr, filename)');
    end
 
@@ -25,7 +25,7 @@ function save_untouch_header_only(hdr, filename)
 
    %  Check file extension. If .gz, unpack it into temp folder
    %
-   if length(filename) > 2 & strcmp(filename(end-2:end), '.gz')
+   if length(filename) > 2 && strcmp(filename(end-2:end), '.gz')
 
       if ~strcmp(filename(end-6:end), '.hdr.gz')
          error('Please check filename.');

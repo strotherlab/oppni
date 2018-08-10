@@ -42,7 +42,7 @@ function nii = pad_nii(nii, opt)
    dims = abs(nii.hdr.dime.dim(2:4));
    origin = abs(nii.hdr.hist.originator(1:3));
 
-   if isempty(origin) | all(origin == 0)		% according to SPM
+   if isempty(origin) || all(origin == 0)		% according to SPM
       origin = round((dims+1)/2);
    end
 

@@ -22,7 +22,7 @@ function xhair = rri_xhair(varargin)
    if nargin > 0
       p = varargin{1};
 
-      if ~isnumeric(p) | length(p) ~= 2
+      if ~isnumeric(p) || length(p) ~= 2
          error('Invalid point position');
          return;
       else
@@ -37,10 +37,10 @@ function xhair = rri_xhair(varargin)
          if ~isstruct(xhair)
             error('Invalid xhair struct');
             return;
-         elseif ~isfield(xhair,'lx') | ~isfield(xhair,'ly')
+         elseif ~isfield(xhair,'lx') || ~isfield(xhair,'ly')
             error('Invalid xhair struct');
             return;
-         elseif ~ishandle(xhair.lx) | ~ishandle(xhair.ly)
+         elseif ~ishandle(xhair.lx) || ~ishandle(xhair.ly)
             error('Invalid xhair struct');
             return;
          end

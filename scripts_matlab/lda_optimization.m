@@ -56,6 +56,7 @@ n_sp2_cl2  = sum( design_sp2 < 0 );
 data_full   = [data_sp1       data_sp2];
 design_full = [design_sp1;  design_sp2];
 
+
 %% 2. initial data reduction factor + generate fulldata matrix
 
 % initial SVD -> run on full dataset
@@ -81,10 +82,15 @@ s = s(1:drfPCs,1:drfPCs);
 % get image bases + PC-space representation
 img_bases      = data_full * v * inv(s);
 Z_full         = s*v'; % [pcs x time] matrix
+
+save('LDA_sec2.1.mat')
+
 % SVD on full data set (used for reference)
 Z_full         = bsxfun(@minus,Z_full,mean (Z_full, 2));
 [u_full, s, v] = svd (Z_full, 0);
 Z_reproj_full  = s*v';
+
+save('LDA_sec2.2.mat')
 
 %% 3. define split1/2 data halves after initial feature reduction
 
@@ -95,14 +101,18 @@ Z_sp2 = Z_full(:,N_sp1+1:end   );
 Z_sp1  = bsxfun(@minus,Z_sp1,mean (Z_sp1, 2));
 Z_sp2  = bsxfun(@minus,Z_sp2,mean (Z_sp2, 2));
 % get class-splits for laters
-Z_full_class1 = Z_full(:,design_full<0); Z_full_class2 = Z_full(:,design_full>0);
-Z_sp1_class1  =  Z_sp1(:,design_sp1 <0); Z_sp1_class2  =  Z_sp1(:,design_sp1 >0);
-Z_sp2_class1  =  Z_sp2(:,design_sp2 <0); Z_sp2_class2  =  Z_sp2(:,design_sp2 >0);
+Z_full_class1 = Z_full(:,design_full<0); 
+Z_full_class2 = Z_full(:,design_full>0);
+Z_sp1_class1  =  Z_sp1(:,design_sp1 <0); 
+Z_sp1_class2  =  Z_sp1(:,design_sp1 >0);
+Z_sp2_class1  =  Z_sp2(:,design_sp2 <0); 
+Z_sp2_class2  =  Z_sp2(:,design_sp2 >0);
 
 % svd on split matrices
 [u_sp1, s, v] = svd (Z_sp1, 0); Z_reproj_sp1 = s*v';
 [u_sp2, s, v] = svd (Z_sp2, 0); Z_reproj_sp2 = s*v';
 
+save('LDA_sec3.mat')
 %%  -- 4 Compute linear discriminants
 
 % REFERENCE
@@ -159,13 +169,14 @@ CV_dif_sp2 = CV_avg_sc2 - CV_avg_sc1;
 CV_flip = sign( CV_dif_sp2 .* CV_dif );
 %
 map_sp2=map_sp2*diag( CV_flip );
-
+save('LDA_sec4.mat')
 %%  -- 3.3 Reproducibility and rSPM estimation
 
 for(k=1:K_max)
     [ res_r(k,1), res_rSPMZ(:,k) ] = get_rSPM( map_sp1(:,k), map_sp2(:,k),1 );
 end
 
+save('LDA_sec3.3.mat')
 %%  -- 3.4 Prediction
 
 warning off;
@@ -200,6 +211,8 @@ end
 if( min(pp2_nopriors(:))<1E-6 )
    fprintf('OPPNI LDA debug: prediction of split2 on split1\n posterior prob. of class 2 (unnormalized) is <10-6\n Value is: %f\n', ( min(pp2_nopriors(:))));
 end
+
+save('LDA_sec3.4.1.mat')
 
 result_set.temp.pp1_2on1 = pp1_nopriors;
 result_set.temp.pp2_2on1 = pp2_nopriors;
@@ -247,6 +260,8 @@ warning on;
 res_p = (sum_prob_sp2on1 + sum_prob_sp1on2)./ (N_sp1 + N_sp2);
 % fractional accuracy
 res_acc = (sum_correct_sp2on1 + sum_correct_sp1on2)./ (N_sp1 + N_sp2);
+
+save('LDA_sec3.4.2.mat')
 
 % drop PC#1 for single-subject
 res_r=res_r(2:end);

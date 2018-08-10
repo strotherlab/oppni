@@ -226,6 +226,7 @@ switch lower( analysis_model )
     %==========================================================================
     case 'lda'
         output = module_LDA( datamat, split_info );
+        save('module_LDA_io.mat','output','datamat','split_info'); %Debug
         % --
         output.modeltype = 'one_component';
     case 'gnb'

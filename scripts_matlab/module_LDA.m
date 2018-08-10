@@ -36,6 +36,7 @@ design2 = [ ones( size(block_cond1_sp2,2), 1 ); -ones( size(block_cond2_sp2,2), 
 disp('Checkpoint Kb')
 % linear discriminant analysis, under single-split structure
 results = lda_optimization( [block_cond1_sp1 block_cond2_sp1], [block_cond1_sp2 block_cond2_sp2], design1,design2, split_info.drf );
+save('LDA_opt_io.mat','block_cond1_sp1', 'block_cond2_sp1', 'block_cond1_sp2' ,'block_cond2_sp2', 'design1,design2', 'split_info','results'); %Debug
 disp('Checkpoint Kc')
 % Euclid. distance from (P=1,R=1)
 DD = sqrt( (1-results.R).^2 + (1-results.P).^2 );

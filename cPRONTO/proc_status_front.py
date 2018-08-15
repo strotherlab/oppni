@@ -255,7 +255,7 @@ def flush_out_text(old_stdout, my_stdout, not_verbose):
         output_text = my_stdout.getvalue()
         print(output_text)
     else:
-        output_text = None
+        output_text = ""
 
     my_stdout.close()
 

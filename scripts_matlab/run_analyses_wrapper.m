@@ -209,9 +209,6 @@ function output = run_analyses_wrapper( datamat, split_info, analysis_model )
 % CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
 % ------------------------------------------------------------------------%
 
-
-disp('Checkpoint II');
-
 % list of univariate models to exclude
 univar_list = {'gnb', 'glm', 'erglm', 'ergnb', 'sconn', 'falff', 'gconn', 'hurst' };
 
@@ -226,7 +223,6 @@ switch lower( analysis_model )
     %==========================================================================
     case 'lda'
         output = module_LDA( datamat, split_info );
-        save('module_LDA_io.mat','output','datamat','split_info'); %Debug
         % --
         output.modeltype = 'one_component';
     case 'gnb'

@@ -838,7 +838,7 @@ end
 end
 
 
-disp('PART II IS NOW AT THE VERY END');
+disp('OPPNI PART 2 CODE COMPLETE');
 
     
 function x = get_numvols(file)

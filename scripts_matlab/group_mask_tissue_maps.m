@@ -296,7 +296,7 @@ brain_volumes.MASK_fract = maskFract_vect;
 
 % save results to matfile
      % matlab-compatible
-     disp('END OF GMASK')
+     disp('OPPNI GMASK CODE COMPLETE');
 save([newmaskname,'_spat_norm_qc.mat'],'brain_volumes','volume_stats', '-v7');
 
 
@@ -318,4 +318,3 @@ else
     thresh   = gaminv( 0.95, par_ab(1), par_ab(2) );
 end
 
-display('Checkpoint GMASK ALL DONE');

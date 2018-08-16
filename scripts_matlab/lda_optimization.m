@@ -17,21 +17,6 @@ function result_set = lda_optimization ( data_sp1, data_sp2, design_sp1, design_
 % CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
 % ------------------------------------------------------------------------%
 
-
-%OCTAVE TEST
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% load('FindPo.mat');
-% data_sp1_l = cat(3,data_sp1_l,data_sp2);
-% data_sp2_l = cat(3,data_sp2_l,data_sp2);
-% design_sp1_l = [design_sp1_l design_sp1];
-% design_sp2_l = [design_sp2_l design_sp2];
-% drf_l = [drf_l drf];
-% save('FindPo.mat','data_sp1_l', 'data_sp2_l', 'design_sp1_l', 'design_sp2_l', 'drf_l');
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
-
 %% 1. drop censored scans + concatenate
 
 Nvox    = size(data_sp1,1);
@@ -83,14 +68,11 @@ s = s(1:drfPCs,1:drfPCs);
 img_bases      = data_full * v * inv(s);
 Z_full         = s*v'; % [pcs x time] matrix
 
-save('LDA_sec2.1.mat')
-
 % SVD on full data set (used for reference)
 Z_full         = bsxfun(@minus,Z_full,mean (Z_full, 2));
 [u_full, s, v] = svd (Z_full, 0);
 Z_reproj_full  = s*v';
 
-save('LDA_sec2.2.mat')
 
 %% 3. define split1/2 data halves after initial feature reduction
 
@@ -112,7 +94,6 @@ Z_sp2_class2  =  Z_sp2(:,design_sp2 >0);
 [u_sp1, s, v] = svd (Z_sp1, 0); Z_reproj_sp1 = s*v';
 [u_sp2, s, v] = svd (Z_sp2, 0); Z_reproj_sp2 = s*v';
 
-save('LDA_sec3.mat')
 %%  -- 4 Compute linear discriminants
 
 % REFERENCE
@@ -169,14 +150,12 @@ CV_dif_sp2 = CV_avg_sc2 - CV_avg_sc1;
 CV_flip = sign( CV_dif_sp2 .* CV_dif );
 %
 map_sp2=map_sp2*diag( CV_flip );
-save('LDA_sec4.mat')
 %%  -- 3.3 Reproducibility and rSPM estimation
 
 for(k=1:K_max)
     [ res_r(k,1), res_rSPMZ(:,k) ] = get_rSPM( map_sp1(:,k), map_sp2(:,k),1 );
 end
 
-save('LDA_sec3.3.mat')
 %%  -- 3.4 Prediction
 
 warning off;
@@ -212,13 +191,6 @@ if( min(pp2_nopriors(:))<1E-6 )
    fprintf('OPPNI LDA debug: prediction of split2 on split1\n posterior prob. of class 2 (unnormalized) is <10-6\n Value is: %f\n', ( min(pp2_nopriors(:))));
 end
 
-save('LDA_sec3.4.1.mat')
-
-result_set.temp.pp1_2on1 = pp1_nopriors;
-result_set.temp.pp2_2on1 = pp2_nopriors;
-result_set.temp.sc1_2on1 = ((scores_sp2 - repmat(CV_sp1_avg_sc1, [size(scores_sp2,1) 1])).^2);
-result_set.temp.sc2_2on1 = ((scores_sp2 - repmat(CV_sp1_avg_sc2, [size(scores_sp2,1) 1])).^2);
-
 % (I) PREDICTION sp1 on sp2
 % mean CVscores, sp2 --- 1xK-size
 CV_sp2_avg_sc1 = mean(Z_sp2_class1' * dx_sp2); % mean cv, class 1
@@ -249,19 +221,12 @@ if( min(pp2_nopriors(:))<1E-6 )
    fprintf('OPPNI LDA debug: prediction of split1 on split2\n posterior prob. of class 2 (unnormalized) is <10-6\n Value is: %f\n', ( min(pp2_nopriors(:))));
 end
 
-result_set.temp.pp1_1on2 = pp1_nopriors;
-result_set.temp.pp2_1on2 = pp2_nopriors;
-result_set.temp.sc1_1on2 = ((scores_sp1 - repmat(CV_sp2_avg_sc1, [size(scores_sp1,1) 1])).^2);
-result_set.temp.sc2_1on2 = ((scores_sp1 - repmat(CV_sp2_avg_sc2, [size(scores_sp1,1) 1])).^2);
-
 warning on;
 
 % average posterior prob.
 res_p = (sum_prob_sp2on1 + sum_prob_sp1on2)./ (N_sp1 + N_sp2);
 % fractional accuracy
 res_acc = (sum_correct_sp2on1 + sum_correct_sp1on2)./ (N_sp1 + N_sp2);
-
-save('LDA_sec3.4.2.mat')
 
 % drop PC#1 for single-subject
 res_r=res_r(2:end);
@@ -300,7 +265,6 @@ coord0 = data (:, T_class < 0);
 coord_norm  = bsxfun(@minus,data,  mean (data, 2));
 coord1_norm = bsxfun(@minus,coord1,mean (coord1, 2));
 coord0_norm = bsxfun(@minus,coord0,mean (coord0, 2));
-disp('Check R')
 lin_discr = zeros( Range, Range );
 Kmax_out = Range;
 for(k=1:Range)

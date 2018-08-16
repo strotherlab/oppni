@@ -17,6 +17,7 @@ Ws = (2*TR)*0.10; % stopband is above 0.10 Hz
 % filter design: max passband attn. =50% / min stopband attn =1%
 inOctave = in_octave();
 if inOctave
+    disp('Modified buttord call to custom buttord_octave version');
     [Nord, Wcut] = buttord_octave( Wp, Ws, 3,10 );
 else
     [Nord, Wcut] = buttord( Wp, Ws, 3,10 );

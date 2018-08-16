@@ -67,10 +67,10 @@ def main():
                     end"""
 
     # Create .octaverc
-    with open('.octaverc', 'w+') as makeoctaverc:
+    with open('~/.octaverc', 'w+') as makeoctaverc:
         makeoctaverc.write(octaverc_string)
 
-    print "Move .octaverc into an Octave Path"
+    print "Moved .octaverc to ~/ /home/user"
 
 
 if __name__ == '__main__':

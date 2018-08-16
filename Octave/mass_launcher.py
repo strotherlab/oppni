@@ -20,20 +20,20 @@ DEOBLIQUE             = ['--DEOBLIQUE', '']
 metric                  = "dPR"
 optim_schemes           = "ALL"
 
+# Manual Paths
+# TODO: Change these to reflect the use system location (local vs HPC)
+oppni_ver      = '/home/username/Documents/Octave_Testing/oppni_octave_git/cPRONTO/oppni.py'
+base_work_dir = '/home/username/Documents/Octave_Testing'
+input_file_og  = pjoin(base_work_dir, 'example_input_file.txt')
+pipeline_file  = '/home/username/Documents/Octave_Testing/pipeline_file.txt'
+reference_file = '/home/username/Documents/Octave_Testing/MNI_orient_Nathan.nii'
+
+# Optional syntax(--call and value)
+# TODO: Change these to reflect the use system location (local vs HPC)
 # Mandatory Conditions
 # TODO: Change this as needed
 contrast                = "task_A-baseline"
-
-# Manual Paths
-# TODO: Change these to reflect the system location (local vs HPC)
-oppni_ver      = '/home/adlofts/Documents/Octave_Testing/oppni_octave_git/cPRONTO/oppni.py'
-base_work_dir = '/home/adlofts/Documents/Octave_Testing'
-input_file_og  = pjoin(base_work_dir, 'input_debug_run.txt')
-pipeline_file  = '/home/adlofts/Documents/Octave_Testing/pipeline_file.txt'
-reference_file = '/home/adlofts/Documents/Octave_Testing/MNI_orient_Nathan.nii'
-
-# Optional syntax(--call and value)
-# TODO: Change these to reflect the system location (local vs HPC)
+# Optional
 volume                  = ' -v "3.125 3.125 5.0"'
 convolve                = ""
 cluster                 = ""
@@ -121,8 +121,7 @@ def main():
                          cmd_fid.write(submit_string)
 
                     # Run OPPNI in Terminal
-                    #Make Sure that System Settings are Correct
-                    # TODO: Dry run locally, then can move to HPC and edit the starting varibles
+                    # Make Sure that System Settings are Correct
                     os.system(submit_string) # TURN THIS ON AND OFF
 
 if __name__ == '__main__':

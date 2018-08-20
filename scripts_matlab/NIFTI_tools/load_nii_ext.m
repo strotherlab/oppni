@@ -76,16 +76,16 @@ function ext = load_nii_ext(filename)
    machine = 'ieee-le';
    new_ext = 0;
 
-   if findstr('.nii',filename) && strcmp(filename(end-3:end), '.nii')
+   if findstr('.nii',filename) & strcmp(filename(end-3:end), '.nii')
       new_ext = 1;
       filename(end-3:end)='';
    end
 
-   if findstr('.hdr',filename) && strcmp(filename(end-3:end), '.hdr')
+   if findstr('.hdr',filename) & strcmp(filename(end-3:end), '.hdr')
       filename(end-3:end)='';
    end
 
-   if findstr('.img',filename) && strcmp(filename(end-3:end), '.img')
+   if findstr('.img',filename) & strcmp(filename(end-3:end), '.img')
       filename(end-3:end)='';
    end
 

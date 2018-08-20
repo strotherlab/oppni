@@ -869,9 +869,6 @@ def parse_args_check():
     os.environ["PIPELINE_NUMBER_OF_CORES"] = str(options.numcores)
     os.environ["FSLOUTPUTTYPE"] = "NIFTI"
 
-    print("Chosen options: ")
-    print(options)
-
     saved_cfg_path = os.path.join(cur_garage, file_name_prev_options)
     with open(saved_cfg_path, 'wb') as cfg:
         pickle.dump([unique_subjects, options, new_input_file, cur_garage], cfg, protocol=2)

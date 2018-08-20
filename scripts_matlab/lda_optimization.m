@@ -170,7 +170,11 @@ scores_sp2 = Z_sp2' * dx_sp1 ;
 % unnormalized probabilities
 pp1_nopriors = exp(-((scores_sp2 - repmat(CV_sp1_avg_sc1, [size(scores_sp2,1) 1])).^2)./2);
 pp2_nopriors = exp(-((scores_sp2 - repmat(CV_sp1_avg_sc2, [size(scores_sp2,1) 1])).^2)./2);
-%
+
+%Added Aug 2018, to stop rounding determining result 
+pp1_nopriors(find(pp1_nopriors <= 2)) = 1*10^-16;
+pp2_nopriors(find(pp2_nopriors <= 2)) = 1*10^-16;
+
 pp1_priors   = pp1_nopriors .* (n_sp1_cl1/N_sp1);
 pp2_priors   = pp2_nopriors .* (n_sp1_cl2/N_sp1);
 % normalized
@@ -200,7 +204,11 @@ scores_sp1 = Z_sp1' * dx_sp2 ;
 % unnormalized probabilities
 pp1_nopriors = exp(-((scores_sp1 - repmat(CV_sp2_avg_sc1, [size(scores_sp1,1) 1])).^2)./2);
 pp2_nopriors = exp(-((scores_sp1 - repmat(CV_sp2_avg_sc2, [size(scores_sp1,1) 1])).^2)./2);
-%
+
+%Added Aug 2018, to stop rounding determining result 
+pp1_nopriors(find(pp1_nopriors <= 2)) = 1*10^-16;
+pp2_nopriors(find(pp2_nopriors <= 2)) = 1*10^-16;
+
 pp1_priors   = pp1_nopriors .* (n_sp2_cl1/N_sp2);
 pp2_priors   = pp2_nopriors .* (n_sp2_cl2/N_sp2);
 % normalized

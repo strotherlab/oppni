@@ -7,7 +7,6 @@ from os.path import dirname as pdirname
 from os.path import splitext as psplit
 from os.path import join as pjoin
 
-#version_check_location = base_work_dir = '/home/adlofts/Documents/Octave_Testing/test_rec_yng1t'
 
 def main():
     """To be called when using octave for the first time"""

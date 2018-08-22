@@ -649,7 +649,7 @@ for ksub = 1:numel(InputStruct)
     end
 end
 
-disp('OPPNI PART 1 CODE COMPLETE');
+disp('OPPNI__STEP__COMPLETION__CODE');
 
 %%
 function name = generate_pipeline_name(pipechars,pipeset)

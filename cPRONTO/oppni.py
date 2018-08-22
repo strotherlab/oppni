@@ -20,7 +20,6 @@ import warnings
 from collections import OrderedDict
 from copy import copy
 from distutils.spawn import find_executable
-#from shutil import which -adlofts
 from multiprocessing import Pool
 from shutil import rmtree
 from time import localtime, strftime
@@ -869,6 +868,9 @@ def parse_args_check():
     os.environ["PIPELINE_NUMBER_OF_CORES"] = str(options.numcores)
     os.environ["FSLOUTPUTTYPE"] = "NIFTI"
 
+    print("Chosen options:")
+    print(options)
+
     saved_cfg_path = os.path.join(cur_garage, file_name_prev_options)
     with open(saved_cfg_path, 'wb') as cfg:
         pickle.dump([unique_subjects, options, new_input_file, cur_garage], cfg, protocol=2)
@@ -1147,7 +1149,7 @@ def update_status_and_exit(out_dir):
             estimate_processing_times(prev_input_file_all, prev_options, all_subjects)
         except:
             print('Processing time could not be estimated.')
-        print(prev_proc_status.all_done)
+        print("All done flag: ",format(prev_proc_status.all_done))
         if not prev_proc_status.all_done:
             print('Previous processing is incomplete.')
             if failed_sub_file is not None and failed_spnorm_file is not None:
@@ -1279,10 +1281,6 @@ def make_job_file_and_1linecmd(file_path):
 
         hpc_directives.append('#!/bin/bash')
 
-        #add adlofts Jun 26 2018
-        #must add a directoty change so that the file can be found using MATLAB m file loading scheme
-        #TODO : adjust so that cd only occurs for matlab, octave doesnt need, will help with docker images
-        #if environment.lower() in ('matlab'):
         hpc_directives.append('cd {0} '.format(os.path.dirname(file_path)))
 
         # hpc_directives.append('{0} -S {1}'.format(hpc['prefix'], hpc['shell']))
@@ -1329,17 +1327,16 @@ def local_exec(script_path):
 
     # make it executable
 
-    #adlofts add jun 26 2018
     script_path = list(script_path)
     script_path = script_path[0]
     st = os.stat(script_path)
-    #st = os.stat(script_path)            #replaced with lines above
+    #st = os.stat(script_path)
+
     print('Check the log file for progress:')
     print(script_path + '.log')
 
     os.chmod(script_path, st.st_mode | stat.S_IXGRP)
 
-    print('B')
     proc = subprocess.Popen(script_path, shell=True, stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
@@ -1670,10 +1667,7 @@ def run_jobs(job_paths, run_locally, num_procs, depends_on_step):
             # if ret_code < 0 or ret_code > 0:
             #     raise OSError('Error executing the {} job locally.'.format(step_id))
 
-            #removed Jun 26 2018
             #jobs_list = job_paths.values()
-
-            #added Jun 26 2018
             jobs_list = list(job_paths.values())
             pool = Pool()
             print('Number of Jobs:')
@@ -1942,7 +1936,7 @@ def submit_jobs():
         if options.run_locally is True and (status_sp is False or status_sp is None):
             raise Exception('Spatial normalization - steps 2 and later failed.')
 
-    #print(proc_status.gmask)
+    # generating GMASK if not done already
     if proc_status.gmask is False and run_gmask is True:
         print('group mask generation: Submitting jobs ..')
         status_gm = process_group_mask_generation(unique_subjects, options, input_file, cur_garage)

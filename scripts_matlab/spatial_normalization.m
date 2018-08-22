@@ -348,5 +348,5 @@ if flag_step==0 || flag_step==2 || flag_step==3
     end
 end
 
-disp('OPPNI SPNORM CODE COMPLETE');
+disp('OPPNI__COMPLETE__CODE SPNORM');
 

@@ -649,7 +649,7 @@ for ksub = 1:numel(InputStruct)
     end
 end
 
-disp('OPPNI__STEP__COMPLETION__CODE');
+disp('OPPNI__STEP__COMPLETION__CODE Part1');
 
 %%
 function name = generate_pipeline_name(pipechars,pipeset)
@@ -1055,7 +1055,6 @@ else
 end
 
 %%% ==== Step 2.3(e): run analysis with multiple contrasts==== %%%
-% save('indiscriminate_dump.mat')
 
 if( ~strcmpi(analysis_model,'NONE') )
 

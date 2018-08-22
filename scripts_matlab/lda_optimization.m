@@ -261,10 +261,6 @@ result_set.OPT.eig = res_rSPMZ(:,i);
 function [lin_discr,Kmax_out] = LDA_train_mini (data, T_class, Range)
 % performs compact linear discriminant:
 
-size(data)
-size(T_class)
-Range
-
 warning off;
 
 N = size (data, 2);
@@ -273,10 +269,11 @@ coord0 = data (:, T_class < 0);
 coord_norm  = bsxfun(@minus,data,  mean (data, 2));
 coord1_norm = bsxfun(@minus,coord1,mean (coord1, 2));
 coord0_norm = bsxfun(@minus,coord0,mean (coord0, 2));
+
 lin_discr = zeros( Range, Range );
 Kmax_out = Range;
 for(k=1:Range)
- % -----
+    % -----
     W_ssp = coord1_norm(1:k,:)*coord1_norm(1:k,:)' + coord0_norm(1:k,:)*coord0_norm(1:k,:)';
     T_ssp = coord_norm(1:k,:)*coord_norm(1:k,:)';
     B_ssp = T_ssp - W_ssp;
@@ -293,13 +290,11 @@ for(k=1:Range)
       
         ee = e (:, 1);
        
- % -----
+        % -----
         lin_discr(1:k,k) = ee / (sqrt (ee' * W_ssp * ee / (N - 2)));
-    
-else
+     else
         Kmax_out = k-1;
-       
- break;
+        break;
     end
 end
 

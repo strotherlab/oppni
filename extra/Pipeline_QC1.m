@@ -676,7 +676,7 @@ output_pc1.pipelines.pipeset        = pipeset;
 out_results = fullfile(QC1_folder,'output_qc1.mat');
 save(out_results,'output_qc1');
 
-disp('OPPNI__STEP__COMPLETION__CODE');
+disp('OPPNI__STEP__COMPLETION__CODE QC1');
 fprintf('QC1 done. \n\t Results saved to %s', out_results);
 
 end

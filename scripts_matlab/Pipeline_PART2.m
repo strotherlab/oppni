@@ -838,7 +838,7 @@ end
 end
 
 
-disp('OPPNI__STEP__COMPLETION__CODE');
+disp('OPPNI__STEP__COMPLETION__CODE PART2');
 
     
 function x = get_numvols(file)

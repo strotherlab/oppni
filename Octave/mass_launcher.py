@@ -3,7 +3,7 @@ from collections import namedtuple
 import os
 import re
 from oppni import get_out_dir_line
-from os.path import join as pjoin
+from os.path import join as pjoin, exists as pexists
 from os.path import dirname as pdirname
 from os.path import basename as pbasename
 from os.path import isdir as pisdir
@@ -35,7 +35,7 @@ reference_file = '/home/username/Documents/Octave_Testing/MNI_orient_Nathan.nii'
 contrast                = "task_A-baseline"
 # Optional
 volume                  = ' -v "3.125 3.125 5.0"'
-convolve                = ""
+convolve                = "0"
 cluster                 = ""
 vasc_mask               = ""
 blur                    = ""
@@ -55,6 +55,7 @@ DRF              = ['None','0','1']              #erCVA
 DECISION_MODELS  = ['None','linear','nonlinear'] #GNB
 SPMS             = ['None','corr','zscore']      #SCONN
 SUBSPACES        = ['None','onecomp','multicomp']#erCVA
+CONVOLVE_RANGE   = [0, 1]
 
 # Initialize
 line_text = []
@@ -82,16 +83,19 @@ def main():
                     # Create New Folders
                     base_cond_dir = pjoin(base_out_dir, suffix)
                     base_cond_env_dir = pjoin(base_cond_dir, str(env))
-                    if not pisdir(base_cond_dir):
-                        os.mkdir(base_cond_dir)
-                    if not pisdir(base_cond_env_dir):
-                        os.mkdir(base_cond_env_dir)
+
+                    os.makedirs(base_cond_dir, exist_ok=True)
+                    os.makedirs(base_cond_env_dir, exist_ok=True)
 
                     # Make and Write a Modified Input File
                     input_file_mod = pjoin(base_cond_env_dir, 'input_file.txt')
                     with open(input_file_mod, 'w+') as ipf_mod:
                         for idx in range(len(line_text)):
+                            # prepending it with OUT= to restrict the sub to only OUT, and not elsewhere such as TASK=
                             mod_out_text = pjoin(pdirname(out_text[idx]), suffix, str(env),pbasename(out_text[idx]))
+
+                            out_text[idx] = 'OUT={}'.format(base_out_dir)
+
                             mod_line_text = line_text[idx].replace(out_text[idx], mod_out_text)
                             ipf_mod.write(mod_line_text + "\n")
 
@@ -105,7 +109,7 @@ def main():
                                           ' -r ' + reference_file +
                                           ' '    + volume +
                                           ' --TPATTERN ' + str(pattern) +
-                                          ' '    + convolve +
+                                          ' --convolve ' + convolve +
                                           ' -m ' + metric +
                                           ' -e ' + str(env) +
                                           ' '    + str(dflag) +

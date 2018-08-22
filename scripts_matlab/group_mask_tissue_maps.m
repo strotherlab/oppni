@@ -297,7 +297,7 @@ brain_volumes.MASK_fract = maskFract_vect;
 
 % save results to matfile
      % matlab-compatible
-disp('OPPNI__STEP__COMPLETION__CODE');
+disp('OPPNI__STEP__COMPLETION__CODE GMASK');
 save([newmaskname,'_spat_norm_qc.mat'],'brain_volumes','volume_stats', '-v7');
 
 

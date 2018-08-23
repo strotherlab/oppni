@@ -28,8 +28,8 @@ function expand_nii_scan(filename, img_idx, newpath)
       end
    end
 
-   if ~exist('newpath','var') | isempty(newpath), newpath = pwd; end
-   if ~exist('img_idx','var') | isempty(img_idx), img_idx = 1:get_nii_frame(filename); end
+   if ~exist('newpath','var') || isempty(newpath), newpath = pwd; end
+   if ~exist('img_idx','var') || isempty(img_idx), img_idx = 1:get_nii_frame(filename); end
 
    for i=img_idx
       nii_i = load_untouch_nii(filename, i);

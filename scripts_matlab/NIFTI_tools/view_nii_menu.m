@@ -256,7 +256,7 @@ function img_info
    msg = [msg {''}];
 
    if isfield(nii_view.nii, 'fileprefix')
-      if isfield(nii_view.nii, 'filetype') & nii_view.nii.filetype == 2
+      if isfield(nii_view.nii, 'filetype') && nii_view.nii.filetype == 2
          msg = [msg {['File Name:  [', nii_view.nii.fileprefix, '.nii]']}];
          msg = [msg {''}];
       elseif isfield(nii_view.nii, 'filetype')
@@ -382,7 +382,7 @@ function editvox
 
       if ( (nii_view.nii.hdr.dime.datatype == 128 | nii_view.nii.hdr.dime.datatype == 511) ...
 		& length(imgvalue) ~= 3 ) | ...
-         ( (nii_view.nii.hdr.dime.datatype ~= 128 & nii_view.nii.hdr.dime.datatype ~= 511) ...
+         ( (nii_view.nii.hdr.dime.datatype ~= 128 && nii_view.nii.hdr.dime.datatype ~= 511) ...
 		& length(imgvalue) ~= 1 )
 	% do nothing
       else

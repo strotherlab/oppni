@@ -4,7 +4,7 @@
 
 function save_nii_hdr(hdr, fid)
    
-   if ~exist('hdr','var') | ~exist('fid','var')
+   if ~exist('hdr','var') || ~exist('fid','var')
       error('Usage: save_nii_hdr(hdr, fid)');
    end
    

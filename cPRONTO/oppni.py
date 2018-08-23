@@ -20,11 +20,29 @@ import warnings
 from collections import OrderedDict
 from copy import copy
 from distutils.spawn import find_executable
-from shutil import which
 from multiprocessing import Pool
 from shutil import rmtree
 from time import localtime, strftime
 from datetime import timedelta
+
+
+# Testing making my own which to allow ver < 3.3 - adlofts
+import platform
+if platform.python_version() < '3.3':
+    print('Using older version of Python ...  defining which function')
+    print(platform.python_version())
+
+    def which(file):
+        for path in os.environ["PATH"].split(os.pathsep):
+            if os.path.exists(os.path.join(path, file)):
+                return os.path.join(path, file)
+
+        #return None
+else:
+    print('Using new version of Python ... using shutil import')
+    print(platform.python_version())
+    from shutil import which 
+
 
 # OPPNI related
 import cfg_front as cfg_pronto
@@ -69,10 +87,14 @@ rePip2 = re.compile(r'([0-9A-Z\s]+)=\[([aA\d,]*)\][\s]*')
 
 
 def get_out_dir_line(line):
+    """Returns the value of OUT=section in the input line."""
+
     return os.path.abspath(reOut.search(line).group(1))
 
 
 def get_out_dir_first_line(input_file):
+    """Returns the value of OUT= section in the first line of the given input file."""
+
     with open(input_file) as fID:
         # read one line
         first_line = fID.readline()
@@ -566,7 +588,7 @@ def parse_args_check():
     # HPC related
     parser.add_argument("-e", "--environment", action="store", dest="environment",
                         default="compiled",
-                        choices=('matlab', 'compiled'),
+                        choices=('matlab','octave','compiled'),
                         help="(optional) determine which software to use to run the code: matlab or compiled(default)")
 
     parser.add_argument("--cluster", action="store", dest="hpc_type",
@@ -846,7 +868,7 @@ def parse_args_check():
     os.environ["PIPELINE_NUMBER_OF_CORES"] = str(options.numcores)
     os.environ["FSLOUTPUTTYPE"] = "NIFTI"
 
-    print("Chosen options: ")
+    print("Chosen options:")
     print(options)
 
     saved_cfg_path = os.path.join(cur_garage, file_name_prev_options)
@@ -1029,6 +1051,7 @@ def get_hpc_spec(h_type=None, options=None):
         spec['export_user_env'] = ('--export=', 'ALL')
         spec['workdir'] = '--workdir'
         spec['jobname'] = '--job-name'
+        spec['jobname_frontenac'] = '--output=%x_%j.log'
         spec['submit_cmd'] = 'sbatch'
         # slurm does not allow any shell specification
         shell=None
@@ -1043,6 +1066,10 @@ def get_hpc_spec(h_type=None, options=None):
             continue
         else:
             header.append('{0} {1}{2}'.format(prefix, val[0], val[1]))
+
+    if h_type in ('FRONTENAC', 'SLURM'):
+        # controlling the output job name
+        header.append('{0} --output=%x_%j.log'.format(prefix))
 
     # not joining them for later use
     # header = '\n'.join(header)
@@ -1118,12 +1145,11 @@ def update_status_and_exit(out_dir):
     try:
         prev_proc_status, prev_options, prev_input_file_all, \
         failed_sub_file, failed_spnorm_file, all_subjects = update_proc_status(out_dir)
-
         try:
             estimate_processing_times(prev_input_file_all, prev_options, all_subjects)
         except:
             print('Processing time could not be estimated.')
-
+        print("All done flag: ",format(prev_proc_status.all_done))
         if not prev_proc_status.all_done:
             print('Previous processing is incomplete.')
             if failed_sub_file is not None and failed_spnorm_file is not None:
@@ -1153,7 +1179,6 @@ def update_status_and_exit(out_dir):
 def update_proc_status(out_dir):
     """Helper to the original update_status routine."""
     opt_file = os.path.join(out_dir, file_name_prev_options)
-
     with open(opt_file, 'rb') as of:
         all_subjects, options, new_input_file, _ = pickle.load(of)
         print(new_input_file)
@@ -1239,7 +1264,7 @@ def update_proc_status(out_dir):
 #
 #     return num_jobs_rqh, num_jobs_err
 
-def make_job_file_and_1linecmd(file_path):
+def make_job_file_and_1linecmd(file_path,environment):
     """Generic job file generator, and returns one line version too."""
 
     hpc_directives = list()
@@ -1253,7 +1278,14 @@ def make_job_file_and_1linecmd(file_path):
         hpc_directives.append('{0} {1} {2}'.format(hpc['prefix'], hpc['spec']['workdir'], os.path.dirname(file_path)))
     else:
         # for jobs to run locally, no hpc directives are needed.
+
         hpc_directives.append('#!/bin/bash')
+
+        # cd for matlab start call
+        # Not allowed for Octave as it will mess up cbrain pathing
+        if environment.lower() in ('matlab'):
+            hpc_directives.append('cd {0} '.format(os.path.dirname(file_path)))
+
         # hpc_directives.append('{0} -S {1}'.format(hpc['prefix'], hpc['shell']))
 
     with open(file_path, 'w') as jID:
@@ -1297,7 +1329,15 @@ def local_exec(script_path):
     # logger = logging.getLogger(script_path + '.log')
 
     # make it executable
+
+    script_path = list(script_path)
+    script_path = script_path[0]
     st = os.stat(script_path)
+    #st = os.stat(script_path)
+
+    print('Check the log file for progress:')
+    print(script_path + '.log')
+
     os.chmod(script_path, st.st_mode | stat.S_IXGRP)
 
     proc = subprocess.Popen(script_path, shell=True, stdin=subprocess.PIPE,
@@ -1463,7 +1503,8 @@ def process_group_mask_generation(subjects, opt, input_file, garage):
 
 def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=None, job_dir=None):
     """Helper to construct the necessary complete commands for various parts of the OPPNI processing."""
-    if environment.lower() in ('matlab', 'octave'):
+    if environment.lower() in ('matlab'):
+        oppni_matlab_path = os.getenv('OPPNI_PATH_MATLAB_ORIG')
         single_quoted = lambda s: r"'{}'".format(s)
 
         cmd_options = ', '.join(map(single_quoted, arg_list))
@@ -1474,8 +1515,8 @@ def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=N
         mfile_path = os.path.join(job_dir, mfile_name + '.m')
         with open(mfile_path, 'w') as mfile:
             mfile.write('\n')
-            mfile.write("try, {0}({1}); catch ME, exc_report = getReport(ME); display('--->>> reporting exception details ..'); display(exc_report); display(' <<--- Done.'); exit(1); end; exit;".format(step_cmd_matlab,
-                                                                                                   cmd_options))
+            mfile.write("addpath(genpath('{}'));".format(oppni_matlab_path))
+            mfile.write("try, {0}({1}); catch ME, exc_report = getReport(ME); display('--->>> reporting exception details ..'); display(exc_report); display(' <<--- Done.'); exit(1); end; exit;".format(step_cmd_matlab,cmd_options))
             mfile.write('\n')
 
         # # problem: -nojvm omitted to allow future comptibility
@@ -1490,6 +1531,25 @@ def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=N
         # if hpc['type'] == 'CAC':
         #    setup_cmd = r'use matlab'
         full_cmd = setup_cmd + "\n" + r"matlab -nodesktop -nosplash -r {0}".format(mfile_name)
+    elif environment.lower() in ('octave'):
+         
+        # Same as Matlab but change out the full_cmd call and replace the getReport
+         single_quoted = lambda s: r"'{}'".format(s)
+         cmd_options = ', '.join(map(single_quoted, arg_list))
+         oppni_octave_path = os.getenv('OPPNI_PATH') # The original path now defaults to octave use
+
+         # make an m-file script
+         mfile_name = prefix.replace('-', '_')
+         mfile_path = os.path.join(job_dir, mfile_name + '.m')
+         with open(mfile_path, 'w') as mfile:
+            mfile.write('\n')
+            mfile.write("addpath(genpath('{}'));".format(oppni_octave_path))
+            mfile.write("try, {0}({1}); catch ; exc_report = lasterror; display('reporting exception details ..'); display(exc_report.message); display(exc_report.identifier); display(exc_report.stack(1).file); display(exc_report.stack(1).line); display(' <<--- Done.'); end; ".format(step_cmd_matlab,cmd_options))
+            mfile.write('\n')
+
+         setup_cmd = ''
+         full_cmd = setup_cmd + "\n" + r"octave -W --traditional -q {0}".format(mfile_path)
+
 
     elif environment.lower() in ('standalone', 'compiled'):
         # first single quote is bash to protect from expansion or globbing
@@ -1563,7 +1623,6 @@ def process_module_generic(subjects, opt, step_id, step_cmd_matlab, arg_list, ga
     jobs_status, job_id_list = run_jobs(jobs_dict, opt.run_locally, int(opt.numcores), depends_on_step)
     # storing the job ids by group to facilitate a status update in future
     hpc['job_ids_grouped'][step_id] = job_id_list
-
     return jobs_status, job_id_list
 
 
@@ -1576,7 +1635,7 @@ def make_single_job(environment, step_id, step_cmd_matlab, prefix, arg_list_subs
     out_job_filename = prefix + '.job'
     job_path = os.path.join(job_dir, out_job_filename)
     # create header with resource specs
-    hpc_dir_1 = make_job_file_and_1linecmd(job_path)
+    hpc_dir_1 = make_job_file_and_1linecmd(job_path,environment)
 
     # add the commands and its arguments
     hpc_dir_2 = list()
@@ -1611,15 +1670,25 @@ def run_jobs(job_paths, run_locally, num_procs, depends_on_step):
             # if ret_code < 0 or ret_code > 0:
             #     raise OSError('Error executing the {} job locally.'.format(step_id))
 
-            # list of all script paths
-            jobs_list = job_paths.values()
-
+            #jobs_list = job_paths.values()
+            jobs_list = list(job_paths.values())
             pool = Pool()
+            print('Number of Jobs:')
+            print(len(jobs_list))
+
             for idx_beg in range(0, len(jobs_list), num_procs):
+
+                #pool = Pool(num_procs + 1)   #added
+                print('Core Procs Added:')
+                print(num_procs)
+
                 # running only on a specified num cores, one subject at a time
                 pool.map(local_exec, jobs_list[idx_beg:idx_beg + num_procs])
-                pool.close()
-                pool.join()
+                # moved Jun 26 2018
+                #pool.close()
+                #pool.join()
+            pool.close()
+            pool.join()
         else:
             for prefix, job_path in job_paths.items():
                 job_id_list[prefix] = make_dry_run(job_path)
@@ -1870,7 +1939,7 @@ def submit_jobs():
         if options.run_locally is True and (status_sp is False or status_sp is None):
             raise Exception('Spatial normalization - steps 2 and later failed.')
 
-    # group mask
+    # generating GMASK if not done already
     if proc_status.gmask is False and run_gmask is True:
         print('group mask generation: Submitting jobs ..')
         status_gm = process_group_mask_generation(unique_subjects, options, input_file, cur_garage)
@@ -1890,6 +1959,12 @@ def submit_jobs():
         status_qc2, job_ids_qc2 = run_qc_part_two(unique_subjects, options, input_file, cur_garage)
         if options.run_locally is True and (status_qc2 is False or status_qc2 is None):
             raise Exception('QC part 2 failed.')
+
+    # preforms a status check once all jobs are complete on local computer
+    if options.run_locally and not options.dry_run:
+        print('Performing Status Check after local completion')
+        proc_status, failed_sub_file, failed_spnorm_file = check_proc_status.run([input_file, options.pipeline_file,
+                                                                                   '--skip_validation'], options)
 
     # saving the job ids and hpc cfg to facilitate a status update in future
     save_hpc_cfg_and_jod_ids(cur_garage)

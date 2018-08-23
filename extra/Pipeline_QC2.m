@@ -563,6 +563,7 @@ if(~isempty(Npcs))
     %
     %
     savestring = [QC2_folder,'/IND_group_PCs1-',num2str(Npcs),'.nii'];
+    disp('OPPNI__STEP__COMPLETION__CODE QC2');
     save_untouch_nii(nii,savestring);
 
 end

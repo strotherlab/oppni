@@ -15,11 +15,27 @@ function [ X_filt ] = quick_lopass( X, TR )
 Wp = (2*TR)*0.08; % passband is below 0.08 Hz
 Ws = (2*TR)*0.10; % stopband is above 0.10 Hz
 % filter design: max passband attn. =50% / min stopband attn =1%
-[Nord, Wcut] = buttord( Wp, Ws, 3,10 );
+inOctave = in_octave();
+if inOctave
+    disp('Modified buttord call to custom buttord_octave version');
+    [Nord, Wcut] = buttord_octave( Wp, Ws, 3,10 );
+else
+    [Nord, Wcut] = buttord( Wp, Ws, 3,10 );
+end
 % lowpass butterworth filter with desired cutoff
 [B1,A1] = butter(Nord,Wcut,'low');
 % zero-phase forward/reverse filter
 X_filt  = filtfilt( B1,A1, X' )';
 
 
+function inOctave = in_octave()
+try
+    ver_num = OCTAVE_VERSION;
+    inOctave = 1;
+    version_str = ['OCTAVE ' ver_num];
+catch
+    inOctave = 0;
+    version_str  = ['MATLAB ' version];
 end
+
+

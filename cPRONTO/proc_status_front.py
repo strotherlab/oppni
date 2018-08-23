@@ -254,8 +254,12 @@ def flush_out_text(old_stdout, my_stdout, not_verbose):
     if not not_verbose:
         output_text = my_stdout.getvalue()
         print(output_text)
+    else:
+        output_text = ""
 
     my_stdout.close()
+
+    return output_text
 
 
 def parse_args_check(input_args):
@@ -405,7 +409,7 @@ def run(input_args, options = None):
         # part 2
         proc_status.optimization = (failed_count_stats == 0) and is_done_part_two_opt_summary(common_out_dir, options)
         if not proc_status.optimization:
-            print("P2 : Incomplete \n\t # sbujects whose stats need to be computed: {}".format(failed_count_stats))
+            print("P2 : Incomplete \n\t # subjects whose stats need to be computed: {}".format(failed_count_stats))
         else:
             print("P2 : all finished.  ")
 
@@ -443,7 +447,7 @@ def run(input_args, options = None):
 
     finally:
         # making sure output of the partial execution will be shown to the user
-        flush_out_text(old_stdout, my_stdout, not_verbose)
+        status_text = flush_out_text(old_stdout, my_stdout, not_verbose)
 
     # summary indicator of all flags
     proc_status.all_done = True
@@ -451,6 +455,19 @@ def run(input_args, options = None):
         if getattr(proc_status,flag) is False and flag is not 'all_done':
             proc_status.all_done = False
             break
+
+    # Creates a file to contain the results of the most recent status check
+    path_status = os.path.join(common_out_dir, 'status_check.txt')
+    print('Created a Status file to hold oppni status report')
+    with open(path_status, 'w') as sf:
+        sf.write(status_text)
+
+    # Create a special file if all the jobs were completed successfully
+    if proc_status.all_done:
+        path_status = os.path.join(common_out_dir, 'Task_Complete_CBRAIN.txt')
+        print('Creating File to indicate a 100% completed run')
+        with open(path_status, 'w') as sf:
+            sf.write("This is a special file to signal to CBRAIN that all the jobs completed successfully")
 
     return proc_status, resubmit_part1_file, resubmit_spnorm_file
 

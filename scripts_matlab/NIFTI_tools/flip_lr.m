@@ -54,19 +54,19 @@
 %
 function flip_lr(original_fn, flipped_fn, old_RGB, tolerance, preferredForm)
 
-   if ~exist('original_fn','var') | ~exist('flipped_fn','var')
+   if ~exist('original_fn','var') || ~exist('flipped_fn','var')
       error('Usage: flip_lr(original_fn, flipped_fn, [old_RGB],[tolerance])');
    end
 
-   if ~exist('old_RGB','var') | isempty(old_RGB)
+   if ~exist('old_RGB','var') || isempty(old_RGB)
       old_RGB = 0;
    end
 
-   if ~exist('tolerance','var') | isempty(tolerance)
+   if ~exist('tolerance','var') || isempty(tolerance)
       tolerance = 0.1;
    end
 
-   if ~exist('preferredForm','var') | isempty(preferredForm)
+   if ~exist('preferredForm','var') || isempty(preferredForm)
       preferredForm= 's';				% Jeff
    end
 

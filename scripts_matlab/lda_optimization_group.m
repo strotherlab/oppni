@@ -294,7 +294,16 @@ for(k=1:Range)
     T_ssp = coord_norm(1:k,:)*coord_norm(1:k,:)';
     B_ssp = T_ssp - W_ssp;
     if rank(W_ssp)==length(W_ssp)
-        [e, l, temp] = svd (inv (W_ssp) * B_ssp, 0);
+        
+        %Octave Adjustment
+        % [e, l, temp] = svd (inv (W_ssp) * B_ssp, 0);
+        [e, l, temp] = svd (W_ssp \ B_ssp);
+ 
+        % Add a double check to confirm that the svd was done correctly
+        if any(any(((W_ssp \ B_ssp) - (e*l*temp')) >= 0.001))
+            error('SVD done incorrectly in this version of MATLAB or OCTAVE is off by >1, check lda_optimization.');
+        end
+        
         ee = e (:, 1);
         % -----
         lin_discr(1:k,k) = ee / (sqrt (ee' * W_ssp * ee / (N - 2)));

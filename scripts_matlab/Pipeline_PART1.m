@@ -99,6 +99,7 @@ function Pipeline_PART1(InputStruct, input_pipeset, analysis_model, modelparam, 
 % CODE_DATE    = '$Date: 2014-12-04 18:33:31 -0500 (Thu, 04 Dec 2014) $';
 % ------------------------------------------------------------------------%
 
+
 % Check Parameters
 %%
 global NUMBER_OF_CORES
@@ -262,6 +263,7 @@ for ksub = 1:numel(InputStruct)
     end
 end
 clear split_info
+
 
 %%
 for ksub = 1:numel(InputStruct)
@@ -494,13 +496,14 @@ for ksub = 1:numel(InputStruct)
                     noise_roi{krun} = nifti_to_mat(VV,MM);
                 else
                     noise_roi{krun}= [];
-                end
+		 end
                 % 
             end
 
             %%%%% III. Third iteration level. run through each pipeline combination that
             %%%%%      is performed on pre-loaded data, analyze + save results
 
+            
             %% run through additional proccessing choices
             for DET = detSet
                 for MPR = mprSet
@@ -508,23 +511,21 @@ for ksub = 1:numel(InputStruct)
                         for GS  = gsSet
                             for LP = lpSet
 
-                            kall = kall + 1;
-                            % full list of preprocessing choices for this pipeline step
-                            pipeset_full(kall,:) = [pipeset_half(i,:) DET MPR TASK GS LP];
+                                kall = kall + 1;
+                                % full list of preprocessing choices for this pipeline step
+                                pipeset_full(kall,:) = [pipeset_half(i,:) DET MPR TASK GS LP];
 
-                            if N_run>1
+                                if N_run>1
                                   [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV,KEEPMEAN);
-                            else  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal{1}, Xnoise{1}, noise_roi{1}, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV,KEEPMEAN);
-
-                            end
-
+                                else
+				                  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal{1}, Xnoise{1}, noise_roi{1}, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV,KEEPMEAN);
+                                end
                             end
                         end
                     end
                 end
             end
         end
-
 
         % pipeline information
         pipechars = ['m' 'c' 'p' 't' 's' 'd' 'r' 'x' 'g' 'l' 'y'];
@@ -648,13 +649,16 @@ for ksub = 1:numel(InputStruct)
     end
 end
 
-%%
+disp('OPPNI__STEP__COMPLETION__CODE Part1');
+
 %%
 function name = generate_pipeline_name(pipechars,pipeset)
+
 for i = 1:length(pipechars)
     name(i*2-1) = pipechars(i);
     name(i*2) = pipeset(i);
 end
+
 
 function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix,subjectprefix,Contrast_List,VV,KEEPMEAN)
 
@@ -925,6 +929,7 @@ else
     METRIC_set_y = [];
 end
 
+
 function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet,Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix, subjectprefix, Contrast_List,VV,KEEPMEAN)
 
 % build pipeline prefix name -- and define current noise matrix
@@ -1063,7 +1068,9 @@ if( ~strcmpi(analysis_model,'NONE') )
         if strcmpi(split_info.type,'event')
             split_info.onsetlist    = split_info.cond(max(Contrast_List(contrast_counter,:))).onsetlist;
         end
+       
         output_temp = run_analyses_wrapper( vol_filt, split_info, analysis_model );
+        
         if contrast_counter>1
             output.images = [output.images output_temp.images];
             output.temp   = [output.temp output_temp.temp];
@@ -1165,8 +1172,9 @@ if( ~strcmpi(analysis_model,'NONE') )
             split_info.idx_cond2_sp1 = split_info.single.idx_cond(contrast_counter,2).sp1;
             split_info.idx_cond2_sp2 = split_info.single.idx_cond(contrast_counter,2).sp2;
         end
+                       
         output_temp = run_analyses_wrapper( vol_filt, split_info, analysis_model );
-
+        
         if contrast_counter>1
             output.images = [output.images output_temp.images];
             output.temp   = [output.temp output_temp.temp];
@@ -1221,3 +1229,4 @@ else
     TEMP_set_y   = [];
     METRIC_set_y = [];
 end
+

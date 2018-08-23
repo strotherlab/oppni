@@ -50,17 +50,17 @@
 %
 function save_nii(nii, fileprefix, old_RGB)
    
-   if ~exist('nii','var') | isempty(nii) | ~isfield(nii,'hdr') | ...
-	~isfield(nii,'img') | ~exist('fileprefix','var') | isempty(fileprefix)
+   if ~exist('nii','var') || isempty(nii) || ~isfield(nii,'hdr') || ...
+	~isfield(nii,'img') || ~exist('fileprefix','var') || isempty(fileprefix)
 
       error('Usage: save_nii(nii, filename, [old_RGB])');
    end
 
-   if isfield(nii,'untouch') & nii.untouch == 1
+   if isfield(nii,'untouch') && nii.untouch == 1
       error('Usage: please use ''save_untouch_nii.m'' for the untouched structure.');
    end
 
-   if ~exist('old_RGB','var') | isempty(old_RGB)
+   if ~exist('old_RGB','var') || isempty(old_RGB)
       old_RGB = 0;
    end
 
@@ -68,10 +68,10 @@ function save_nii(nii, fileprefix, old_RGB)
 
    %  Check file extension. If .gz, unpack it into temp folder
    %
-   if length(fileprefix) > 2 & strcmp(fileprefix(end-2:end), '.gz')
+   if length(fileprefix) > 2 && strcmp(fileprefix(end-2:end), '.gz')
 
-      if ~strcmp(fileprefix(end-6:end), '.img.gz') & ...
-	 ~strcmp(fileprefix(end-6:end), '.hdr.gz') & ...
+      if ~strcmp(fileprefix(end-6:end), '.img.gz') && ...
+	 ~strcmp(fileprefix(end-6:end), '.hdr.gz') && ...
 	 ~strcmp(fileprefix(end-6:end), '.nii.gz')
 
          error('Please check filename.');
@@ -89,16 +89,16 @@ function save_nii(nii, fileprefix, old_RGB)
 
    %  Note: fileprefix is actually the filename you want to save
    %   
-   if findstr('.nii',fileprefix) & strcmp(fileprefix(end-3:end), '.nii')
+   if findstr('.nii',fileprefix) && strcmp(fileprefix(end-3:end), '.nii')
       filetype = 2;
       fileprefix(end-3:end)='';
    end
    
-   if findstr('.hdr',fileprefix) & strcmp(fileprefix(end-3:end), '.hdr')
+   if findstr('.hdr',fileprefix) && strcmp(fileprefix(end-3:end), '.hdr')
       fileprefix(end-3:end)='';
    end
    
-   if findstr('.img',fileprefix) & strcmp(fileprefix(end-3:end), '.img')
+   if findstr('.img',fileprefix) && strcmp(fileprefix(end-3:end), '.img')
       fileprefix(end-3:end)='';
    end
 
@@ -134,7 +134,7 @@ function write_nii(nii, filetype, fileprefix, old_RGB)
 
    hdr = nii.hdr;
 
-   if isfield(nii,'ext') & ~isempty(nii.ext)
+   if isfield(nii,'ext') && ~isempty(nii.ext)
       ext = nii.ext;
       [ext, esize_total] = verify_nii_ext(ext);
    else
@@ -229,7 +229,7 @@ function write_nii(nii, filetype, fileprefix, old_RGB)
    
    x = 1:PixelDim;
 
-   if filetype == 2 & isempty(ext)
+   if filetype == 2 && isempty(ext)
       skip_bytes = double(hdr.dime.vox_offset) - 348;
    else
       skip_bytes = 0;

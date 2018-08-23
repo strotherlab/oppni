@@ -1264,7 +1264,7 @@ def update_proc_status(out_dir):
 #
 #     return num_jobs_rqh, num_jobs_err
 
-def make_job_file_and_1linecmd(file_path):
+def make_job_file_and_1linecmd(file_path,environment):
     """Generic job file generator, and returns one line version too."""
 
     hpc_directives = list()
@@ -1281,7 +1281,10 @@ def make_job_file_and_1linecmd(file_path):
 
         hpc_directives.append('#!/bin/bash')
 
-        hpc_directives.append('cd {0} '.format(os.path.dirname(file_path)))
+        # cd for matlab start call
+        # Not allowed for Octave as it will mess up cbrain pathing
+        if environment.lower() in ('matlab'):
+            hpc_directives.append('cd {0} '.format(os.path.dirname(file_path)))
 
         # hpc_directives.append('{0} -S {1}'.format(hpc['prefix'], hpc['shell']))
 
@@ -1632,7 +1635,7 @@ def make_single_job(environment, step_id, step_cmd_matlab, prefix, arg_list_subs
     out_job_filename = prefix + '.job'
     job_path = os.path.join(job_dir, out_job_filename)
     # create header with resource specs
-    hpc_dir_1 = make_job_file_and_1linecmd(job_path)
+    hpc_dir_1 = make_job_file_and_1linecmd(job_path,environment)
 
     # add the commands and its arguments
     hpc_dir_2 = list()

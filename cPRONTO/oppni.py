@@ -1330,8 +1330,9 @@ def local_exec(script_path):
 
     # make it executable
 
-    script_path = list(script_path)
-    script_path = script_path[0]
+    #script_path = list(script_path) # adjusted quick fix
+    #script_path = script_path[0] # adjusted quicik fix
+
     st = os.stat(script_path)
     #st = os.stat(script_path)
 
@@ -1349,6 +1350,7 @@ def local_exec(script_path):
     # logger.info('\n%s\n', std_output)
     print(std_output)
 
+    # TODO return the actual return code
     return -random.randrange(1000)  # proc.returncode
 
 
@@ -1670,25 +1672,35 @@ def run_jobs(job_paths, run_locally, num_procs, depends_on_step):
             # if ret_code < 0 or ret_code > 0:
             #     raise OSError('Error executing the {} job locally.'.format(step_id))
 
-            #jobs_list = job_paths.values()
-            jobs_list = list(job_paths.values())
-            pool = Pool()
-            print('Number of Jobs:')
-            print(len(jobs_list))
+            jobs_list = job_paths.values()
 
-            for idx_beg in range(0, len(jobs_list), num_procs):
+            num_jobs = len(jobs_list)
+            #print('Number of Jobs: {}'.format(num_jobs))
 
-                #pool = Pool(num_procs + 1)   #added
-                print('Core Procs Added:')
-                print(num_procs)
+            if num_procs == 1:
+                count = 0
+                for prefix, (job_path, job_details) in job_paths.items():
+                    print('Processing {} (job {}/{})'.format(prefix, count, num_jobs))
+                    local_exec(job_path)
+            else:
+                raise NotImplementedError('num_procs > 1 for run_locally is not supported yet!')
 
-                # running only on a specified num cores, one subject at a time
-                pool.map(local_exec, jobs_list[idx_beg:idx_beg + num_procs])
-                # moved Jun 26 2018
-                #pool.close()
-                #pool.join()
-            pool.close()
-            pool.join()
+            # jobs_list = list(job_paths.values())
+        #     pool = Pool()
+        #     for idx_beg in range(0, len(jobs_list), num_procs):
+        #
+        #         #pool = Pool(num_procs + 1)   #added
+        #         print('Core Procs Added:')
+        #         print(num_procs)
+        #
+        #         # running only on a specified num cores, one subject at a time
+        #         pool.map(local_exec, jobs_list[idx_beg:idx_beg + num_procs])
+        #         # moved Jun 26 2018
+        #         #pool.close()
+        #         #pool.join()
+        #     pool.close()
+        #     pool.join()
+
         else:
             for prefix, job_path in job_paths.items():
                 job_id_list[prefix] = make_dry_run(job_path)

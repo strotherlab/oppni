@@ -1,8 +1,13 @@
 #!/usr/bin/env python
 # OPPNI Tool: for fMRI pReprocessing and OptimizatioN Toolkit
 # Author: Pradeep Reddy Raamana <praamana@research.baycrest.org>
+# 
 # Version 0.6 (May 2016)
+#
+# Version 0.7 (Oct 2018) - L. Mark Prati
+# 
 from __future__ import print_function
+#import pdb #debugger
 import argparse
 import json
 import os
@@ -10,13 +15,16 @@ import pickle
 import random
 import re
 import stat
+import queue
 import subprocess
+import time
+import threading
 import sys
 import tempfile
 import math
-import time
 import traceback
 import warnings
+import logging
 from collections import OrderedDict
 from copy import copy
 from distutils.spawn import find_executable
@@ -1320,38 +1328,98 @@ def make_job_file(file_path):
     st = os.stat(file_path)
     os.chmod(file_path, st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
+def subprocess_output_reader(proc, outq):
+    ''' 
+    Obtain a line at atime from the subrpocess - place in queue
+    V 0.7 L. Mark Prati
+    '''
+ 
+    for line in iter(proc.stdout.readline, b''):
+        outq.put(line.decode('utf-8'))
+	
 
 def local_exec(script_path):
     """
-    Runs a job script locally using subprocess, optionally returning stdout
+    Runs a job script locally using subprocess, returning stdout in close to "real time"
+    V 0.7 mods. by L.Mark Prati
     """
+    # pdb.set_trace() #debug
 
-    # logger = logging.getLogger(script_path + '.log')
-
-    # make it executable
+    # make the script (proc) executable
 
     #script_path = list(script_path) # adjusted quick fix
     #script_path = script_path[0] # adjusted quicik fix
 
     st = os.stat(script_path)
     #st = os.stat(script_path)
-
+    os.chmod(script_path, st.st_mode | stat.S_IXGRP)
+    
+    # create a log file for the process
     print('Check the log file for progress:')
     print(script_path + '.log')
-
-    os.chmod(script_path, st.st_mode | stat.S_IXGRP)
+    logger = logging.getLogger('oppni_log')
+    fh = logging.FileHandler(script_path + '.log')
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    fh.setFormatter(formatter)
+    fh.setLevel(logging.INFO)
+    logger.addHandler(fh)
+    logging.basicConfig(level=logging.DEBUG)
 
     proc = subprocess.Popen(script_path, shell=True, stdin=subprocess.PIPE,
-                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    #create a thread to output from the sub_process
+    outq = queue.Queue() 
+    reader_thread = threading.Thread(target=subprocess_output_reader, args=(proc,outq))
+    reader_thread.start()
+
+    try:
+        while True:
+	    #do nothing while subprocesses do their thing
+            try:
+                proc.wait(timeout=0.2)
+                logger.info('== subprocess exited with rc = {0}'.format(proc.returncode))
+                break
+
+            except subprocess.TimeoutExpired:
+                # subprocess did not terminate yet 
+                try:
+                    #check for output in the queue
+                    while True:
+                        line = outq.get(block=False)
+                        logger.info(line) #add some better formating here!
+
+                except queue.Empty:
+                    pass
+
+    finally:
+        # 'finally' so that we can terminate the child if something goes wrong
+        proc.terminate()
+        try:
+            proc.wait(timeout=0.2)
+            logger.info('== subprocess exited with rc = {0}'.format(proc.returncode))
+        except subprocess.TimeoutExpired:
+            logger.info('subprocess did not terminate in time')
 
     # communicate waits for the subprocess to finish
-    std_output, _ = proc.communicate()
+    #(std_output, _) = proc.communicate()
     # # print(outputs and logs
     # logger.info('\n%s\n', std_output)
-    print(std_output)
+    # print(std_output)
 
-    # TODO return the actual return code
-    return -random.randrange(1000)  # proc.returncode
+
+    #clear any last output from the queue
+    try:
+	#check for output in the queue
+        while True:
+            line = outq.get(block=False)
+            logger.info(line) #add some better formating here!
+
+    except queue.Empty:
+        pass
+
+    # return the subprocess return code
+    return proc.returncode
 
 
 def reprocess_failed_subjects(prev_proc_status, prev_options, failed_sub_file, failed_spnorm_file,
@@ -1546,7 +1614,7 @@ def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=N
          with open(mfile_path, 'w') as mfile:
             mfile.write('\n')
             mfile.write("addpath(genpath('{}'));".format(oppni_octave_path))
-            mfile.write("try, {0}({1}); catch ; exc_report = lasterror; display('reporting exception details ..'); display(exc_report.message); display(exc_report.identifier); display(exc_report.stack(1).file); display(exc_report.stack(1).line); display(' <<--- Done.'); end; ".format(step_cmd_matlab,cmd_options))
+            mfile.write("try, {0}({1}); catch ; exc_report = lasterror; display('reporting exception details ..'); display(exc_report.message); display(exc_report.identifier); display(exc_report.stack(1).file); display(exc_report.stack(1).line); display(' <<--- Done.'); exit(1); end; exit; ".format(step_cmd_matlab,cmd_options))
             mfile.write('\n')
 
          setup_cmd = ''

@@ -1394,12 +1394,13 @@ def local_exec(script_path):
 
     finally:
         # 'finally' so that we can terminate the child if something goes wrong
-        proc.terminate()
+        
         try:
             proc.wait(timeout=0.2)
             logger.info('== subprocess exited with rc = {0}'.format(proc.returncode))
         except subprocess.TimeoutExpired:
-            logger.info('subprocess did not terminate in time')
+            logger.info('subprocess did not terminate after completeion - forcing termination')
+            proc.terminate()
 
     # communicate waits for the subprocess to finish
     #(std_output, _) = proc.communicate()

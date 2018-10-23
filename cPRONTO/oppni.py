@@ -1340,7 +1340,7 @@ def subprocess_output_reader(proc, outq):
 
 def local_exec(script_path):
     """
-    Runs a job script locally using subprocess, returning stdout in close to "real time"
+    Runs a job script locally using subprocess, logging stdout in close to "real time"
     V 0.7 mods. by L.Mark Prati
     """
     # pdb.set_trace() #debug
@@ -1357,13 +1357,13 @@ def local_exec(script_path):
     # create a log file for the process
     print('Check the log file for progress:')
     print(script_path + '.log')
-    logger = logging.getLogger('oppni_log')
+    logger = logging.getLogger(__name__)
     fh = logging.FileHandler(script_path + '.log')
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     fh.setFormatter(formatter)
     fh.setLevel(logging.INFO)
     logger.addHandler(fh)
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
     proc = subprocess.Popen(script_path, shell=True, stdin=subprocess.PIPE,
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -1399,7 +1399,7 @@ def local_exec(script_path):
             proc.wait(timeout=0.2)
             logger.info('== subprocess exited with rc = {0}'.format(proc.returncode))
         except subprocess.TimeoutExpired:
-            logger.info('subprocess did not terminate after completeion - forcing termination')
+            logger.warning('subprocess did not terminate after completeion - forcing termination')
             proc.terminate()
 
     # communicate waits for the subprocess to finish

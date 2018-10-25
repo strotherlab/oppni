@@ -1346,25 +1346,22 @@ def local_exec(script_path):
     # pdb.set_trace() #debug
 
     # make the script (proc) executable
-
-    #script_path = list(script_path) # adjusted quick fix
-    #script_path = script_path[0] # adjusted quicik fix
-
     st = os.stat(script_path)
-    #st = os.stat(script_path)
     os.chmod(script_path, st.st_mode | stat.S_IXGRP)
     
     # create a log file for the process
-    print('Check the log file for progress:')
-    print(script_path + '.log')
+    logFileName = __name__ + '.local_exec.log'
+    logFilePath = os.path.join(os.path.dirname(script_path),logFileName)
+    print('Check the log file for progress: {0}'.format(logFilePath))
+
     logger = logging.getLogger(__name__)
-    fh = logging.FileHandler(script_path + '.log')
+    fh = logging.FileHandler(logFilePath)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     fh.setFormatter(formatter)
     fh.setLevel(logging.INFO)
     logger.addHandler(fh)
     logging.basicConfig(level=logging.INFO)
-
+    logger.info('Starting subprocess: {0}'.format(script_path))
     proc = subprocess.Popen(script_path, shell=True, stdin=subprocess.PIPE,
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
@@ -1393,28 +1390,19 @@ def local_exec(script_path):
                     pass
 
     finally:
-        # 'finally' so that we can terminate the child if something goes wrong
-        
+        # 'finally' so that we can terminate the child if something goes wrong        
         try:
             proc.wait(timeout=0.2)
-            logger.info('== subprocess exited with rc = {0}'.format(proc.returncode))
         except subprocess.TimeoutExpired:
             logger.warning('subprocess did not terminate after completeion - forcing termination')
             proc.terminate()
-
-    # communicate waits for the subprocess to finish
-    #(std_output, _) = proc.communicate()
-    # # print(outputs and logs
-    # logger.info('\n%s\n', std_output)
-    # print(std_output)
-
 
     #clear any last output from the queue
     try:
 	#check for output in the queue
         while True:
             line = outq.get(block=False)
-            logger.info(line) #add some better formating here!
+            logger.info(line) #maybe add some better formating here!
 
     except queue.Empty:
         pass

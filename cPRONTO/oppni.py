@@ -1350,17 +1350,20 @@ def local_exec(script_path):
     os.chmod(script_path, st.st_mode | stat.S_IXGRP)
     
     # create a log file for the process
-    logFileName = __name__ + '.local_exec.log'
+    logFileName = 'OPPNI.log'
     logFilePath = os.path.join(os.path.dirname(script_path),logFileName)
     print('Check the log file for progress: {0}'.format(logFilePath))
 
-    logger = logging.getLogger(__name__)
-    fh = logging.FileHandler(logFilePath)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    fh.setFormatter(formatter)
-    fh.setLevel(logging.INFO)
-    logger.addHandler(fh)
-    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger('OPPNI')
+    #ensure log handler is not added multiple times
+    if not len(logger.handlers):
+        fh = logging.FileHandler(logFilePath)
+        formatter = logging.Formatter('%(asctime)s - %(filename)s - %(funcName)s - %(levelname)s - %(message)s')
+        fh.setFormatter(formatter)
+        fh.setLevel(logging.INFO)
+        logging.basicConfig(level=logging.INFO)
+        logger.addHandler(fh)
+
     logger.info('Starting subprocess: {0}'.format(script_path))
     proc = subprocess.Popen(script_path, shell=True, stdin=subprocess.PIPE,
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

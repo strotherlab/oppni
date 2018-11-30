@@ -107,6 +107,14 @@ NUMBER_OF_CORES = str2double(getenv('PIPELINE_NUMBER_OF_CORES'));
 if isnan(NUMBER_OF_CORES)
     NUMBER_OF_CORES = 1;
 end
+
+inOctave = in_octave();
+if inOctave
+    disp('Enableing Octave - JIT')
+    val = jit_enable();
+    disp('Octave - JIT now enabled') 
+end
+
 display(sprintf('The number of cores used by the code=%d',NUMBER_OF_CORES));
 if ( ~exist('OCTAVE_VERSION','builtin') && exist('maxNumCompThreads') )
     maxNumCompThreads(NUMBER_OF_CORES);
@@ -1228,5 +1236,17 @@ else
     IMAGE_set_y  = [];
     TEMP_set_y   = [];
     METRIC_set_y = [];
+end
+
+
+
+function inOctave = in_octave()
+try
+    ver_num = OCTAVE_VERSION;
+    inOctave = 1;
+    version_str = ['OCTAVE ' ver_num];
+catch
+    inOctave = 0;
+    version_str  = ['MATLAB ' version];
 end
 

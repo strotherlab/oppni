@@ -110,9 +110,13 @@ end
 
 inOctave = in_octave();
 if inOctave
-    disp('Enableing Octave - JIT')
-    val = jit_enable();
-    disp('Octave - JIT now enabled') 
+    try
+        disp('Enableing Octave - JIT');
+        val = jit_enable();
+        disp('Octave - JIT now enabled');
+    catch
+        disp('Warning unable to activate Octave - JIT');
+    end 
 end
 
 display(sprintf('The number of cores used by the code=%d',NUMBER_OF_CORES));

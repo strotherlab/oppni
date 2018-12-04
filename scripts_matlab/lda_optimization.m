@@ -12,6 +12,7 @@ function result_set = lda_optimization ( data_sp1, data_sp2, design_sp1, design_
 %          email: nathan.churchill@rotman.baycrest.on.ca
 %          Babak Afshin-Pour, Rotman reseach institute
 %          email: bafshinpour@research.baycrest.org
+%
 % ------------------------------------------------------------------------%
 % CODE_VERSION = '$Revision: 158 $';
 % CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
@@ -45,7 +46,7 @@ design_full = [design_sp1;  design_sp2];
 %% 2. initial data reduction factor + generate fulldata matrix
 
 % initial SVD -> run on full dataset
-[v s temp] = svd( data_full'*data_full ); s = sqrt(s);
+[v, s, temp] = svd( data_full'*data_full ); s = sqrt(s);
 
 % now reduce dimensionality before further steps
 

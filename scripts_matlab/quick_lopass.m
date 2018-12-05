@@ -20,6 +20,7 @@ inOctave = in_octave();
 if inOctave
     disp('Modified buttord call to custom buttord_octave version');
     [Nord, Wcut] = buttord_octave( Wp, Ws, 3,10 );
+    disp('Modified buttord call (buttord_octave) completed');
 else
     [Nord, Wcut] = buttord( Wp, Ws, 3,10 );
 end

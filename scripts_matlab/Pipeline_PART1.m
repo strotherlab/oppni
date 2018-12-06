@@ -861,6 +861,7 @@ METRIC_set_0.cond_struc = design_cond(volmat,Regressors);
 % Degug only ==========
 if inOctave
     profile resume;
+end
 % =====================
 
 if( ~isempty(find( phySet == 1 )) ) % perform if PHYCAA+ is being tested

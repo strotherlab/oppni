@@ -117,6 +117,9 @@ if inOctave
     catch
         disp('Warning unable to activate Octave - JIT');
     end 
+% debug
+    disp('Enableing Octave Profiling');
+    profile on
 end
 
 display(sprintf('The number of cores used by the code=%d',NUMBER_OF_CORES));
@@ -662,6 +665,16 @@ for ksub = 1:numel(InputStruct)
 end
 
 disp('OPPNI__STEP__COMPLETION__CODE Part1');
+% Degug only ==========
+inOctave = in_octave();
+if inOctave
+    profile off;
+    pData = profile("info");
+    disp('Profile Dump PPNI__STEP__COMPLETION__CODE Part1 ====');
+    profshow(pData,10);
+    profile resume;
+end
+% =====================
 
 %%
 function name = generate_pipeline_name(pipechars,pipeset)
@@ -852,6 +865,7 @@ if inOctave
     pData = profile("info");
     disp('Profile Dump ==== Step 2.3(e): run analysis with multiple contrasts====');
     profshow(pData,10);
+    profile resume;
 end
 % =====================
 
@@ -860,14 +874,6 @@ METRIC_set_0.cond_struc = design_cond(volmat,Regressors);
 
 %% PHYCAA+ option
 %%
-
-% Degug only ==========
-inOctave = in_octave();
-if inOctave
-    disp('Resume Octave Profiling');
-    profile resume;
-end
-% =====================
 
 if( ~isempty(find( phySet == 1 )) ) % perform if PHYCAA+ is being tested
     

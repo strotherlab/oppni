@@ -770,7 +770,9 @@ end
 %%% ==== Step 2.3(e): run analysis with multiple contrasts==== %%%
 
 % Degug only ==========
+inOctave = in_octave();
 if inOctave
+    disp('Octave Profiling On');
     profile on;
 end
 % =====================
@@ -844,10 +846,11 @@ else
     end
 end
 % Degug only ==========
+inOctave = in_octave();
 if inOctave
     profile off;
     pData = profile("info");
-    Display("Profile Dump ==== Step 2.3(e): run analysis with multiple contrasts====");
+    disp('Profile Dump ==== Step 2.3(e): run analysis with multiple contrasts====');
     profshow(pData,10);
 end
 % =====================
@@ -859,7 +862,9 @@ METRIC_set_0.cond_struc = design_cond(volmat,Regressors);
 %%
 
 % Degug only ==========
+inOctave = in_octave();
 if inOctave
+    disp('Resume Octave Profiling');
     profile resume;
 end
 % =====================
@@ -962,10 +967,11 @@ else
     METRIC_set_y = [];
 end
 % Degug only ==========
+inOctave = in_octave();
 if inOctave
     profile off;
     pData = profile("info");
-    Display("Profile Dump ==== after PHYCAA+ option ====");
+    disp('Profile Dump ==== after PHYCAA+ option ====');
     profshow(pData,10);
 end
 % =====================

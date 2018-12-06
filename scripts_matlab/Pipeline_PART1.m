@@ -769,6 +769,12 @@ end
 %%
 %%% ==== Step 2.3(e): run analysis with multiple contrasts==== %%%
 
+% Degug only ==========
+if inOctave
+    profile on
+end
+% =====================
+
 if( ~strcmpi(analysis_model,'NONE') )
 
     for contrast_counter = 1:size(Contrast_List,1)
@@ -837,12 +843,26 @@ else
         METRIC_set_0 = [];
     end
 end
+% Degug only ==========
+if inOctave
+    profile off;
+    pData = profile("info");
+    Display("Profile Dump ==== Step 2.3(e): run analysis with multiple contrasts====");
+    profshow(pData,10);
+end
+% =====================
 
 save([Subject_OutputDirIntermed '/regressors/reg' subjectprefix  '/' nomen 'y0.mat'],'Regressors','CODE_PROPERTY','-v7');
 METRIC_set_0.cond_struc = design_cond(volmat,Regressors);
 
 %% PHYCAA+ option
 %%
+
+% Degug only ==========
+if inOctave
+    profile resume;
+% =====================
+
 if( ~isempty(find( phySet == 1 )) ) % perform if PHYCAA+ is being tested
     
     %%% ==== Step 2.3(f): PHYCAA+ physiological regression ==== %%%
@@ -940,6 +960,14 @@ else
     TEMP_set_y   = [];
     METRIC_set_y = [];
 end
+% Degug only ==========
+if inOctave
+    profile off;
+    pData = profile("info");
+    Display("Profile Dump ==== after PHYCAA+ option ====");
+    profshow(pData,10);
+end
+% =====================
 
 
 function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet,Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix, subjectprefix, Contrast_List,VV,KEEPMEAN)

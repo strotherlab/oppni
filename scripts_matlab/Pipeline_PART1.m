@@ -771,7 +771,7 @@ end
 
 % Degug only ==========
 if inOctave
-    profile on
+    profile on;
 end
 % =====================
 

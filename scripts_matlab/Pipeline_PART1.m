@@ -735,12 +735,15 @@ end
 out_vol_denoi  = apply_glm( volmat, Regressors);
 
 %%% ==== Step 2.3(c): global signal removed ==== %%%
+disp ("==== Step 2.3(c): global signal removed ====");
 %
 % if GlobalSignal regression is "on", estimate and regress from data
+
 nomen=[nomen 'g' num2str(GS)];
 
 % customreg included (GS=2,3)
 if fix(GS/2)==1
+    disp ("customreg included (GS=2,3)");
     for( is=1:length(volmat) )
         ln = find(noise_roi>0);
         weight = noise_roi(ln)/sum(noise_roi(ln));
@@ -752,7 +755,7 @@ end
 out_vol_denoi  = apply_glm( volmat, Regressors);
 % global estimation included (GS=0,1)
 if( GS == 1 )
-    
+    disp ("global estimation included (GS=0,1)");
     for( is=1:length(volmat) )
         % get PC components on vascular-masked data
         volmat_temp = bsxfun(@times,out_vol_denoi{is},split_info_set{1}.spat_weight);
@@ -789,9 +792,9 @@ if inOctave
     profile on;
 end
 % =====================
-
+disp ("Step 2.3(e): run analysis with multiple contrasts");
 if( ~strcmpi(analysis_model,'NONE') )
-
+    disp ("analysis_model = NONE");
     for contrast_counter = 1:size(Contrast_List,1)
         if (strcmpi(split_info_set{1}.type,'block') || strcmpi(split_info_set{1}.type,'multitask-block'))
             for k = 1:length(split_info_set)
@@ -859,11 +862,11 @@ else
     end
 end
 % Degug only ==========
+disp('Profile Dump ==== Step 2.3(e): run analysis with multiple contrasts ====');
 inOctave = in_octave();
 if inOctave
     profile off;
     pData = profile("info");
-    disp('Profile Dump ==== Step 2.3(e): run analysis with multiple contrasts====');
     profshow(pData,10);
     profile resume;
 end

@@ -29,7 +29,9 @@ disp('lowpass butterworth filter with desired cutoff');
 [B1,A1] = butter(Nord,Wcut,'low');
 % zero-phase forward/reverse filter
 disp('zero-phase forward/reverse filter');
-X_filt  = filtfilt( B1,A1, X' )';
+%DEBUG - use marks_filtfilt
+%X_filt  = filtfilt( B1,A1, X' )';
+X_filt  = marks_filtfilt( B1,A1, X' )';
 disp('Exiting quick_lopass');
 
 function inOctave = in_octave()

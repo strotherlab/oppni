@@ -43,10 +43,10 @@
 ## FIXME: My version seems to have similar quality to matlab,
 ##        but both are pretty bad.  They do remove gross lag errors, though.
 
-function y = filtfilt(b, a, x)
+function y = marks_filtfilt(b, a, x)
   
   profile on  
-
+  disp("DEBUG - Starting marks_filtfilt");
   if (nargin != 3)
     print_usage;
   endif
@@ -70,6 +70,7 @@ function y = filtfilt(b, a, x)
   ## Compute a the initial state taking inspiration from
   ## Likhterov & Kopeika, 2003. "Hardware-efficient technique for
   ##     minimizing startup transients in Direct Form II digital filters"
+  disp("DEBUG - Compute a the initial state");
   kdc = sum(b) / sum(a);
   if (abs(kdc) < inf) # neither NaN nor +/- Inf
     si = fliplr(cumsum(fliplr(b - kdc * a)));
@@ -78,7 +79,7 @@ function y = filtfilt(b, a, x)
   endif
   si(1) = [];
 
-  printf("DEBUG - filtfilt loop count (number of columns) is: %d", size(x,2))
+  printf("DEBUG - filtfilt loop count (number of columns) is: %d\n", size(x,2))
 
   for (c = 1:size(x,2)) # filter all columns, one by one
     v = [2*x(1,c)-x((lrefl+1):-1:2,c); x(:,c); 2*x(end,c)-x((end-1):-1:end-lrefl,c)]; # a column vector

@@ -50,12 +50,14 @@ function y = filtfilt(b, a, x)
   if (nargin != 3)
     print_usage;
   endif
-  rotate = (size(x,1)==1);
+  
+  lx = size(x,1);
+  rotate = (lx==1);
   if rotate,                    # a row vector
+    disp("DEBUG - filtfilt rotate in")
     x = x(:);                   # make it a column vector
   endif
-
-  lx = size(x,1);
+  
   a = a(:).';
   b = b(:).';
   lb = length(b);
@@ -81,14 +83,14 @@ function y = filtfilt(b, a, x)
   for (c = 1:size(x,2)) # filter all columns, one by one
     v = [2*x(1,c)-x((lrefl+1):-1:2,c); x(:,c); 2*x(end,c)-x((end-1):-1:end-lrefl,c)]; # a column vector
     ## Do forward and reverse filtering
-    printf("DEBUG - Start forward reverse filtering count : %d", c);
+    ## printf("DEBUG - filtering counter = %d\n", c);
     v = filter(b,a,v,si*v(1));                   # forward filter
     v = flipud(filter(b,a,flipud(v),si*v(end))); # reverse filter
     y(:,c) = v((lrefl+1):(lx+lrefl));
   endfor
 
   if (rotate)                   # x was a row vector
-    disp("DEBUG - filtfilt rotate")
+    disp("DEBUG - filtfilt rotate out")
     y = rot90(y);               # rotate it back
   endif
   
@@ -96,7 +98,7 @@ function y = filtfilt(b, a, x)
   pData = profile("info")
   disp('Profile Dump after filtfilt ====');
   profshow(pData,10);
-  profile resume;
+  profile clear;
   
 endfunction
 

@@ -81,14 +81,14 @@ function y = filtfilt(b, a, x)
   for (c = 1:size(x,2)) # filter all columns, one by one
     v = [2*x(1,c)-x((lrefl+1):-1:2,c); x(:,c); 2*x(end,c)-x((end-1):-1:end-lrefl,c)]; # a column vector
     ## Do forward and reverse filtering
-    disp("DEBUG - Start forward and reverse filtering");
+    printf("DEBUG - Start forward reverse filtering count : %d", c);
     v = filter(b,a,v,si*v(1));                   # forward filter
     v = flipud(filter(b,a,flipud(v),si*v(end))); # reverse filter
     y(:,c) = v((lrefl+1):(lx+lrefl));
-    disp("DEBUG - End forward and reverse filtering");
   endfor
 
   if (rotate)                   # x was a row vector
+    disp("DEBUG - filtfilt rotate")
     y = rot90(y);               # rotate it back
   endif
   

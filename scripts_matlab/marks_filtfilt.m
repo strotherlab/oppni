@@ -80,24 +80,28 @@ function y = marks_filtfilt(b, a, x)
   si(1) = [];
 
   ## This loop generally executes tens of thousands of times.
-  ## For optimization all redundent caculation should be moved ouside the loop body.
+  ## For optimization all repetitivly redundent calculation should be moved ouside the loop body.
   ## Mods by Mark Prati
   ###########################
   sx2 = size(x,2);
   lrefl1 = lrefl + 1;
   lxlrefl = lx + lrefl;
   ###########################
-  printf("DEBUG - filtfilt loop count (number of columns) is: %d\n", sx2)
-  
+  printf("DEBUG - filtfilt loop count (number of columns) is: %d\n", sx2) 
   for (c = 1:sx2) # filter all columns, one by one
     v = [2*x(1,c)-x((lrefl1):-1:2,c); x(:,c); 2*x(end,c)-x((end-1):-1:end-lrefl,c)]; # a column vector
-    ## Do forward and reverse filtering
-    ## printf("DEBUG - filtering counter = %d\n", c);
     v = filter(b,a,v,si*v(1));                   # forward filter
     v = flipud(filter(b,a,flipud(v),si*v(end))); # reverse filter
     y(:,c) = v((lrefl1):(lxlrefl));
   endfor
-
+  printf("DEBUG - filtfilt loop completed %d iterations\n", c)
+  disp("DEBUG - Now for some timing tests")
+  printf("DEBUG v = [2*x(1,c)-x((lrefl1):-1:2,c); x(:,c); 2*x(end,c)-x((end-1):-1:end-lrefl,c)]) execute %d times", sx2) 
+  for (c = 1:sx2) 
+      v = [2*x(1,c)-x((lrefl1):-1:2,c); x(:,c); 2*x(end,c)-x((end-1):-1:end-lrefl,c)]; # a column vector
+  endfor
+  disp("DEBUG - DONE timing tests")  
+ 
   if (rotate)                   # x was a row vector
     disp("DEBUG - filtfilt rotate out")
     y = rot90(y);               # rotate it back

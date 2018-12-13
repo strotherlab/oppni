@@ -96,9 +96,11 @@ function y = marks_filtfilt(b, a, x)
   endfor
   printf("DEBUG - filtfilt loop completed %d iterations\n", c)
   disp("DEBUG - Now for some timing tests")
-  printf("DEBUG v = [2*x(1,c)-x((lrefl1):-1:2,c); x(:,c); 2*x(end,c)-x((end-1):-1:end-lrefl,c)]) execute %d times", sx2) 
+  printf("DEBUG v = [2*x(1,c)-x((lrefl1):-1:2,c); x(:,c); 2*x(end,c)-x((end-1):-1:end-lrefl,c)]) execute %d times\n", sx2)
+  printf("DEBUG z(:,c) = v((lrefl1):(lxlrefl)) execute %d times\n", sx2) 
   for (c = 1:sx2) 
       v = [2*x(1,c)-x((lrefl1):-1:2,c); x(:,c); 2*x(end,c)-x((end-1):-1:end-lrefl,c)]; # a column vector
+      z(:,c) = v((lrefl1):(lxlrefl));
   endfor
   disp("DEBUG - DONE timing tests")  
  

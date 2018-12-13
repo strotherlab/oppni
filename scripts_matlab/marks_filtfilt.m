@@ -87,7 +87,7 @@ function y = marks_filtfilt(b, a, x)
   lref1 = lref + 1;
   lxlrefl = lx + lrefl;
   ###########################
-  printf("DEBUG - filtfilt loop count (number of columns) is: %d\n", sx2))
+  printf("DEBUG - filtfilt loop count (number of columns) is: %d\n", sx2)
   
   for (c = 1:sx2) # filter all columns, one by one
     v = [2*x(1,c)-x((lrefl1):-1:2,c); x(:,c); 2*x(end,c)-x((end-1):-1:end-lrefl,c)]; # a column vector

@@ -84,7 +84,7 @@ function y = marks_filtfilt(b, a, x)
   ## Mods by Mark Prati
   ###########################
   sx2 = size(x,2);
-  lref1 = lref + 1;
+  lrefl1 = lrefl + 1;
   lxlrefl = lx + lrefl;
   ###########################
   printf("DEBUG - filtfilt loop count (number of columns) is: %d\n", sx2)

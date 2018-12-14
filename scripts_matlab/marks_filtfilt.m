@@ -98,8 +98,10 @@ function y = marks_filtfilt(b, a, x)
   disp("DEBUG - Now for some timing tests")
   printf("DEBUG v = [2*x(1,c)-x((lrefl1):-1:2,c); x(:,c); 2*x(end,c)-x((end-1):-1:end-lrefl,c)]) execute %d times\n", sx2)
   printf("DEBUG z(:,c) = v((lrefl1):(lxlrefl)) execute %d times\n", sx2)
-  disp("DEBUG - preallocate test");
-  z = zeros(3,sx2); #preallocate
+
+  rows = size(y)(1,1);
+  printf("DEBUG - preallocate test %d x %d\n",rows,sx2);
+  z = zeros(rows,sx2); #preallocate
   for (c = 1:sx2) 
       v = [2*x(1,c)-x((lrefl1):-1:2,c); x(:,c); 2*x(end,c)-x((end-1):-1:end-lrefl,c)]; # a column vector
       z(:,c) = v((lrefl1):(lxlrefl));

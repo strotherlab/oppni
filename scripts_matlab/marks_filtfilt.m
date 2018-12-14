@@ -54,7 +54,6 @@ function y = marks_filtfilt(b, a, x)
   lx = size(x,1);
   rotate = (lx==1);
   if rotate,                    # a row vector
-    disp("DEBUG - filtfilt rotate in")
     x = x(:);                   # make it a column vector
   endif
   
@@ -70,7 +69,6 @@ function y = marks_filtfilt(b, a, x)
   ## Compute a the initial state taking inspiration from
   ## Likhterov & Kopeika, 2003. "Hardware-efficient technique for
   ##     minimizing startup transients in Direct Form II digital filters"
-  disp("DEBUG - Compute a the initial state");
   kdc = sum(b) / sum(a);
   if (abs(kdc) < inf) # neither NaN nor +/- Inf
     si = fliplr(cumsum(fliplr(b - kdc * a)));
@@ -86,32 +84,19 @@ function y = marks_filtfilt(b, a, x)
   sx2 = size(x,2);
   lrefl1 = lrefl + 1;
   lxlrefl = lx + lrefl;
-  printf("DEBUG - lx = %d, la = %d, lb = %d, n = %d, lrefl = %d\n",lx,la,lb,n,lrefl); 
+  printf("DEBUG - lx = %d, la = %d, lb = %d, n = %d, lrefl = %d, sx2 = %d\n",lx,la,lb,n,lrefl,sx2);  
+  # Optimize by pre-allocating matrix memory 
+  y = zeros(lx,sx2);
   ###########################
-  printf("DEBUG - filtfilt loop count (number of columns) is: %d\n", sx2)
-  y = zeros(lx,sx2); #preallocate
+
   for (c = 1:sx2) # filter all columns, one by one
     v = [2*x(1,c)-x((lrefl1):-1:2,c); x(:,c); 2*x(end,c)-x((end-1):-1:end-lrefl,c)]; # a column vector
     v = filter(b,a,v,si*v(1));                   # forward filter
     v = flipud(filter(b,a,flipud(v),si*v(end))); # reverse filter
     y(:,c) = v((lrefl1):(lxlrefl));
   endfor
-  printf("DEBUG - filtfilt loop completed %d iterations\n", c)
-  disp("DEBUG - Now for some timing tests")
-  printf("DEBUG v = [2*x(1,c)-x((lrefl1):-1:2,c); x(:,c); 2*x(end,c)-x((end-1):-1:end-lrefl,c)]) execute %d times\n", sx2)
-  printf("DEBUG z(:,c) = v((lrefl1):(lxlrefl)) execute %d times\n", sx2)
-
-  rows = size(y)(1,1);
-  printf("DEBUG - preallocate test %d x %d\n",rows,sx2);
-  z = zeros(rows,sx2); #preallocate
-  for (c = 1:sx2) 
-      v = [2*x(1,c)-x((lrefl1):-1:2,c); x(:,c); 2*x(end,c)-x((end-1):-1:end-lrefl,c)]; # a column vector
-      z(:,c) = v((lrefl1):(lxlrefl));
-  endfor
-  disp("DEBUG - DONE timing tests")  
- 
+  printf("DEBUG - filtfilt loop completed %d iterations\n", c) 
   if (rotate)                   # x was a row vector
-    disp("DEBUG - filtfilt rotate out")
     y = rot90(y);               # rotate it back
   endif
   

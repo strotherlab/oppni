@@ -45,8 +45,8 @@
 
 function y = marks_filtfilt(b, a, x)
   
-  profile on  
-  disp("DEBUG - Starting marks_filtfilt");
+  %profile on  
+  disp("DEBUG - Entering marks_filtfilt");
   if (nargin != 3)
     print_usage;
   endif
@@ -95,16 +95,16 @@ function y = marks_filtfilt(b, a, x)
     v = flipud(filter(b,a,flipud(v),si*v(end))); # reverse filter
     y(:,c) = v((lrefl1):(lxlrefl));
   endfor
-  printf("DEBUG - filtfilt loop completed %d iterations\n", c) 
+  printf("DEBUG - marks_filtfilt loop completed %d iterations\n", c) 
   if (rotate)                   # x was a row vector
     y = rot90(y);               # rotate it back
   endif
   
-  profile off;
-  pData = profile("info")
-  disp('Profile Dump after filtfilt ====');
-  profshow(pData,10);
-  profile clear;
+  %profile off;
+  %pData = profile("info")
+  %disp('Profile Dump after filtfilt ====');
+  %profshow(pData,10);
+  %profile clear;
   
 endfunction
 

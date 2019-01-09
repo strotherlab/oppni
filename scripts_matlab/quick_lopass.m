@@ -20,28 +20,33 @@ inOctave = in_octave();
 if inOctave
     disp('Modified buttord call to custom buttord_octave version');
     [Nord, Wcut] = buttord_octave( Wp, Ws, 3,10 );
-    disp('Modified buttord call (buttord_octave) completed');
 else
     [Nord, Wcut] = buttord( Wp, Ws, 3,10 );
 end
-disp('lowpass butterworth filter with desired cutoff');
+
+%disp('lowpass butterworth filter with desired cutoff');
 % lowpass butterworth filter with desired cutoff
 [B1,A1] = butter(Nord,Wcut,'low');
-% zero-phase forward/reverse filter
-disp('zero-phase forward/reverse filter');
-%DEBUG - use marks_filtfilt
-%X_filt  = filtfilt( B1,A1, X' )';
-X_filt  = marks_filtfilt( B1,A1, X' )';
+% zero-phase forward/reverse filter - use marks_filtfilt for Octave
+
+if inOctave
+    X_filt  = marks_filtfilt( B1,A1, X' )';
+else
+    X_filt  = filtfilt( B1,A1, X' )';
+end
+
 disp('Exiting quick_lopass');
 
-function inOctave = in_octave()
-try
-    ver_num = OCTAVE_VERSION;
-    inOctave = 1;
-    version_str = ['OCTAVE ' ver_num];
-catch
-    inOctave = 0;
-    version_str  = ['MATLAB ' version];
+    function inOctave = in_octave()
+        try
+            ver_num = OCTAVE_VERSION;
+            inOctave = 1;
+            version_str = ['OCTAVE ' ver_num];
+        catch
+            inOctave = 0;
+            version_str  = ['MATLAB ' version];
+        end
+    end
 end
 
 

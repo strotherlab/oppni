@@ -109,18 +109,19 @@ if isnan(NUMBER_OF_CORES)
 end
 
 inOctave = in_octave();
-if inOctave
-    try
-        disp('Enableing Octave - JIT');
-        val = jit_enable();
-        disp('Octave - JIT now enabled');
-    catch
-        disp('Warning unable to activate Octave - JIT');
-    end 
+% May be of future value once the Octave JIT is reliable - LMP
+%if inOctave
+%   try
+%        disp('Enableing Octave - JIT');
+%        val = jit_enable();
+%        disp('Octave - JIT now enabled');
+%    catch
+%        disp('Warning unable to activate Octave - JIT');
+%    end 
 % debug
-    disp('Enableing Octave Profiling');
-    profile on
-end
+%    disp('Enableing Octave Profiling');
+%    profile on
+%end
 
 display(sprintf('The number of cores used by the code=%d',NUMBER_OF_CORES));
 if ( ~exist('OCTAVE_VERSION','builtin') && exist('maxNumCompThreads') )
@@ -666,14 +667,14 @@ end
 
 disp('OPPNI__STEP__COMPLETION__CODE Part1');
 % Degug only ==========
-inOctave = in_octave();
-if inOctave
-    profile off;
-    pData = profile("info");
-    disp('Profile Dump PPNI__STEP__COMPLETION__CODE Part1 ====');
-    profshow(pData,10);
-    profile resume;
-end
+%inOctave = in_octave();
+%if inOctave
+%    profile off;
+%    pData = profile("info");
+%    disp('Profile Dump PPNI__STEP__COMPLETION__CODE Part1 ====');
+%    profshow(pData,10);
+%    profile resume;
+%end
 % =====================
 
 %%
@@ -786,11 +787,11 @@ end
 %%% ==== Step 2.3(e): run analysis with multiple contrasts==== %%%
 
 % Degug only ==========
-inOctave = in_octave();
-if inOctave
-    disp('Octave Profiling On');
-    profile on;
-end
+%inOctave = in_octave();
+%if inOctave
+%    disp('Octave Profiling On');
+%    profile on;
+%end
 % =====================
 disp ("Step 2.3(e): run analysis with multiple contrasts");
 if( ~strcmpi(analysis_model,'NONE') )
@@ -862,14 +863,14 @@ else
     end
 end
 % Degug only ==========
-disp('Profile Dump ==== Step 2.3(e): run analysis with multiple contrasts ====');
-inOctave = in_octave();
-if inOctave
-    profile off;
-    pData = profile("info");
-    profshow(pData,10);
-    profile resume;
-end
+%disp('Profile Dump ==== Step 2.3(e): run analysis with multiple contrasts ====');
+%inOctave = in_octave();
+%if inOctave
+%    profile off;
+%    pData = profile("info");
+%    profshow(pData,10);
+%    profile resume;
+%end
 % =====================
 
 save([Subject_OutputDirIntermed '/regressors/reg' subjectprefix  '/' nomen 'y0.mat'],'Regressors','CODE_PROPERTY','-v7');
@@ -976,13 +977,13 @@ else
     METRIC_set_y = [];
 end
 % Degug only ==========
-inOctave = in_octave();
-if inOctave
-    profile off;
-    pData = profile("info");
-    disp('Profile Dump ==== after PHYCAA+ option ====');
-    profshow(pData,10);
-end
+%inOctave = in_octave();
+%if inOctave
+%    profile off;
+%    pData = profile("info");
+%    disp('Profile Dump ==== after PHYCAA+ option ====');
+%    profshow(pData,10);
+%end
 % =====================
 
 

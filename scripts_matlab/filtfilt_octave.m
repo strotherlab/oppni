@@ -2,7 +2,7 @@
 ## Copyright (C) 2007 Francesco Potortì <pot@gnu.org>
 ## Copyright (C) 2008 Luca Citi <lciti@essex.ac.uk>
 ##
-## Modified version for perfomance profiling and testing
+## Modified version for perfomance profiling and testing in Octave
 ## by Mark Prati <mprati@research.baycrest.org>
 ##  
 ## This program is free software: you can redistribute it and/or modify
@@ -43,10 +43,11 @@
 ## FIXME: My version seems to have similar quality to matlab,
 ##        but both are pretty bad.  They do remove gross lag errors, though.
 
-function y = marks_filtfilt(b, a, x)
+function y = filtfilt_octave(b, a, x)
   
+  %enable profiling
   %profile on  
-  disp("DEBUG - Entering marks_filtfilt");
+ 
   if (nargin != 3)
     print_usage;
   endif
@@ -84,7 +85,7 @@ function y = marks_filtfilt(b, a, x)
   sx2 = size(x,2);
   lrefl1 = lrefl + 1;
   lxlrefl = lx + lrefl;
-  printf("DEBUG - lx = %d, la = %d, lb = %d, n = %d, lrefl = %d, sx2 = %d\n",lx,la,lb,n,lrefl,sx2);  
+  printf("filtfilt_octave - lx = %d, la = %d, lb = %d, n = %d, lrefl = %d, (loop columns) sx2 = %d\n",lx,la,lb,n,lrefl,sx2);  
   # Optimize by pre-allocating matrix memory 
   y = zeros(lx,sx2);
   ###########################
@@ -95,7 +96,6 @@ function y = marks_filtfilt(b, a, x)
     v = flipud(filter(b,a,flipud(v),si*v(end))); # reverse filter
     y(:,c) = v((lrefl1):(lxlrefl));
   endfor
-  printf("DEBUG - marks_filtfilt loop completed %d iterations\n", c) 
   if (rotate)                   # x was a row vector
     y = rot90(y);               # rotate it back
   endif

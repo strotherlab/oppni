@@ -51,6 +51,12 @@ else:
     print(platform.python_version())
     from shutil import which 
 
+#  Check if we are runnning from within singularity (are we a container image) - LMP
+if (os.environ.get('SINGULARITY_CONTAINER') == None):
+    InSingularity = False
+else:
+    InSingularity = True;
+
 
 # OPPNI related
 import cfg_front as cfg_pronto
@@ -600,7 +606,7 @@ def parse_args_check():
                         help="(optional) determine which software to use to run the code: matlab or compiled(default)")
 
     parser.add_argument("--cluster", action="store", dest="hpc_type",
-                        default=None, choices=('FRONTENAC', 'BRAINCODE', 'CAC', 'SCINET', 'SHARCNET', 'CBRAIN'),
+                        default=None, choices=('FRONTENAC', 'BRAINCODE', 'CAC', 'SCINET', 'SHARCNET', 'CBRAIN', 'SLURM'),
                         help="Please specify the type of cluster you're running the code on.")
 
     parser.add_argument("--memory", action="store", dest="memory",
@@ -732,7 +738,7 @@ def parse_args_check():
             # which will be executed in a subshell
             hpc['type'] = 'SGE'
     else:
-        print("Submitting jobs to Sun Grid Engine (SGE)")
+        print("Submitting jobs to cluster {}".format(hpc['type']))
 
     if options.dry_run:
         hpc['dry_run'] = True
@@ -797,7 +803,7 @@ def parse_args_check():
     ## -------------- Check the Input parameters  --------------
 
     # assert N > 3 to ensure QC/split-half mechanism doesnt fail
-    assert len(unique_subjects) > 3, 'Too few (N<=3) runs in the input file. Rerun with N>3 runs.'
+    assert len(unique_subjects) > 3, 'Too few (N<=3) runs in the input file (unique_subjects = {}). Rerun with N>3 runs.'.format(len(unique_subjects))
 
     if hasattr(options, 'reference') and options.reference is not None:
         reference = os.path.abspath(options.reference)
@@ -1011,8 +1017,11 @@ def get_hpc_spec(h_type=None, options=None):
         elif h_type in ('SCINET', 'PBS', 'TORQUE'):
             warnings.warn('HPC {} has not been tested fully. Use at your own risk!'.format(h_type))
             memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'batch', 1, '')
-        elif h_type in ('FRONTENAC', 'SLURM'):
+        elif h_type in ('FRONTENAC'):
             memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'standard', 1, '',
+                                                                               input_walltime='30:00:00')
+        elif h_type in ('SLURM'):
+            memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, None, 1, '',
                                                                                input_walltime='30:00:00')
     else:
         memory = '2'
@@ -1050,7 +1059,7 @@ def get_hpc_spec(h_type=None, options=None):
         spec['memory'] = ('-l mem=', memory)
         spec['numcores'] = ('-l ppn=', numcores)
         spec['queue'] = ('-q ', queue)
-    elif h_type in ('FRONTENAC', 'SLURM'):
+    elif h_type in ('FRONTENAC'):  #FROTENAC is SLURM
         prefix = '#SBATCH'
         spec['memory'] = ('--mem=', int(memory)*1024) #
         spec['numcores'] = ('-c ', numcores)
@@ -1063,6 +1072,20 @@ def get_hpc_spec(h_type=None, options=None):
         spec['submit_cmd'] = 'sbatch'
         # slurm does not allow any shell specification
         shell=None
+    elif h_type in ('SLURM'):
+        prefix = '#SBATCH'
+        spec['memory'] = ('--mem=', int(memory)*1024) #
+        spec['numcores'] = ('-c ', numcores)
+        spec['queue'] = ('-p ', queue)
+        spec['walltime'] = ('-t ', walltime)
+        spec['export_user_env'] = ('--export=', 'ALL')
+        spec['workdir'] = '--workdir'
+        spec['jobname'] = '--job-name'
+        spec['jobname_frontenac'] = '--output=%x_%j.log'
+        spec['submit_cmd'] = 'sbatch'
+        # slurm does not allow any shell specification
+        shell=None
+
     else:
         raise ValueError('HPC type {} unrecognized or not implemented.'.format(h_type))
 
@@ -1610,7 +1633,14 @@ def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=N
             mfile.write('\n')
 
          setup_cmd = ''
-         full_cmd = setup_cmd + "\n" + r"octave -W --traditional -q {0}".format(mfile_path)
+         # check if we are a singularity container image runing on a cluster - LMP
+         # Note the correct scheduler libraries / commands need to have been bouund to the image for job bubmission.
+         if (hpc['type'] != 'LOCAL') and InSigularity == True:
+             # FUTURE - modify this to launch a singularity exec command
+             #full_cmd = setup_cmd + "\n" + r"singularity exec \"octave -W --traditional -q {0}\"".format(mfile_path)
+             full_cmd = setup_cmd + "\n" + r"octave -W --traditional -q {0}".format(mfile_path)
+         else:
+             full_cmd = setup_cmd + "\n" + r"octave -W --traditional -q {0}".format(mfile_path)
 
 
     elif environment.lower() in ('standalone', 'compiled'):

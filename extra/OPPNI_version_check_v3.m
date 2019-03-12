@@ -23,6 +23,9 @@ if(nargin<4 || isempty(distatis_flag)) distatis_flag=0; end
 [InputStruct1,MULTI_RUN_INPUTFILE] = Read_Input_File(InputFile1);
 [InputStruct2,MULTI_RUN_INPUTFILE] = Read_Input_File(InputFile2);
 
+aTable = struct2table(InputStruct1); 
+disp(aTable)
+
 % first check -- number of lines match?
 Nsubject1 = numel(InputStruct1);
 Nsubject2 = numel(InputStruct2);

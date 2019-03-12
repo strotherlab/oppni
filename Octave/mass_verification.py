@@ -1,5 +1,5 @@
 #'/home/mprati/Results/RecYng_matlab_local4/processing_input_RecYng_matlab_local4_LDA_task_A-baseline/QC2_results/input_file.txt'
-#script to run varification betwen OPPNI matlab results and octave results for a dataset 
+#script to run varification between OPPNI matlab results and octave results for a dataset 
 #
 from collections import namedtuple
 import os, getopt, sys
@@ -28,8 +28,8 @@ class color:
 #matlab_path = '/home/adlofts/Documents/Octave_Testing/oppni_octave_git/'
 #version_check_location = "/home/adlofts/Documents/Octave_Testing/trials_oppni/test_rec_yng1t"
 
-checkscript_ver = './oppni_git/extra/OPPNI_version_check_v3.m'
-matlab_path = './oppni_git/'
+checkscript_ver = './oppni/extra/OPPNI_version_check_v3.m'
+matlab_path = './oppni/'
 version_check_location = "./Results"
 
 matlab_input_file_name = "input_file.txt"

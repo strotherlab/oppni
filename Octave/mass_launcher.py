@@ -17,10 +17,16 @@ from os.path import isdir as pisdir
 # Default Parameter Set up
 #####################################
 # Looping Conditions
-EXE_METHODS           = ['matlab','octave']
-#CODES_ANALYSIS_MODELS = ['None', 'LDA', 'GNB', 'GLM', 'erCVA', 'erGNB', 'erGLM', 'SCONN']
-CODES_ANALYSIS_MODELS = ['None', 'LDA', 'GNB', 'GLM', 'SCONN']
-SLICE_TIMING_PATTERNS = ['alt+z', 'alt+z2', 'alt-z', 'alt-z2', 'seq+z', 'seq-z', 'auto_hdr']
+# AVAILABE EXE_METHODS = ['matlab','octave']
+EXE_METHODS           = ['matlab']
+
+# AVAILABLE CODES_ANALYSIS_MODELS = ['None', 'LDA', 'GNB', 'GLM', 'erCVA', 'erGNB', 'erGLM', 'SCONN']
+#CODES_ANALYSIS_MODELS = ['None', 'LDA', 'GNB', 'GLM', 'SCONN']
+CODES_ANALYSIS_MODELS = ['None', 'LDA', 'GNB']
+
+# AVALABLE SLICE_TIMING_PATTERNS = ['alt+z', 'alt+z2', 'alt-z', 'alt-z2', 'seq+z', 'seq-z', 'auto_hdr']
+SLICE_TIMING_PATTERNS = ['alt+z', 'alt+z2']
+
 DEOBLIQUE             = ['--DEOBLIQUE', '']
 
 # Sub options for analysis models
@@ -53,8 +59,8 @@ blur                    = ""
 control_motion_artifact = ""
 control_wm_bias         = ""
 output_nii_also         = ""
-run_locally             = "--run_locally"
-dry_run                 = "--dry_run"
+run_locally             = "" #"--run_locally"
+dry_run                 = "" #"--dry_run"
 
 ###########################################
 
@@ -118,15 +124,16 @@ def main(oppni_ver,input_file_og,pipeline_file,reference_file):
                         for idx in range(len(line_text)):
                             # prepending it with OUT= to restrict the sub to only OUT, and not elsewhere such as TASK=
                             mod_out_text = 'OUT=' + pjoin(pdirname(out_text[idx]), suffix, str(env),pbasename(out_text[idx]))
+#                            rep_text = 'OUT={}'.format(base_out_dir)
+                            rep_text = 'OUT={}'.format(pjoin(base_out_dir,pbasename(out_text[idx])))
+                            mod_line_text = line_text[idx].replace(rep_text, mod_out_text)
 
-                            out_text[idx] = 'OUT={}'.format(base_out_dir)
+                            #out_text[idx] = 'OUT={}'.format(base_out_dir)
+                            #mod_line_text = line_text[idx].replace(out_text[idx], mod_out_text)
+                            print("rep_text = [{}]\nmod_out_text = [{}]\nmod_line_text = [{}]\n".format(rep_text, mod_out_text, mod_line_text))
+
                             #DEBUG
-                            #if input("\nout_text = [{}] Continue? (Y)".format(out_text[idx])) != "Y":
-                            #    sys.exit()
- 
-                            mod_line_text = line_text[idx].replace(out_text[idx], mod_out_text)
-                            #DEBUG
-                            #if input("\nmod_line_text = [{}] Continue? (Y)".format(mod_line_text)) != "Y":
+                            #if input("Continue? (Y)").upper() != "Y":
                             #    sys.exit()
 
                             ipf_mod.write(mod_line_text + "\n")
@@ -179,16 +186,16 @@ if __name__ == '__main__':
 
     #process command line args
     try:
-        opts, args = getopt.getopt(sys.argv[1:],"hb:o:i:p:r:e:m:d:l:",["base=","oppni=","input=","pipeline=","reference=","ex=","models=","dry=","local="])
+        opts, args = getopt.getopt(sys.argv[1:],"hdlb:o:i:p:r:e:m:c:",["base=","oppni=","input=","pipeline=","reference=","ex=","models=","cluster="])
     except getopt.GetoptError:
-        print ('Options [ -b <Base Directory> ][ -o <OPPNI Directory> ][ -p <OPPNI pipeline file path> ][ -r <OPPNI reference file path> ][-m <analysis models array>][-d <dry run [Y/N]][-l <run locally [Y/N]]' )
+        print ('Options [ -b <Base Directory> ][ -o <OPPNI Directory> ][ -p <OPPNI pipeline file path> ][ -r <OPPNI reference file path> ][-m <analysis models array>][-d <dry run>][-l <run locally>][-c <supply cluster name>]' )
         sys.exit(2)
         
     for opt, arg in opts:
         arg = arg.strip()
         if opt == '-h':
             print ('\n',color.UNDERLINE,'Command line syntax:',color.END,'\n')
-            print ('mass_launcher.py [ -b <Base Working Directory> ][ -o <OPPNI path> ][ -i <OPPNI input file path> ][ -p <OPPNI pipeline file path> ][ -r <OPPNI reference file path> ][-m <analysis models array>][-m <exececution methods array>][-d <dry run [Y/N]]\n' )
+            print ('mass_launcher.py [ -b <Base Working Directory> ][ -o <OPPNI path> ][ -i <OPPNI input file path> ][ -p <OPPNI pipeline file path> ][ -r <OPPNI reference file path> ][-m <analysis models array>][-m <exececution methods array>][-d <dry run>][-l <run locally>][-c <supply cluster name>]\n' )
             print (color.BLUE,'Default paths:',color.END)
             print ('\n<Base Working Directory>    : ', base_work_dir)
             print ('<OPPNI path>                : ', oppni_path)
@@ -225,20 +232,18 @@ if __name__ == '__main__':
         elif opt in ("-m", "--models"):
             CODES_ANALYSIS_MODELS  = ast.literal_eval(arg)
         elif opt in ("-d", "--dry"):
-            dry  = arg
-            if dry == "N":
-                dry_run = "";
+            dry_run = "--dry_run";
         elif opt in ("-l", "--local"):
-            dry  = arg
-            if local == "N":
-                run_locally = "";
+            run_locally = "--run_locally";
+        elif opt in ("-c", "--cluster"):
+            cluster = "--cluster " + arg;
 
     input_file_path     = pjoin(base_work_dir, input_file)
     pipeline_file_path  = pjoin(base_work_dir, pipeline_file)
     reference_file_path = pjoin(base_work_dir, reference_file)
 
 
-    print (color.PURPLE,'\n\nExecuting OPPNI mass_launcher with the following parameters:\n')
+    print (color.PURPLE,'\n\nExecuting OPPNI mass_launcher{} with the following parameters:\n'.format(dry_run))
     print ('\n<Base Working Directory>    : ', base_work_dir)
     print ('<OPPNI path>                : ', oppni_path)
     print ('<OPPNI input file path>     : ', input_file_path)
@@ -246,10 +251,13 @@ if __name__ == '__main__':
     print ('<OPPNI reference file path> : ', reference_file_path, color.END)
     print ('\n',color.UNDERLINE,'Execution Methods',color.END,'\n',EXE_METHODS,'\n')
     print (color.UNDERLINE,'Analysis Models',color.END,'\n',CODES_ANALYSIS_MODELS,'\n')
+    print (color.UNDERLINE,'Slice Timing Patterns',color.END,'\n',SLICE_TIMING_PATTERNS,'\n')
     #print (color.UNDERLINE,'Analysis Sub-Options',color.END,'\n',json.dumps(ANALYSIS_SUB_OPTIONS, indent=4),'\n')
     print (color.UNDERLINE,'Analysis Sub-Options',color.END,'\n',ANALYSIS_SUB_OPTIONS,'\n')
-    print (color.UNDERLINE,'Slice Timing Patterns',color.END,'\n',SLICE_TIMING_PATTERNS,'\n')
-
+    if run_locally == "--run_locally":
+        print ("Running locally\n");
+    else:
+        print ("Running {}\n".format(cluster));
 
     # validate paths to files
     if os.path.isfile(oppni_path) == False:

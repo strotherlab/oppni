@@ -115,9 +115,21 @@ def parse_args_check():
                 options.oppni_path = os.path.dirname(executible)
             else:
                 raise ValueError("Specified OPPNI path {} doesn't exist!".format(options.oppni_path))
-        else:    
-            raise ValueError("Specified OPPNI path {} doesn't exist!".format(options.oppni_path))
-
+        else:
+            #check if OPPNI is available in this setup path
+            print("\nOPPNI was not found on the default path: {}\n".format(options.oppni_path)) 
+            setup_dir = os.path.dirname(os.path.abspath(__file__))
+            if os.path.isfile(os.path.join(setup_dir,"oppni.py")):
+                print("However! OPPNI was located here: {}\n".format(setup_dir))
+                if input("\nUse this path? (Yes/No): ").upper() in ['Y','YES']:
+                    options.oppni_path = setup_dir
+                else:
+                    Print("ERROR: A valid OPPNI path is required")
+                    sys.exit()
+            else:
+                Print("ERROR: A valid OPPNI path is required")
+                sys.exit()
+                    
     if not os.path.isdir(options.afni_path):
         executible = shutil.which("afni")
         if (executible):
@@ -262,7 +274,7 @@ def make_needed_files_dirs():
     home_dir = os.getenv('HOME')
 
     #backup and create user bash_profile
-    bash_profile = os.path.join(home_dir,'.bash_profile_test')
+    bash_profile = os.path.join(home_dir,'.bash_profile')
     backup_file(bash_profile)
     remove_section_from_textfile(bash_profile,"# Start of section added by setup_oppni:","# End of section added by setup_oppni:")
     if os.path.exists(bash_profile):

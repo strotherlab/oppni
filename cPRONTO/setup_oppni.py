@@ -124,10 +124,10 @@ def parse_args_check():
                 if input("\nUse this path? (Yes/No): ").upper() in ['Y','YES']:
                     options.oppni_path = setup_dir
                 else:
-                    Print("ERROR: A valid OPPNI path is required")
+                    print("ERROR: A valid OPPNI path is required")
                     sys.exit()
             else:
-                Print("ERROR: A valid OPPNI path is required")
+                print("ERROR: A valid OPPNI path is required")
                 sys.exit()
                     
     if not os.path.isdir(options.afni_path):
@@ -137,10 +137,12 @@ def parse_args_check():
             if input("Use this path? (Yes/No): ").upper() in ['Y','YES']:
                 options.afni_path = os.path.dirname(executible)
             else:
-                raise ValueError("Specified AFNI path {} doesn't exist!".format(options.afni_path))
+                print("\nSpecified AFNI path {} doesn't exist!".format(options.afni_path))
+                print("WARNING: AFNI must be installed for OPPNI to run\n")
         else:    
-            raise ValueError("Specified AFNI path {} doesn't exist!".format(options.afni_path))
-
+            print("\nSpecified AFNI path {} doesn't exist!".format(options.afni_path))
+            print("WARNING: AFNI must be installed for OPPNI to run\n")
+            
     if not os.path.isdir(options.fsl_path):
         executible = shutil.which("fsl")
         if (executible):
@@ -148,9 +150,11 @@ def parse_args_check():
             if input("Use this path? (Yes/No): ").upper() in ['Y','YES']:
                 options.fsl_path = os.path.dirname(executible)
             else:
-                raise ValueError("Specified FSL path {} doesn't exist!".format(options.fsl_path))
+                print("\nSpecified FSL path {} doesn't exist!".format(options.fsl_path))
+                print("WARNING: FSL may be needed for some OPPNI functions\n")
         else:    
-            raise ValueError("Specified FSL path {} doesn't exist!".format(options.fsl_path))
+            print("\nSpecified FSL path {} doesn't exist!".format(options.fsl_path))
+            print("WARNING: FSL may be needed for some OPPNI functions\n")
         
     if not os.path.isdir(options.octave_path):
         executible = shutil.which("octave")

@@ -479,7 +479,7 @@ def check_current_setup():
         return input("\nDo you want to overwrite the existing environment [Yes]/No: ").upper() in ['Y','Yes']
     else:
         print("No previous setup found - continuing with oppni setup...")
-        return False
+        return True
         
 
 if __name__ == '__main__':

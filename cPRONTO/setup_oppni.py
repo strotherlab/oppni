@@ -107,12 +107,14 @@ def parse_args_check():
     else:
         print ('No Preconfigured Strother lab setup was chosen. The paths you provided (if any) will apply.')
 
+    #NOTE: when looking for "oppni.py" it would be found in sub-dir cPRONTO under the install directory
+    # therefore backup one path level for correct oppni_path. 
     if not os.path.isdir(options.oppni_path):
         executible = shutil.which("oppni.py")
         if (executible):
-            print("OPPNI was located here: {}".format(executible))
+            print("OPPNI was located here: {}".format(os.path.dirname(os.path.dirname(executible))))
             if input("Use this path? (Yes/No): ").upper() in ['Y','YES']:
-                options.oppni_path = os.path.dirname(executible)
+                options.oppni_path = os.path.dirname(os.path.dirname(executible))
             else:
                 raise ValueError("Specified OPPNI path {} doesn't exist!".format(options.oppni_path))
         else:
@@ -122,7 +124,7 @@ def parse_args_check():
             if os.path.isfile(os.path.join(setup_dir,"oppni.py")):
                 print("However! OPPNI was located here: {}\n".format(setup_dir))
                 if input("\nUse this path? (Yes/No): ").upper() in ['Y','YES']:
-                    options.oppni_path = setup_dir
+                    options.oppni_path =  os.path.dirname(setup_dir)
                 else:
                     print("ERROR: A valid OPPNI path is required")
                     sys.exit()
@@ -290,7 +292,7 @@ def make_needed_files_dirs():
     matlab_path = os.path.join(home_dir,'matlab')
     if not os.path.isdir(matlab_path):
         os.mkdir(matlab_path)
-    matlab_startup = os.path.join(matlab_path,'startup_test.m')
+    matlab_startup = os.path.join(matlab_path,'startup.m')
     backup_file(matlab_startup)
     if os.path.exists(matlab_startup):
         ms = open(matlab_startup, 'a')
@@ -298,7 +300,7 @@ def make_needed_files_dirs():
         ms = open(matlab_startup, 'w')
         
     #backup and create octave startup file    
-    octave_startup = os.path.join(home_dir,'.octaverc_test')
+    octave_startup = os.path.join(home_dir,'.octaverc')
     backup_file(octave_startup)
     if os.path.exists(octave_startup):
         oc = open(octave_startup, 'a')
@@ -406,7 +408,11 @@ def setup_paths():
     # checking if SLURM is properly setup for HPC clusters    
     if options.env.upper() in ['CAC','CC']:
         #need to load octave module on HPC clusters
-        bp.write('\nmodule load nixpkgs/16.09 gcc/7.3.0 octave/4.4.1\n')
+        bp.write('\nmodule load nixpkgs/16.09 gcc/7.3.0 octave/4.4.1')
+        
+        #load pyton 3.6
+        bp.write('\nmodule load python/3.6\n')
+        
         # checking if SLURM is properly setup for HPC clusters    
         if find_executable('sbatch') is None:
             #raise SystemError('SLURM (sbatch) paths for user are not setup properly!')

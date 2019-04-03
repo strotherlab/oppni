@@ -1081,7 +1081,7 @@ def get_hpc_spec(h_type=None, options=None):
         spec['export_user_env'] = ('--export=', 'ALL')
         spec['workdir'] = '--workdir'
         spec['jobname'] = '--job-name'
-        spec['jobname_frontenac'] = '--output=%x_%j.log'
+        spec['jobname_slurm'] = '--output=%x_%j.log'
         spec['submit_cmd'] = 'sbatch'
         # slurm does not allow any shell specification
         shell=None
@@ -1619,28 +1619,31 @@ def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=N
     elif environment.lower() in ('octave'):
          
         # Same as Matlab but change out the full_cmd call and replace the getReport
-         single_quoted = lambda s: r"'{}'".format(s)
-         cmd_options = ', '.join(map(single_quoted, arg_list))
-         oppni_octave_path = os.getenv('OPPNI_PATH') # The original path now defaults to octave use
-
-         # make an m-file script
-         mfile_name = prefix.replace('-', '_')
-         mfile_path = os.path.join(job_dir, mfile_name + '.m')
-         with open(mfile_path, 'w') as mfile:
+        single_quoted = lambda s: r"'{}'".format(s)
+        cmd_options = ', '.join(map(single_quoted, arg_list))
+        oppni_octave_path = os.getenv('OPPNI_OCTAVE_PATH') # The original path now defaults to octave use
+        if not oppni_octave_path:
+            oppni_octave_path = os.getenv('OPPNI_PATH_MATLAB_ORIG') # The original matlab path by default
+            
+        # make an m-file script
+        mfile_name = prefix.replace('-', '_')
+        mfile_path = os.path.join(job_dir, mfile_name + '.m')
+        with open(mfile_path, 'w') as mfile:
             mfile.write('\n')
             mfile.write("addpath(genpath('{}'));".format(oppni_octave_path))
             mfile.write("try, {0}({1}); catch ; exc_report = lasterror; display('reporting exception details ..'); display(exc_report.message); display(exc_report.identifier); display(exc_report.stack(1).file); display(exc_report.stack(1).line); display(' <<--- Done.'); exit(1); end; exit; ".format(step_cmd_matlab,cmd_options))
             mfile.write('\n')
 
-         setup_cmd = ''
-         # check if we are a singularity container image runing on a cluster - LMP
-         # Note the correct scheduler libraries / commands need to have been bouund to the image for job bubmission.
-         if (hpc['type'] != 'LOCAL') and InSigularity == True:
-             # FUTURE - modify this to launch a singularity exec command
-             #full_cmd = setup_cmd + "\n" + r"singularity exec \"octave -W --traditional -q {0}\"".format(mfile_path)
-             full_cmd = setup_cmd + "\n" + r"octave -W --traditional -q {0}".format(mfile_path)
-         else:
-             full_cmd = setup_cmd + "\n" + r"octave -W --traditional -q {0}".format(mfile_path)
+        setup_cmd = ''
+        # check if we are a singularity container image runing on a cluster - LMP
+        # Note the correct scheduler libraries / commands need to have been bouund to the image for job bubmission.
+        #if (hpc['type'] != 'LOCAL') and InSigularity == True:
+            # FUTURE - modify this to launch a singularity exec command
+            #full_cmd = setup_cmd + "\n" + r"singularity exec \"octave -W --traditional -q {0}\"".format(mfile_path)
+        #    full_cmd = setup_cmd + "\n" + r"octave -W --traditional -q {0}".format(mfile_path)
+        #else:
+         
+        full_cmd = setup_cmd + "\n" + r"octave -W --traditional -q {0}".format(mfile_path)
 
 
     elif environment.lower() in ('standalone', 'compiled'):

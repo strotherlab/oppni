@@ -14,16 +14,22 @@
 #    If required software can not be located by this script it will be reported as an error and the script will terminate
 #    Once the requird software has been installed, this script should be re-run.
 #
-#    modified to support HPC environments and octave
+#    Modified to support HPC environments using Octave
+#    Also see "install_octave_packages.sh" which is called from this script.
 #    L. Mark Prati mprati@research.baycrest.org
 #
 
 import os, sys, subprocess, argparse, shutil
-#import octave_setup_cc
 from time import localtime, strftime
 from distutils.spawn import find_executable
 
 identifier_matlab_native_mode = 'USING-MATLAB-CODE'.upper()
+
+# default cvmfs computecanada stack versions of software avalable on CC and CAC clusters
+CVMFS_AFNI =    '/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/afni/20180404' 
+CVMFS_FSL =     '/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/intel2018.3/fsl/5.0.11/fsl'
+CVMFS_OCTAVE =  '/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/octave/4.4.1/bin'
+CVMFS_MATLAB =  ''
 
 def parse_args_check():
     "Parse inputs and different flags"
@@ -96,16 +102,16 @@ def parse_args_check():
         options.afni_path   = '/home/raamana/software/afni'
         options.fsl_path    = '/home/raamana/software/fsl'
         options.mcr_path    = '/home/raamana/software/mcr/v80'
-        options.octave_path = '/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/octave/4.4.1/bin'
+        options.octave_path = CVMFS_OCTAVE
     elif options.env.upper() == 'CAC' :
         print ('Preconfigured Strother lab setup for CAC FRONTENAC chosen. Ignoring the other paths provided, if any.')
         options.oppni_path  = '/global/home/hpc3194/software/oppni'
         options.afni_path   = '/global/home/hpc3194/software/afni'
         options.fsl_path    = '/global/home/hpc3194/software/fsl'
         options.mcr_path    = '/global/home/hpc3194/software/mcr/v80'
-        options.octave_path = '/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/octave/4.4.1/bin'        
+        options.octave_path = CVMFS_OCTAVE        
     else:
-        print ('No Preconfigured Strother lab setup was chosen. The paths you provided (if any) will apply.')
+        print ('No Preconfigured Strother lab setup was chosen. The paths you provided (if any) will be applied.')
 
     #NOTE: when looking for "oppni.py" it would be found in sub-dir cPRONTO under the install directory
     # therefore backup one path level for correct oppni_path. 
@@ -133,6 +139,7 @@ def parse_args_check():
                 sys.exit()
                     
     if not os.path.isdir(options.afni_path):
+        #try to find afni on an exisiting path
         executible = shutil.which("afni")
         if (executible):
             print("AFNI was located here: {}".format(executible))
@@ -141,6 +148,11 @@ def parse_args_check():
             else:
                 print("\nSpecified AFNI path {} doesn't exist!".format(options.afni_path))
                 print("WARNING: AFNI must be installed for OPPNI to run\n")
+        elif options.env.upper() in ['CC','CAC']:
+            #check for cvmfs stack version
+            if os.path.isdir(CVMFS_AFNI):
+                print("Using AFNI located here: {}".format(CVMFS_AFNI))
+                options.afni_path = CVMFS_AFNI
         else:    
             print("\nSpecified AFNI path {} doesn't exist!".format(options.afni_path))
             print("WARNING: AFNI must be installed for OPPNI to run\n")
@@ -154,6 +166,11 @@ def parse_args_check():
             else:
                 print("\nSpecified FSL path {} doesn't exist!".format(options.fsl_path))
                 print("WARNING: FSL may be needed for some OPPNI functions\n")
+        elif options.env.upper() in ['CC','CAC']:
+            #check for cvmfs stack version
+            if os.path.isdir(CVMFS_FSL):
+                print("Using FSL located here: {}".format(CVMFS_FSL))
+                options.fsl_path = CVMFS_FSL
         else:    
             print("\nSpecified FSL path {} doesn't exist!".format(options.fsl_path))
             print("WARNING: FSL may be needed for some OPPNI functions\n")
@@ -167,6 +184,12 @@ def parse_args_check():
             else:
                 print("Specified Octave path {} doesn't exist. Octave option will be unavailable!".format(options.octave_path))
                 options.octave_path = None
+        elif options.env.upper() in ['CC','CAC']:
+            #check for cvmfs stack version
+            if os.path.isdir(CVMFS_OCTAVE):
+                print("Using Octave located here: {}".format(CVMFS_OCTAVE))
+                options.octave_path = CVMFS_OCTAVE
+
         else:    
             print("Specified Octave path {} doesn't exist. Octave option will be unavailable!".format(options.octave_path))
             options.octave_path = None
@@ -380,6 +403,9 @@ def setup_paths():
     bp.write("\n# Start of section added by setup_oppni: {}\n".format(time_stamp))
     add_path_user_env(bp, options.oppni_path, 'OPPNI_PATH')
     add_path_user_env(bp, options.afni_path , 'AFNI_PATH')
+    #provide path for optional load libaraies 
+    bp.write('\nexport LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${{{}}}'.format(options.afni_path + '/lib'))
+
     add_path_user_env(bp, options.octave_path, 'OCTAVE_PATH')
         
     fsl_path_bin = os.path.join(options.fsl_path, 'bin')

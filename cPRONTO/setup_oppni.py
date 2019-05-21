@@ -93,21 +93,24 @@ def parse_args_check():
         print ('Preconfigured setup for Rotman is chosen. Ignoring the other paths provided, if any.')
         options.oppni_path  = '/opt/oppni'
         options.afni_path   = '/opt/afni'
-        options.fsl_path    = '/opt/fsl'
+        options.fsl_path    = '/opt/fsl/bin'        
+        options.fsl_dir     = '/opt/fsl'
         options.mcr_path    = '/opt/mcr/v80'
         options.octave_path = '/opt/octave'
     elif options.env.upper() == 'CC' :    
         print ('Preconfigured Strother lab setup for CC CEDAR / GRAHAM chosen. Ignoring the other paths provided, if any.')
         options.oppni_path  = '/home/raamana/software/oppni'
         options.afni_path   = '/home/raamana/software/afni'
-        options.fsl_path    = '/home/raamana/software/fsl'
+        options.fsl_path    = '/home/raamana/software/fsl/bin'
+        options.fsl_dir     = '/home/raamana/software/fsl'
         options.mcr_path    = '/home/raamana/software/mcr/v80'
         options.octave_path = CVMFS_OCTAVE
     elif options.env.upper() == 'CAC' :
         print ('Preconfigured Strother lab setup for CAC FRONTENAC chosen. Ignoring the other paths provided, if any.')
         options.oppni_path  = '/global/home/hpc3194/software/oppni'
         options.afni_path   = '/global/home/hpc3194/software/afni'
-        options.fsl_path    = '/global/home/hpc3194/software/fsl'
+        options.fsl_path    = '/global/home/hpc3194/software/fsl/bin'
+        options.fsl_dir     = '/global/home/hpc3194/software/fsl'
         options.mcr_path    = '/global/home/hpc3194/software/mcr/v80'
         options.octave_path = CVMFS_OCTAVE        
     else:
@@ -157,12 +160,13 @@ def parse_args_check():
             print("\nSpecified AFNI path {} doesn't exist!".format(options.afni_path))
             print("WARNING: AFNI must be installed for OPPNI to run\n")
             
-    if not os.path.isdir(options.fsl_path):
+    if not os.path.isdir(options.fsl_dir):
         executible = shutil.which("fsl")
         if (executible):
             print("FSL was located here: {}".format(executible))
             if input("Use this path? (Yes/No): ").upper() in ['Y','YES']:
                 options.fsl_path = os.path.dirname(executible)
+                options.fsl_dir = os.path.abspath(os.path.join(options.fsl_path, '..'))
             else:
                 print("\nSpecified FSL path {} doesn't exist!".format(options.fsl_path))
                 print("WARNING: FSL may be needed for some OPPNI functions\n")
@@ -408,10 +412,9 @@ def setup_paths():
 
     add_path_user_env(bp, options.octave_path, 'OCTAVE_PATH')
         
-    fsl_path_bin = os.path.join(options.fsl_path, 'bin')
-    add_path_user_env(bp, fsl_path_bin      , 'FSL_PATH')
+    add_path_user_env(bp, fsl_path      , 'FSL_PATH')
     add_user_env(bp, 'NIFTI_GZ', 'FSLOUTPUTTYPE')
-    add_user_env(bp, options.fsl_path, 'FSLDIR')
+    add_user_env(bp, options.fsl_dir, 'FSLDIR')
     
 
 

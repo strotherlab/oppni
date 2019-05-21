@@ -412,7 +412,7 @@ def setup_paths():
 
     add_path_user_env(bp, options.octave_path, 'OCTAVE_PATH')
         
-    add_path_user_env(bp, fsl_path      , 'FSL_PATH')
+    add_path_user_env(bp, options.fsl_path      , 'FSL_PATH')
     add_user_env(bp, 'NIFTI_GZ', 'FSLOUTPUTTYPE')
     add_user_env(bp, options.fsl_dir, 'FSLDIR')
     

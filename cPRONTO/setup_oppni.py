@@ -408,7 +408,7 @@ def setup_paths():
     add_path_user_env(bp, options.oppni_path, 'OPPNI_PATH')
     add_path_user_env(bp, options.afni_path , 'AFNI_PATH')
     #provide path for optional load libaraies 
-    bp.write('\nexport LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${{{}}}'.format(options.afni_path + '/lib'))
+    bp.write('\nexport LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${AFNI_PATH}/lib')
 
     add_path_user_env(bp, options.octave_path, 'OCTAVE_PATH')
         

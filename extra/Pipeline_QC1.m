@@ -265,7 +265,7 @@ while ischar(tline) % for every input line in textfile...
     
     % load subject SPM data
     mat_instring  = strcat(outdir,'/intermediate_metrics/res1_spms/spms_',prefix,'.mat'    );
-    ## correct mat file variable load for Octave compatibility - LMP 
+    % correct mat file variable load for Octave compatibility - LMP 
     s1 = load(mat_instring);
     IMAGE_set = s1.IMAGE_set; 
     
@@ -291,7 +291,7 @@ while ischar(tline) % for every input line in textfile...
     end
     
     mat_instring  = strcat(outdir,'/intermediate_metrics/res3_stats/stats_',prefix,'.mat'    );
-    ## correct mat file variable load for Octave compatibility - LMP 
+    % correct mat file variable load for Octave compatibility - LMP 
     s2 = load(mat_instring);
     METRIC_set =  s2.METRIC_set;
     pipeset = s2.pipeset;

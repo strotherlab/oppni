@@ -1,13 +1,23 @@
 #'/home/mprati/Results/RecYng_matlab_local4/processing_input_RecYng_matlab_local4_LDA_task_A-baseline/QC2_results/input_file.txt'
 #script to run varification between OPPNI matlab results and octave results for a dataset 
 #
-from collections import namedtuple
 import os, getopt, sys
 import subprocess
+import pickle
+import glob
+from collections import namedtuple
 from os.path import basename as pbasename
 from os.path import dirname as pdirname
 from os.path import splitext as psplit
 from os.path import join as pjoin
+
+
+OPPNIPATH = os.environ.get('OPPNI_PATH')
+if (OPPNIPATH) == None:
+    OPPNIPATH = "./oppni"   #guess 
+
+sys.path.append(pjoin(OPPNIPATH,"cPRONTO"))
+import proc_status_front as check_proc_status
 
 class color:
    BLUE = '\033[34m'
@@ -28,12 +38,23 @@ class color:
 #matlab_path = '/home/adlofts/Documents/Octave_Testing/oppni_octave_git/'
 #version_check_location = "/home/adlofts/Documents/Octave_Testing/trials_oppni/test_rec_yng1t"
 
-checkscript_ver = './oppni/extra/OPPNI_version_check_v3.m'
-matlab_path = './oppni/'
+checkscript_ver = pjoin(OPPNIPATH,'extra/OPPNI_version_check_v3.m')
+matlab_path = OPPNIPATH
 version_check_location = "./Results"
 
 matlab_input_file_name = "input_file.txt"
 octave_input_file_name = "input_file.txt"
+file_name_prev_options = 'pronto-options.pkl'
+
+def update_proc_status(out_dir):
+    """Helper to the original update_status routine."""
+    opt_file = os.path.join(out_dir, file_name_prev_options)
+    with open(opt_file, 'rb') as of:
+        all_subjects, options, new_input_file, _ = pickle.load(of)
+        #print(new_input_file)
+        proc_status, failed_sub_file, failed_spnorm_file = check_proc_status.run(
+            [new_input_file, options.pipeline_file, '--skip_validation'], options)
+    return proc_status, options, new_input_file, failed_sub_file, failed_spnorm_file, all_subjects
 
 def main():
 
@@ -50,7 +71,8 @@ def main():
     for option in os.listdir(version_check_location):
         if os.path.isdir(pjoin(version_check_location,option)):
             for environment in os.listdir(pjoin(version_check_location,option)):
-                if os.path.isdir(pjoin(version_check_location,option,environment)):
+                input_txt_file_path = pjoin(version_check_location, option, environment) 
+                if os.path.isdir(input_txt_file_path):
                     print("Checking {} for OPPNI input files".format(pjoin(version_check_location,option,environment)))
 #                    for processed in os.listdir(pjoin(version_check_location, option, environment)):
 #                        if os.path.isdir(pjoin(version_check_location,option,environment,processed)):
@@ -76,10 +98,31 @@ def main():
                 print("Unable to locate file to varify, moving to next directory path")
                 continue
 
-            # Get call ready
-            print("matlabfile = ",matlabfile)
-            print("octavefile = ",octavefile)  
-          
+            # Get call ready         
+            # check for successful OPPNI completion (matlab)
+            out_dir = os.path.dirname(os.path.abspath(matlabfile))
+            fileList = glob.glob(pjoin(out_dir, "processing_input_file_*", "*.pkl"))
+            out_dir = os.path.dirname(os.path.abspath(fileList[0]))            
+            print("Options file is: {}".format(fileList[0]))            
+            prev_proc_status, prev_options, prev_input_file_all, failed_sub_file, failed_spnorm_file, all_subjects = update_proc_status(out_dir)
+            if not prev_proc_status.all_done:
+                print('Previous processing is incomplete for:{} \n Moving on to next result set.'.format(matlabfile))
+                continue
+            else:
+                print("matlabfile = ",matlabfile)
+                
+            #check for successful OPPNI completion (octave)
+            out_dir = os.path.dirname(os.path.abspath(octavefile))    
+            fileList = glob.glob(pjoin(out_dir, "processing_input_file_*", "*.pkl"))
+            out_dir = os.path.dirname(os.path.abspath(fileList[0]))
+            print("Options file is: {}".format(fileList[0]))            
+            prev_proc_status, prev_options, prev_input_file_all, failed_sub_file, failed_spnorm_file, all_subjects = update_proc_status(out_dir)
+            if not prev_proc_status.all_done:
+                print('Previous processing is incomplete for:{} \n Moving on to next result set.'.format(octavefile))
+                continue
+            else:
+                print("octavefile = ",octavefile)
+                
             savefile = pjoin(version_check_location,option,"MvsO_results.txt")
             print("Results will be saved to: ", savefile)
              

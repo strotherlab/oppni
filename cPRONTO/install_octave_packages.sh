@@ -2,6 +2,9 @@
 # script for installing octave support packages packages required for OPPNI
 # L. Mark Prati  mprati@research.baycrest.org
 #
+# Updates:
+# 24-07-19 - added image package
+#
 echo -e "\nChecking for Octave support packages. Missing packages will be installed from Octave forge to ~/octave"
 echo -e "Be patient, this process may take up to 20 minutes to complete...\n"
 sleep 1 
@@ -80,7 +83,15 @@ else
 	octave-cli --no-init-file --eval "pkg install -forge optim"
 	status_opt=$?
 fi
-if [ "$status_io" -ne 0 ] || [ "$status_ctrl" -ne 0 ] || [ "$status_struc" -ne 0 ] || [ "$status_stats" -ne 0 ] || [ "$status_sig" -ne 0 ] || [ "$status_opt" -ne 0 ] 
+if ls ~/octave/image* 1> /dev/null 2>&1; then
+	echo "Skipping image - local packages found"
+	status_img=0
+else	
+	echo "Installing image package ..."
+	octave-cli --no-init-file --eval "pkg install -forge image"
+	status_img=$?
+fi
+if [ "$status_io" -ne 0 ] || [ "$status_ctrl" -ne 0 ] || [ "$status_struc" -ne 0 ] || [ "$status_stats" -ne 0 ] || [ "$status_sig" -ne 0 ] || [ "$status_opt" -ne 0 ] || [ "$status_img" -ne 0 ]
 then
     echo -e "\e[31mOctave package installation failed to complete ...."
     echo "The following package(s) need to be re-installed:"
@@ -102,6 +113,10 @@ then
     if [ "$status_opt" -ne 0 ]; then
     	echo "Pacakge: optim"
 	fi
+    if [ "$status_img" -ne 0 ]; then
+    	echo "Pacakge: image"
+	fi
+	
 	echo -e 'Try re-running "install_octave_packages.sh\e[0m"'
 else
 	echo "Octave package installation check has completed ...."

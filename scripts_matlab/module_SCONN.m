@@ -37,7 +37,9 @@ dilvol = seedvol;
 for(nz=1:size(seedvol,3)) % dilate each slice
    %
    slc = seedvol(:,:,nz);
-   slc = imdilate(slc,strel('disk',1));
+   %LMP modified for octave
+   %slc = imdilate(slc,strel('disk',1));
+   slc = imdilate(slc,strel('disk',1,4));
    %
    dilvol(:,:,nz) = slc;
 end

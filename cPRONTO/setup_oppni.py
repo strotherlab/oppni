@@ -18,6 +18,9 @@
 #    Also see "install_octave_packages.sh" which is called from this script.
 #    L. Mark Prati mprati@research.baycrest.org
 #
+# Updates:
+# 24-07-19 - added octave image package
+#
 
 import os, sys, subprocess, argparse, shutil
 from time import localtime, strftime
@@ -263,7 +266,8 @@ try
     pkg load struct 
     pkg load statistics 
     pkg load signal 
-    pkg load optim 
+    pkg load optim
+    pkg load image 
     disp('Octave Packages Loaded'); 
     save_default_options("-mat7-binary"); 
     disp('Changing default save to matlab version 7 -mat7-binary'); 

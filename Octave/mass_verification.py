@@ -77,7 +77,7 @@ def main():
 #                    for processed in os.listdir(pjoin(version_check_location, option, environment)):
 #                        if os.path.isdir(pjoin(version_check_location,option,environment,processed)):
 #                            input_txt_file_path = pjoin(version_check_location, option, environment, processed) 
-                    input_txt_file_path = pjoin(version_check_location, option, environment) 
+
                     # Gets input files ready
                     if "matlab" in environment :
                          matlabfile = pjoin(input_txt_file_path, matlab_input_file_name)

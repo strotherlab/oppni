@@ -123,7 +123,7 @@ def main(oppni_ver,input_file_og,pipeline_file,reference_file):
                     with open(input_file_mod, 'w+') as ipf_mod:
                         for idx in range(len(line_text)):
                             # prepending it with OUT= to restrict the sub to only OUT, and not elsewhere such as TASK=
-                            mod_out_text = 'OUT=' + pjoin(pdirname(out_text[idx]), suffix, str(env),pbasename(out_text[idx]))
+                            mod_out_text = 'OUT=' + pjoin(pdirname(out_text[idx]), suffix, str(env), pbasename(out_text[idx]))
 #                            rep_text = 'OUT={}'.format(base_out_dir)
                             rep_text = 'OUT={}'.format(pjoin(base_out_dir,pbasename(out_text[idx])))
                             mod_line_text = line_text[idx].replace(rep_text, mod_out_text)

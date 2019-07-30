@@ -33,6 +33,11 @@ from shutil import rmtree
 from time import localtime, strftime
 from datetime import timedelta
 
+BIDS_TESTING = False;
+
+if BIDS_TESTING:
+    #LMP BID's support "pybids"
+    from bids import BIDSLayout
 
 # Testing making my own which to allow ver < 3.3 - adlofts
 import platform
@@ -381,7 +386,10 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
         # prepending it with OUT= to restrict the sub to only OUT, and not elsewhere such as TASK=
         prev_dir = 'OUT={}'.format(base_out_dir)
         curr_dir = 'OUT={}'.format(subject['out'])
-        new_line = re.sub(prev_dir, curr_dir, ip_line)
+        
+        #LMP correct the directory level substitution in ip_line
+        #new_line = re.sub(prev_dir, curr_dir, ip_line)
+        new_line = ip_line.replace(prev_dir, curr_dir, 1)
 
         subject['prefix'] = os.path.basename(out)
         # Parse_Input_File.m is not robust with parsing e.g. an extra / at the end will mess up everything
@@ -471,20 +479,18 @@ def parse_args_check():
                              "\n\t 3: Spatial normalization,"
                              "\n\t 4: quality control. ")
     parser.add_argument("-i", "--input_data", action="store", dest="input_data_orig",
-                        help="File containing the input and output data paths", metavar="input spec file")
+                        help="File containing the input and output data paths."
+                             "If bids_dir option is provided this file will be appended too", 
+                        metavar="input spec file")
+    
     parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file", metavar="pipeline combination file",
                         help="select the preprocessing steps")
 
-    # parser.add_argument("-o","--output_dir_common", action="store", dest="out_dir_common",
-    #                     help="Output folder to store all the processing and results. "
-    #                          "This is convenient way to specify once, instead of having to repeat it on every line in the input file. "
-    #                          "If you specify this, you don't have to include OUT= in the input file. "
-    #                          "If you do, this will overwrite what is included in input file.")
-
-    parser.add_argument("-a", "--analysis", action="store", dest="analysis",
+    parser.add_argument("-a", "--analysis", action="store", dest="analysis_model",
                         default="None",
                         choices=cfg_pronto.CODES_ANALYSIS_MODELS,
                         help="Choose an analysis model :" + ",".join(cfg_pronto.CODES_ANALYSIS_MODELS))
+    
     parser.add_argument("-m", "--metric", action="store", dest="metric",
                         default="dPR",
                         choices=cfg_pronto.CODES_METRIC_LIST,
@@ -663,6 +669,38 @@ def parse_args_check():
                         default=False,
                         help=argparse.SUPPRESS) # "Performs a basic validation of user environment and version checks.")
 
+    #
+    # LMP - Additional args for handling BIDS formatted input dataset 
+    #
+    if BIDS_TESTING:
+
+        parser.add_argument("--bids_dir", action="store_true", dest="bids_dir",
+                        default=None,
+                        help="The directory folder with the input dataset formatted according to the BIDS standard. "
+                             "NOTE: output dir is rerquired for bids")
+    
+        parser.add_argument("-o","--output_dir", action="store_true", dest="output_dir",
+                        default=None,
+                        help="The directory folder where the output files will be stored. If you are running group level analysis "
+                             "this folder should have been prepopulated with the results of the participant level analysis. "
+                             "If specified, then no need to include OUT= in the input file.")
+    
+        parser.add_argument("--analysis_level", action="store_true", dest="analysis_level",
+                        default="participant",
+                        help="Level of the analysis that will be performed. "
+                             "Multiple participant level analyses can be run independently (in parallel) using the same output_dir.",
+                        choices=['participant', 'group','participant1', 'group1', 'participant2', 'group2'])
+
+        parser.add_argument("--participant_label", action="store_true", dest="participant_label",
+                        default=None,
+                        help="The label(s) of the participant(s) that should be analyzed. The label(s) "
+                             "corresponds to sub-<participant_label> from the BIDS spec (so it does not include 'sub-'). "
+                             "If this parameter is not provided all subjects will be analyzed. "
+                             "Multiple participants can be specified with a space or comma separated list.")
+    #
+    #LMP end
+    #
+
     if len(sys.argv) < 2:
         print('Too few arguments!')
         parser.print_help()
@@ -673,7 +711,72 @@ def parse_args_check():
         options = parser.parse_args()
     except:
         parser.exit(1)
-
+    
+    #    
+    #LMP - check for BID's formated input dataset
+    #
+    if BIDS_TESTING:
+    
+        if options.bids_dir is not None:
+            if options.output_dir is None:
+                print("ERROR: Argument- output_dir must be provded")
+                sys_exit(0)   
+                    
+            layout = BIDSLayout(options.bids_dir,validate=True)        
+    
+            if options.analysis_level in [ "participant", "participant1"]:
+            
+                #build subject input records from referencing BID's data structure.
+                #     common      /funcional    / site    /    subject fMRI nifty                    /            common    /anatomical/  subject strutural T1
+                #IN=$COMMON_INPATH/GoNoGo_Niftis/CBN01_CAM/CBN01_CAM_0006_01_SE01_fMRI-GoNoGo_0000.nii STRUCT=$COMMON_INPATH/T1_Niftis /CBN01_CAM/CBN01_CAM_0006_01_SE01_T1_0000.nii OUT=$COMMON_OUTPATH/CBN01_CAM_0006_01_SE01_fMRI-GoNoGo TASK=$COMMON_INPATH/taskinfo_files/CBN01_CAM/CBN01_CAM_0006_01_SE01_MR_gonogo_trialB_taskinfo.txt DROP=[3,0]            
+                #Append records to file specified by options.input_data
+                    
+                # Get lists of subjects, sessions, runs TODO need to provide task as arg
+                sublist = layout.get_subjects()
+                seslist = layout.get_sessions()
+                tasklist = layout.get_tasks() 
+                runlist = []
+                
+                #build the run list
+                runfiles = layout.get(task='rest', extension='nii.gz', return_type='file')
+                for f in runfiles:
+                    #get runname : substring between 'run-' and '_bold' in the filename
+                    runnumber = f[f.find('run-')+4,f.find('_bold')]                 
+                    runList.append(runnumber)
+                    
+                for tsk in tasklist:
+                    for subj in sublist:
+                        indx = 0
+                        if (seslist): 
+                            for sess in seslist: 
+                                for runnumber in runlist:                  
+                                    fmri_in_list[tsk][subj][indx] = layout.get(subject=subj, session=sess, run=int(runnumber), task=tsk, extension='nii.gz', return_type='file')[0]
+                                    fmri_out_list[tsk][subj][indx] = options.output_dir + '/' + subj + '_' + sess + '_task-' + tsk + 'run-' + runnumber
+                                    struct_list[tsk][subj][indx] = layout.get(subject=subj, session=sess, run=int(runnumber), suffix='T1w', task=tsk, return_type='file')[0]
+                                    tsvfile_list[tsk][subj][indx] = layout.get(subject=subj, session=sess, run=int(runnumber), task=tsk, suffix='events', extension='tsv', return_type='file')[0]
+                                    ++indx
+                        else:
+                            for runnumber in runlist:                                                   
+                                fmri_in_list[tsk][subj][indx] = layout.get(subject=subj, run=int(runnumber), task=tsk, extension='nii.gz', return_type='file')[0]
+                                fmri_out_list[tsk][subj][indx] = output_dir + '/' + subj + '_task-' + tsk + 'run-' + runnumber
+                                struct_list[tsk][subj][indx] = layout.get(subject=subj, run=int(runnumber), suffix='T1w', task=tsk, return_type='file')[0]
+                                tsvfile_list[tsk][subj][indx] = layout.get(subject=subj, run=int(runnumber), task=tsk, suffix='events', extension='tsv', return_type='file')[0]
+                                ++indx
+                               
+                if options.participant_label is not None:
+                    #parse field for a set of subjects
+                    pass
+                else:
+                    #process ALL subjects in teh BIDS structure
+                    pass
+                
+            if options.analysis_level in [ "group", "group1"]:
+                pass
+    #        
+    #LMP end   
+    #
+    
+    
     # updating the status to the user if requested.
     if options.status_update_in is not None and options.input_data_orig is None:
         cur_garage = os.path.abspath(options.status_update_in)
@@ -812,7 +915,7 @@ def parse_args_check():
     else:
         options.reference = ""
 
-    if options.analysis is None or options.analysis == "None":
+    if options.analysis_model is None or options.analysis_model == "None":
         print("WARNING: without an analysis model (specified by switch -a), no optimization will be performed")
         print("  OPPNI will only generate the preprocessed data")
         options.contrast_list_str = "None"
@@ -823,7 +926,7 @@ def parse_args_check():
         options.DEOBLIQUE = "0"
 
     ## --------------  Checking the switches --------------
-    analysis = options.analysis
+    analysis = options.analysis_model
     if (analysis.upper() == "LDA") and (options.drf == "None"):
         print("WARNING (Deprecated usage): --drf switch not defined for LDA model. OPPNI will check TASK files for parameter(s)")
 
@@ -910,8 +1013,8 @@ def organize_output_folders(options):
     else:
         # TODO need a way to pass the suffix to matlab core so it can reuse preprocessing for multiple analysis models and contrasts.
         suffix = os.path.splitext(os.path.basename(options.input_data_orig))[0]
-        if options.analysis is not "None":
-            suffix = suffix + '_' + options.analysis
+        if options.analysis_model is not "None":
+            suffix = suffix + '_' + options.analysis_model
 
         if options.contrast_specified:
             # task1-fixation,task2-task1 will be changed to task1-fixation_task2-task1
@@ -2019,7 +2122,7 @@ def submit_jobs():
             spnorm_step1_completed = True
 
     # submitting jobs for optimization
-    if options.analysis in [ "None", None, '' ]:
+    if options.analysis_model in [ "None", None, '' ]:
         print("WARNING: analysis model is NOT specified (specified by switch -a)")
         print("\tNO optimization will be performed, OPPNI will generate ONLY the preprocessed data.\n")
     elif run_part_two and proc_status.optimization is False:

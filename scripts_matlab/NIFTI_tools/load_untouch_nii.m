@@ -145,9 +145,13 @@ function nii = load_untouch_nii(filename, img_idx, dim5_idx, dim6_idx, dim7_idx,
          mkdir(tmpDir);
          
          %LMP copy source .gz for compatibility between matlam and octave gunzip
-         copyfile(filename, tmpDir);
-         [dir, name, ext] = fileparts (filename);
-         gzFileName = [tmpDir, "/", name, ext];
+         if in_octave()
+            copyfile(filename, tmpDir);
+            [dir, name, ext] = fileparts (filename);
+            gzFileName = [tmpDir, "/", name, ext];
+         else
+            gzFileName = filename;
+         end
          
          %debug LMP
          %printf("load_untouch_nii - tmpDir: %s\n",tmpDir);

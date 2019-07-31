@@ -141,7 +141,7 @@ function save_untouch_slice(slice, filename, slice_idx, img_idx, dim5_idx, dim6_
          error('Please check filename.');
       end
 
-      if str2num(v(1:3)) < 7.1 | ~usejava('jvm')
+      if (str2num(v(1:3)) < 7.1 | ~usejava('jvm')) && (in_octave() == 0) 
          error('Please use MATLAB 7.1 (with java) and above, or run gunzip outside MATLAB.');
       elseif strcmp(filename(end-6:end), '.img.gz')
          filename1 = filename;

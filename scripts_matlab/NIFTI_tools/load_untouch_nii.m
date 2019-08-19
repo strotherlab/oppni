@@ -158,7 +158,7 @@ function nii = load_untouch_nii(filename, img_idx, dim5_idx, dim6_idx, dim7_idx,
          %printf("load_untouch_nii - gzFileName: %s\n",gzFileName);    
          %filename = gunzip(filename, tmpDir);
          filename = gunzip(gzFileName, tmpDir);
-         
+
          filename = char(filename);	% convert from cell to string
       end
    end

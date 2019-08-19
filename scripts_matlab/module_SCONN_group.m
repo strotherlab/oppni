@@ -29,11 +29,14 @@ dilvol = seedvol;
 for(nz=1:size(seedvol,3)) % dilate each slice
    %
    slc = seedvol(:,:,nz);
-   %LMP modified for octave compatibility
-   %slc = imdilate(slc,strel('disk',1));
-   slc = imdilate(slc,strel('disk',1,0));
-   %
-   %
+
+   %LMP modified for octave
+   if in_octave()
+       slc = imdilate(slc,strel('disk',1,0));
+   else
+       slc = imdilate(slc,strel('disk',1));
+   end
+   
    dilvol(:,:,nz) = slc;
 end
 

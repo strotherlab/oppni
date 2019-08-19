@@ -747,7 +747,8 @@ fclose(fin);
 %%%====================================================%%%
 if( ~isempty(CCmat) )
     % running distatis to test for differences
-    out = DISTATIS_quick( CCmat, 'dist', 'krbkrb', '---:::', 500 );
+    %out = DISTATIS_quick( CCmat, 'dist', 'krbkrb', '---:::', 500 );
+    out = DISTATIS_quick( CCmat, 'dist', '', '---:::', 500 );
 end
 %%%====================================================%%%
 

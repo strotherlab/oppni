@@ -132,7 +132,7 @@ def make_time_stamp():
 
 def validate_pipeline_file(pipeline_file):
     if not os.path.isfile(pipeline_file):
-        raise IOError('Pipeline file specified doesn\'t exist')
+        raise IOError('Pipeline file specified doesn\'t exist: {}'.format(pipeline_file))
 
     print('Validating the pipeline specs ...')
     steps_list_file = []
@@ -386,10 +386,14 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
         # prepending it with OUT= to restrict the sub to only OUT, and not elsewhere such as TASK=
         prev_dir = 'OUT={}'.format(base_out_dir)
         curr_dir = 'OUT={}'.format(subject['out'])
+        #print('prev_dir : {}\ncurr_dir : {}'.format(prev_dir, curr_dir))
         
         #LMP correct the directory level substitution in ip_line
         #new_line = re.sub(prev_dir, curr_dir, ip_line)
         new_line = ip_line.replace(prev_dir, curr_dir, 1)
+       
+        #print('ip_line : {}'.format(ip_line))
+        #print('new_line : {}'.format(new_line))
 
         subject['prefix'] = os.path.basename(out)
         # Parse_Input_File.m is not robust with parsing e.g. an extra / at the end will mess up everything
@@ -479,14 +483,18 @@ def parse_args_check():
                              "\n\t 3: Spatial normalization,"
                              "\n\t 4: quality control. ")
     parser.add_argument("-i", "--input_data", action="store", dest="input_data_orig",
-                        help="File containing the input and output data paths."
-                             "If bids_dir option is provided this file will be appended too", 
-                        metavar="input spec file")
+                        help="File containing the input and output data paths.", metavar="input spec file")
     
     parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file", metavar="pipeline combination file",
                         help="select the preprocessing steps")
 
-    parser.add_argument("-a", "--analysis", action="store", dest="analysis_model",
+    # parser.add_argument("-o","--output_dir_common", action="store", dest="out_dir_common",
+    #                     help="Output folder to store all the processing and results. "
+    #                          "This is convenient way to specify once, instead of having to repeat it on every line in the input file. "
+    #                          "If you specify this, you don't have to include OUT= in the input file. "
+    #                          "If you do, this will overwrite what is included in input file.")
+
+    parser.add_argument("-a", "--analysis", action="store", dest="analysis",
                         default="None",
                         choices=cfg_pronto.CODES_ANALYSIS_MODELS,
                         help="Choose an analysis model :" + ",".join(cfg_pronto.CODES_ANALYSIS_MODELS))
@@ -671,6 +679,7 @@ def parse_args_check():
 
     #
     # LMP - Additional args for handling BIDS formatted input dataset 
+    # In Development
     #
     if BIDS_TESTING:
 
@@ -714,6 +723,7 @@ def parse_args_check():
     
     #    
     #LMP - check for BID's formated input dataset
+    #In development 
     #
     if BIDS_TESTING:
     
@@ -915,7 +925,7 @@ def parse_args_check():
     else:
         options.reference = ""
 
-    if options.analysis_model is None or options.analysis_model == "None":
+    if options.analysis is None or options.analysis == "None":
         print("WARNING: without an analysis model (specified by switch -a), no optimization will be performed")
         print("  OPPNI will only generate the preprocessed data")
         options.contrast_list_str = "None"
@@ -926,7 +936,7 @@ def parse_args_check():
         options.DEOBLIQUE = "0"
 
     ## --------------  Checking the switches --------------
-    analysis = options.analysis_model
+    analysis = options.analysis
     if (analysis.upper() == "LDA") and (options.drf == "None"):
         print("WARNING (Deprecated usage): --drf switch not defined for LDA model. OPPNI will check TASK files for parameter(s)")
 
@@ -1013,8 +1023,8 @@ def organize_output_folders(options):
     else:
         # TODO need a way to pass the suffix to matlab core so it can reuse preprocessing for multiple analysis models and contrasts.
         suffix = os.path.splitext(os.path.basename(options.input_data_orig))[0]
-        if options.analysis_model is not "None":
-            suffix = suffix + '_' + options.analysis_model
+        if options.analysis is not "None":
+            suffix = suffix + '_' + options.analysis
 
         if options.contrast_specified:
             # task1-fixation,task2-task1 will be changed to task1-fixation_task2-task1
@@ -2122,7 +2132,7 @@ def submit_jobs():
             spnorm_step1_completed = True
 
     # submitting jobs for optimization
-    if options.analysis_model in [ "None", None, '' ]:
+    if options.analysis in [ "None", None, '' ]:
         print("WARNING: analysis model is NOT specified (specified by switch -a)")
         print("\tNO optimization will be performed, OPPNI will generate ONLY the preprocessed data.\n")
     elif run_part_two and proc_status.optimization is False:

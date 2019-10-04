@@ -2,10 +2,11 @@
 # OPPNI Tool: for fMRI pReprocessing and OptimizatioN Toolkit
 # Author: Pradeep Reddy Raamana <praamana@research.baycrest.org>
 # 
-# Version 0.6 (May 2016)
+# Version 0.6.0 (May 2016)
 #
-# Version 0.7 (Oct 2018) - L. Mark Prati
+# Version 0.7.0 (Oct 2018) - L. Mark Prati
 # 
+
 from __future__ import print_function
 #import pdb #debugger
 import argparse
@@ -33,8 +34,10 @@ from shutil import rmtree
 from time import localtime, strftime
 from datetime import timedelta
 
-BIDS_TESTING = False;
+OPPNI = {"version":"0.7.0"};
 
+#LMP some alpha level BIDS processing within the wrapper 
+BIDS_TESTING = False;
 if BIDS_TESTING:
     #LMP BID's support "pybids"
     from bids import BIDSLayout
@@ -77,7 +80,7 @@ DONE = True
 
 # noinspection PyGlobalUndefined
 global hpc
-hpc = {'type': 'SGE',
+hpc = {'type': 'SLURM',
        'shell': '/bin/bash',
        'prefix': '#$',
        'spec': None,
@@ -118,8 +121,9 @@ def get_out_dir_first_line(input_file):
         # read one line
         first_line = fID.readline()
         # and move on
-
-    return os.path.dirname(get_out_dir_line(first_line))
+    
+    out_line = get_out_dir_line(first_line)
+    return os.path.dirname(out_line), os.path.basename(out_line)
 
 
 def make_time_stamp():
@@ -244,10 +248,12 @@ def validate_input_file(input_file, options=None, new_input_file=None, cond_name
         new_file = tempfile.TemporaryFile(mode='w')
         # in case of resubmission, this should not append additional layer
         cur_suffix = None
+        cur_prefix = None
     else:
         new_file = open(new_input_file, 'w')
         cur_suffix = options.suffix
-
+        cur_prefix = options.output_prefix
+        
     unique_subjects = OrderedDict()
     invalid_lines = list()
     line_count = 0
@@ -255,7 +261,7 @@ def validate_input_file(input_file, options=None, new_input_file=None, cond_name
     with open(input_file, 'r') as ipf:
         for line in ipf.readlines():
             line_count += 1
-            subject, new_line = validate_input_line(line, cur_suffix, cond_names_in_contrast)
+            subject, new_line = validate_input_line(line, cur_prefix, cur_suffix, cond_names_in_contrast)
             if subject is False or subject is None:
                 print('Error in line number {}.'.format(line_count))
                 invalid_lines.append(line_count)
@@ -309,7 +315,7 @@ def validate_input_file(input_file, options=None, new_input_file=None, cond_name
     return unique_subjects
 
 
-def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
+def validate_input_line(ip_line, prefix='', suffix='', cond_names_in_contrast=None):
     """Method where the real validation of the input line happens!"""
 
     line = ip_line.strip()
@@ -374,12 +380,19 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
         out = reOut.search(line).group(1)
         base_out_dir = os.path.dirname(out)
         # adding another directory level based on input file name and analysis model
-        if suffix not in [None, '']:
-            subject['out'] = os.path.join(base_out_dir, suffix)
-        else:
+        if suffix in [None, '']:
             # in case of resubmission, don't alter the previous setup
             subject['out'] = base_out_dir
-
+        else:  
+            #LMP add prefix and suffix for new "OUT="  
+            new_out_dir = os.path.join(base_out_dir, suffix)
+            if prefix not in [None, '']:
+                #LMP remove any leading slashes else os.path.join will not work!!!!!
+                if new_out_dir[0] in ['/','\\']:
+                    new_out_dir = new_out_dir[1:]                
+                new_out_dir = os.path.join(prefix, new_out_dir)
+            subject['out'] = new_out_dir
+            
         if not os.path.exists(subject['out']):
             os.makedirs(subject['out'])
 
@@ -488,11 +501,12 @@ def parse_args_check():
     parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file", metavar="pipeline combination file",
                         help="select the preprocessing steps")
 
-    # parser.add_argument("-o","--output_dir_common", action="store", dest="out_dir_common",
-    #                     help="Output folder to store all the processing and results. "
-    #                          "This is convenient way to specify once, instead of having to repeat it on every line in the input file. "
-    #                          "If you specify this, you don't have to include OUT= in the input file. "
-    #                          "If you do, this will overwrite what is included in input file.")
+    parser.add_argument("-o","--output_prefix", action="store", dest="output_prefix",
+                        default='',
+                        help="Output folder prefix for storage of all the processing and results. "
+                              "This is convenient way to specify an base output folder, instead of having to repeat it on every line in the input file. "
+                              "If you specify this, OUT=/path in input files maps to OUT=output_prefix/path."
+                              "The prefix folder must be an absolute path from root")
 
     parser.add_argument("-a", "--analysis", action="store", dest="analysis",
                         default="None",
@@ -638,7 +652,7 @@ def parse_args_check():
 
     parser.add_argument("-q", "--queue", action="store", dest="queue",
                         default=None,
-                        help="(optional) SGE queue name. Default is bigmem_16.q, but it is recommended to specify this explicitly.")
+                        help="(optional) SGE queue name. Default is None but it is recommended to specify this explicitly.")
 
     parser.add_argument("-pe", "--parallel_env", action="store", dest="parallel_env",
                         default=None,
@@ -646,7 +660,7 @@ def parse_args_check():
 
     parser.add_argument("--run_locally", action="store_true", dest="run_locally",
                         default=False,
-                        help="Run the pipeline on this computer without using SGE. This has not been fully tested yet, and is not recommended."
+                        help="Run the pipeline on this computer without using a HPC cluster. This has not been fully tested yet, and is not recommended."
                              "Specify the number of cores using -n (or --numcores) to allow the program to run in pararallel")
     parser.add_argument("--noSGE", action="store_true", dest="run_locally",
                         default=False,
@@ -688,7 +702,7 @@ def parse_args_check():
                         help="The directory folder with the input dataset formatted according to the BIDS standard. "
                              "NOTE: output dir is rerquired for bids")
     
-        parser.add_argument("-o","--output_dir", action="store_true", dest="output_dir",
+        parser.add_argument("--bidsoutput_dir", action="store_true", dest="bidsoutput_dir",
                         default=None,
                         help="The directory folder where the output files will be stored. If you are running group level analysis "
                              "this folder should have been prepopulated with the results of the participant level analysis. "
@@ -885,6 +899,13 @@ def parse_args_check():
     setattr(options, 'vasc_mask_requested', vasc_mask_requested)
     setattr(options, 'custom_mask_requested', custom_mask_requested)
 
+    #LMP validate output prefix
+    if options.output_prefix:
+        if options.output_prefix[0] == '~':
+            options.output_prefix = os.path.expanduser(options.output_prefix)
+        if options.output_prefix[0] != '/':
+            raise ValueError('ERROR -o output_prexix must specify an absolute path from root.')
+            
     cur_garage, time_stamp, proc_out_dir, suffix = organize_output_folders(options)
     setattr(options, 'out_dir_common', cur_garage)
     setattr(options, 'suffix', suffix)
@@ -997,20 +1018,39 @@ def parse_args_check():
 
     print("Chosen options:")
     print(options)
-
+    
+    #LMP gather and record software version information
+    version_info = {};
+    version_info["OPPNI"]   = OPPNI["version"]
+    version_info["python"]  = sys.version.split("\n")[0]
+    version_info["ANFI"]    = subprocess.check_output(['afni', '-ver' ]).decode("utf-8").split("\n")[0].strip()
+    version_info["octave"]  = subprocess.check_output(['octave', '--version' ]).decode("utf-8").split("\n")[0].strip()   
+    version_info["matlab"]  = subprocess.check_output(['matlab', '-nodesktop -nojvm -nosplash -r exit']).decode("utf-8").split("\n")[3].strip()
+    #version_info["java"]    = str(subprocess.check_output(['java', '-version' ])).decode("utf-8").split("\n")[0].strip()
+    
     saved_cfg_path = os.path.join(cur_garage, file_name_prev_options)
     with open(saved_cfg_path, 'wb') as cfg:
-        pickle.dump([unique_subjects, options, new_input_file, cur_garage], cfg, protocol=2)
+        pickle.dump([unique_subjects, options, new_input_file, cur_garage, version_info], cfg, protocol=2)
 
     return unique_subjects, options, new_input_file, cur_garage, time_stamp, proc_out_dir
 
 
 def organize_output_folders(options):
     """Organization of the folders and cleanup if needed."""
-
     parent_dir_wrapper = os.path.dirname(os.path.abspath(sys.argv[0]))
 
-    proc_out_dir = get_out_dir_first_line(options.input_data_orig)
+    #LMP correct folder structure to work with output_prefix option  
+    proc_out_dir, proc_out_base = get_out_dir_first_line(options.input_data_orig)
+    #print("\nFirst Dir Folder: {}".format(proc_out_dir))
+        
+    prefix = options.output_prefix
+    if prefix not in [None, '']:
+        #LMP remove any leading slashes else os.path.join will not work!!!!!
+        if proc_out_dir[0] in ['/','\\']:
+            proc_out_dir = proc_out_dir[1:]
+                            
+        proc_out_dir = os.path.join(prefix, proc_out_dir)
+            
     if not os.path.exists(proc_out_dir):
         os.makedirs(proc_out_dir)
 
@@ -1034,6 +1074,15 @@ def organize_output_folders(options):
         suffix = "processing_{0}".format(suffix)
 
         cur_garage = os.path.join(proc_out_dir, suffix)
+        print("\nOutput processing folder: {}".format(cur_garage))
+
+        #LMP check maximum path length (this is a current AFNI restriction)
+        lengthcheck = len(cur_garage) + len(proc_out_base) + 55
+        print("\nEstimated intermediate_processing path length: {}\n".format(lengthcheck))
+        
+        if lengthcheck > 255:
+            raise ValueError('Output intermediate_processing file path lengths will exceed maximum of 255 characters, Please reduce output path lengths')
+                    
         if os.path.exists(cur_garage):
             if options.force_rerun:
                 user_confirmation = input("Are you sure you want to delete previous results? (y/[N])")
@@ -1045,9 +1094,7 @@ def organize_output_folders(options):
                     print('Leaving the existing preprocessing as is!')
         else:
             os.mkdir(cur_garage)
-
-    print("Output processing folder: " + cur_garage)
-
+               
     return cur_garage, time_stamp, proc_out_dir, suffix
 
 
@@ -1110,8 +1157,7 @@ def set_defaults_hpc(options, input_memory, input_queue, input_numcores, input_p
 
 
 def get_hpc_spec(h_type=None, options=None):
-    """Helper to provide the HPC directives for different HPC environments, such as SGE and Torque.
-    SLURM is not fully supported yet."""
+    """Helper to provide the HPC directives for different HPC environments, such as SGE and Torque, SLURM."""
 
     if h_type is None:
         h_type = find_hpc_type().upper()
@@ -1123,17 +1169,17 @@ def get_hpc_spec(h_type=None, options=None):
     if options is not None:
         if h_type in ('ROTMAN', 'ROTMAN-SGE', 'SGE'):
             memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'all.q', 1, 'npairs')
-        elif h_type in ('CAC', 'HPCVL', 'QUEENSU'):
-            memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'abaqus.q', 1, 'shm.pe')
+        #elif h_type in ('CAC', 'HPCVL', 'QUEENSU'): #LMP Now using SLURM
+        #    memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'abaqus.q', 1, 'shm.pe')
         elif h_type in ('BRAINCODE-SGE', 'BRAINCODE', 'BCODE'):
             memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'common.q', 1, '')
         elif h_type in ('SCINET', 'PBS', 'TORQUE'):
             warnings.warn('HPC {} has not been tested fully. Use at your own risk!'.format(h_type))
             memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'batch', 1, '')
-        elif h_type in ('FRONTENAC'):
+        elif h_type in ('FRONTENAC','CAC', 'HPCVL', 'QUEENSU'):
             memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'standard', 1, '',
                                                                                input_walltime='30:00:00')
-        elif h_type in ('SLURM'):
+        elif h_type in ('SLURM',"CC","CEDAR","GRAHAM"):
             memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, None, 1, '',
                                                                                input_walltime='30:00:00')
     else:
@@ -1144,20 +1190,20 @@ def get_hpc_spec(h_type=None, options=None):
 
     spec = {'memory': None, 'numcores': None, 'queue': None}
 
-    if h_type in ('ROTMAN', 'ROTMAN-SGE', 'SGE'):
+    if h_type in ('ROTMAN', 'ROTMAN-SGE', 'SGE'): 
         prefix = '#$'
         spec['memory'] = ('-l mf=', memory + 'G')
         spec['numcores'] = ('-pe {} '.format(parallel_env), numcores)
         spec['queue'] = ('-q ', queue)
-    elif h_type in ('CAC', 'HPCVL', 'QUEENSU'):
-        prefix = '#$'
-        spec['memory'] = ('-l mf=', memory + 'G')
-        spec['numcores'] = ('-pe shm.pe ', numcores)
-        spec['queue'] = ('-q ', queue)
-        spec['export_user_env'] = ('-V', '')
-        spec['workdir'] = '-wd'
-        spec['jobname'] = '-N'
-        spec['submit_cmd'] = 'qsub'
+    #elif h_type in ('CAC', 'HPCVL', 'QUEENSU'): #LMP moved to SLURM
+    #    prefix = '#$'
+    #    spec['memory'] = ('-l mf=', memory + 'G')
+    #    spec['numcores'] = ('-pe shm.pe ', numcores)
+    #    spec['queue'] = ('-q ', queue)
+    #    spec['export_user_env'] = ('-V', '')
+    #    spec['workdir'] = '-wd'
+    #    spec['jobname'] = '-N'
+    #    spec['submit_cmd'] = 'qsub'
     elif h_type in ('BRAINCODE-SGE', 'BRAINCODE', 'BCODE'):
         prefix = '#$'
         spec['memory'] = ('-l mf=', memory + 'G')
@@ -1172,7 +1218,7 @@ def get_hpc_spec(h_type=None, options=None):
         spec['memory'] = ('-l mem=', memory)
         spec['numcores'] = ('-l ppn=', numcores)
         spec['queue'] = ('-q ', queue)
-    elif h_type in ('FRONTENAC'):  #FROTENAC is SLURM
+    elif h_type in ('FRONTENAC','CAC', 'HPCVL', 'QUEENSU'):  #LMP: ALL now use SLURM
         prefix = '#SBATCH'
         spec['memory'] = ('--mem=', int(memory)*1024) #
         spec['numcores'] = ('-c ', numcores)
@@ -1185,7 +1231,7 @@ def get_hpc_spec(h_type=None, options=None):
         spec['submit_cmd'] = 'sbatch'
         # slurm does not allow any shell specification
         shell=None
-    elif h_type in ('SLURM'):
+    elif h_type in ('SLURM','CC','CEDAR','GRAHAM'):
         prefix = '#SBATCH'
         spec['memory'] = ('--mem=', int(memory)*1024) #
         spec['numcores'] = ('-c ', numcores)
@@ -1222,12 +1268,18 @@ def get_hpc_spec(h_type=None, options=None):
 
 
 def print_options(proc_path):
+    prev_versions = {}
     """prints the various options specified by the user for previous processing."""
     proc_path = os.path.abspath(proc_path)
     assert os.path.exists(proc_path), "Specified processing folder does not exist!"
     opt_file = os.path.join(proc_path, file_name_prev_options)
     with open(opt_file, 'rb') as of:
-        all_subjects, prev_options, prev_input_file, _ = pickle.load(of)
+        try:
+            all_subjects, prev_options, prev_input_file, prev_garage, prev_versions = pickle.load(of)
+        except:
+            #older pickle file
+            of.seek(0)
+            all_subjects, prev_options, prev_input_file, prev_garage = pickle.load(of)
         attr_width = 29
         step_width = 10
         for attr in dir(prev_options):
@@ -1240,7 +1292,9 @@ def print_options(proc_path):
                     print(" ")
                 else:
                     print("{:>{}} : {}".format(attr, attr_width, attr_val))
-
+        
+        for val in prev_versions:
+            print("\n{} version:\n   {}".format(val, prev_versions[val] ))
 
 def estimate_processing_times(input_file_all, options, all_subjects):
     """Helper to make a very rough estimate of processing time for entire workflow."""
@@ -1324,7 +1378,12 @@ def update_proc_status(out_dir):
     """Helper to the original update_status routine."""
     opt_file = os.path.join(out_dir, file_name_prev_options)
     with open(opt_file, 'rb') as of:
-        all_subjects, options, new_input_file, _ = pickle.load(of)
+        try:
+            all_subjects, options, new_input_file, prev_garage, prev_versions = pickle.load(of)
+        except:
+            # older pickle file
+            of.seek(0)
+            all_subjects, options, new_input_file, prev_garage = pickle.load(of)    
         print(new_input_file)
         proc_status, failed_sub_file, failed_spnorm_file = check_proc_status.run(
             [new_input_file, options.pipeline_file, '--skip_validation'], options)
@@ -1444,7 +1503,7 @@ def make_job_file_and_1linecmd(file_path,environment):
 
 def make_job_file(file_path):
     """Generic job file generator"""
-
+    
     hpc_directives = list()
     job_name = os.path.splitext(os.path.basename(file_path))[0]
     if not hpc['type'].upper() == "LOCAL":
@@ -1472,7 +1531,7 @@ def subprocess_output_reader(proc, outq):
  
     for line in iter(proc.stdout.readline, b''):
         outq.put(line.decode('utf-8'))
-	
+    
 
 def local_exec(script_path):
     """

@@ -1,8 +1,13 @@
 #!/usr/bin/env python
 # OPPNI Tool: for fMRI pReprocessing and OptimizatioN Toolkit
 # Author: Pradeep Reddy Raamana <praamana@research.baycrest.org>
+# 
 # Version 0.6 (May 2016)
+#
+# Version 0.7 (Oct 2018) - L. Mark Prati
+# 
 from __future__ import print_function
+#import pdb #debugger
 import argparse
 import json
 import os
@@ -10,13 +15,16 @@ import pickle
 import random
 import re
 import stat
+import queue
 import subprocess
+import time
+import threading
 import sys
 import tempfile
 import math
-import time
 import traceback
 import warnings
+import logging
 from collections import OrderedDict
 from copy import copy
 from distutils.spawn import find_executable
@@ -25,6 +33,11 @@ from shutil import rmtree
 from time import localtime, strftime
 from datetime import timedelta
 
+BIDS_TESTING = False;
+
+if BIDS_TESTING:
+    #LMP BID's support "pybids"
+    from bids import BIDSLayout
 
 # Testing making my own which to allow ver < 3.3 - adlofts
 import platform
@@ -42,6 +55,12 @@ else:
     print('Using new version of Python ... using shutil import')
     print(platform.python_version())
     from shutil import which 
+
+#  Check if we are runnning from within singularity (are we a container image) - LMP
+if (os.environ.get('SINGULARITY_CONTAINER') == None):
+    InSingularity = False
+else:
+    InSingularity = True;
 
 
 # OPPNI related
@@ -113,7 +132,7 @@ def make_time_stamp():
 
 def validate_pipeline_file(pipeline_file):
     if not os.path.isfile(pipeline_file):
-        raise IOError('Pipeline file specified doesn\'t exist')
+        raise IOError('Pipeline file specified doesn\'t exist: {}'.format(pipeline_file))
 
     print('Validating the pipeline specs ...')
     steps_list_file = []
@@ -367,7 +386,14 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
         # prepending it with OUT= to restrict the sub to only OUT, and not elsewhere such as TASK=
         prev_dir = 'OUT={}'.format(base_out_dir)
         curr_dir = 'OUT={}'.format(subject['out'])
-        new_line = re.sub(prev_dir, curr_dir, ip_line)
+        #print('prev_dir : {}\ncurr_dir : {}'.format(prev_dir, curr_dir))
+        
+        #LMP correct the directory level substitution in ip_line
+        #new_line = re.sub(prev_dir, curr_dir, ip_line)
+        new_line = ip_line.replace(prev_dir, curr_dir, 1)
+       
+        #print('ip_line : {}'.format(ip_line))
+        #print('new_line : {}'.format(new_line))
 
         subject['prefix'] = os.path.basename(out)
         # Parse_Input_File.m is not robust with parsing e.g. an extra / at the end will mess up everything
@@ -457,7 +483,8 @@ def parse_args_check():
                              "\n\t 3: Spatial normalization,"
                              "\n\t 4: quality control. ")
     parser.add_argument("-i", "--input_data", action="store", dest="input_data_orig",
-                        help="File containing the input and output data paths", metavar="input spec file")
+                        help="File containing the input and output data paths.", metavar="input spec file")
+    
     parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file", metavar="pipeline combination file",
                         help="select the preprocessing steps")
 
@@ -471,6 +498,7 @@ def parse_args_check():
                         default="None",
                         choices=cfg_pronto.CODES_ANALYSIS_MODELS,
                         help="Choose an analysis model :" + ",".join(cfg_pronto.CODES_ANALYSIS_MODELS))
+    
     parser.add_argument("-m", "--metric", action="store", dest="metric",
                         default="dPR",
                         choices=cfg_pronto.CODES_METRIC_LIST,
@@ -592,7 +620,7 @@ def parse_args_check():
                         help="(optional) determine which software to use to run the code: matlab or compiled(default)")
 
     parser.add_argument("--cluster", action="store", dest="hpc_type",
-                        default=None, choices=('FRONTENAC', 'BRAINCODE', 'CAC', 'SCINET', 'SHARCNET', 'CBRAIN'),
+                        default=None, choices=('FRONTENAC', 'BRAINCODE', 'CAC', 'SCINET', 'SHARCNET', 'CBRAIN', 'SLURM'),
                         help="Please specify the type of cluster you're running the code on.")
 
     parser.add_argument("--memory", action="store", dest="memory",
@@ -649,6 +677,39 @@ def parse_args_check():
                         default=False,
                         help=argparse.SUPPRESS) # "Performs a basic validation of user environment and version checks.")
 
+    #
+    # LMP - Additional args for handling BIDS formatted input dataset 
+    # In Development
+    #
+    if BIDS_TESTING:
+
+        parser.add_argument("--bids_dir", action="store_true", dest="bids_dir",
+                        default=None,
+                        help="The directory folder with the input dataset formatted according to the BIDS standard. "
+                             "NOTE: output dir is rerquired for bids")
+    
+        parser.add_argument("-o","--output_dir", action="store_true", dest="output_dir",
+                        default=None,
+                        help="The directory folder where the output files will be stored. If you are running group level analysis "
+                             "this folder should have been prepopulated with the results of the participant level analysis. "
+                             "If specified, then no need to include OUT= in the input file.")
+    
+        parser.add_argument("--analysis_level", action="store_true", dest="analysis_level",
+                        default="participant",
+                        help="Level of the analysis that will be performed. "
+                             "Multiple participant level analyses can be run independently (in parallel) using the same output_dir.",
+                        choices=['participant', 'group','participant1', 'group1', 'participant2', 'group2'])
+
+        parser.add_argument("--participant_label", action="store_true", dest="participant_label",
+                        default=None,
+                        help="The label(s) of the participant(s) that should be analyzed. The label(s) "
+                             "corresponds to sub-<participant_label> from the BIDS spec (so it does not include 'sub-'). "
+                             "If this parameter is not provided all subjects will be analyzed. "
+                             "Multiple participants can be specified with a space or comma separated list.")
+    #
+    #LMP end
+    #
+
     if len(sys.argv) < 2:
         print('Too few arguments!')
         parser.print_help()
@@ -659,7 +720,73 @@ def parse_args_check():
         options = parser.parse_args()
     except:
         parser.exit(1)
-
+    
+    #    
+    #LMP - check for BID's formated input dataset
+    #In development 
+    #
+    if BIDS_TESTING:
+    
+        if options.bids_dir is not None:
+            if options.output_dir is None:
+                print("ERROR: Argument- output_dir must be provded")
+                sys_exit(0)   
+                    
+            layout = BIDSLayout(options.bids_dir,validate=True)        
+    
+            if options.analysis_level in [ "participant", "participant1"]:
+            
+                #build subject input records from referencing BID's data structure.
+                #     common      /funcional    / site    /    subject fMRI nifty                    /            common    /anatomical/  subject strutural T1
+                #IN=$COMMON_INPATH/GoNoGo_Niftis/CBN01_CAM/CBN01_CAM_0006_01_SE01_fMRI-GoNoGo_0000.nii STRUCT=$COMMON_INPATH/T1_Niftis /CBN01_CAM/CBN01_CAM_0006_01_SE01_T1_0000.nii OUT=$COMMON_OUTPATH/CBN01_CAM_0006_01_SE01_fMRI-GoNoGo TASK=$COMMON_INPATH/taskinfo_files/CBN01_CAM/CBN01_CAM_0006_01_SE01_MR_gonogo_trialB_taskinfo.txt DROP=[3,0]            
+                #Append records to file specified by options.input_data
+                    
+                # Get lists of subjects, sessions, runs TODO need to provide task as arg
+                sublist = layout.get_subjects()
+                seslist = layout.get_sessions()
+                tasklist = layout.get_tasks() 
+                runlist = []
+                
+                #build the run list
+                runfiles = layout.get(task='rest', extension='nii.gz', return_type='file')
+                for f in runfiles:
+                    #get runname : substring between 'run-' and '_bold' in the filename
+                    runnumber = f[f.find('run-')+4,f.find('_bold')]                 
+                    runList.append(runnumber)
+                    
+                for tsk in tasklist:
+                    for subj in sublist:
+                        indx = 0
+                        if (seslist): 
+                            for sess in seslist: 
+                                for runnumber in runlist:                  
+                                    fmri_in_list[tsk][subj][indx] = layout.get(subject=subj, session=sess, run=int(runnumber), task=tsk, extension='nii.gz', return_type='file')[0]
+                                    fmri_out_list[tsk][subj][indx] = options.output_dir + '/' + subj + '_' + sess + '_task-' + tsk + 'run-' + runnumber
+                                    struct_list[tsk][subj][indx] = layout.get(subject=subj, session=sess, run=int(runnumber), suffix='T1w', task=tsk, return_type='file')[0]
+                                    tsvfile_list[tsk][subj][indx] = layout.get(subject=subj, session=sess, run=int(runnumber), task=tsk, suffix='events', extension='tsv', return_type='file')[0]
+                                    ++indx
+                        else:
+                            for runnumber in runlist:                                                   
+                                fmri_in_list[tsk][subj][indx] = layout.get(subject=subj, run=int(runnumber), task=tsk, extension='nii.gz', return_type='file')[0]
+                                fmri_out_list[tsk][subj][indx] = output_dir + '/' + subj + '_task-' + tsk + 'run-' + runnumber
+                                struct_list[tsk][subj][indx] = layout.get(subject=subj, run=int(runnumber), suffix='T1w', task=tsk, return_type='file')[0]
+                                tsvfile_list[tsk][subj][indx] = layout.get(subject=subj, run=int(runnumber), task=tsk, suffix='events', extension='tsv', return_type='file')[0]
+                                ++indx
+                               
+                if options.participant_label is not None:
+                    #parse field for a set of subjects
+                    pass
+                else:
+                    #process ALL subjects in teh BIDS structure
+                    pass
+                
+            if options.analysis_level in [ "group", "group1"]:
+                pass
+    #        
+    #LMP end   
+    #
+    
+    
     # updating the status to the user if requested.
     if options.status_update_in is not None and options.input_data_orig is None:
         cur_garage = os.path.abspath(options.status_update_in)
@@ -724,7 +851,7 @@ def parse_args_check():
             # which will be executed in a subshell
             hpc['type'] = 'SGE'
     else:
-        print("Submitting jobs to Sun Grid Engine (SGE)")
+        print("Submitting jobs to cluster {}".format(hpc['type']))
 
     if options.dry_run:
         hpc['dry_run'] = True
@@ -789,7 +916,7 @@ def parse_args_check():
     ## -------------- Check the Input parameters  --------------
 
     # assert N > 3 to ensure QC/split-half mechanism doesnt fail
-    assert len(unique_subjects) > 3, 'Too few (N<=3) runs in the input file. Rerun with N>3 runs.'
+    assert len(unique_subjects) > 3, 'Too few (N<=3) runs in the input file (unique_subjects = {}). Rerun with N>3 runs.'.format(len(unique_subjects))
 
     if hasattr(options, 'reference') and options.reference is not None:
         reference = os.path.abspath(options.reference)
@@ -1003,8 +1130,11 @@ def get_hpc_spec(h_type=None, options=None):
         elif h_type in ('SCINET', 'PBS', 'TORQUE'):
             warnings.warn('HPC {} has not been tested fully. Use at your own risk!'.format(h_type))
             memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'batch', 1, '')
-        elif h_type in ('FRONTENAC', 'SLURM'):
+        elif h_type in ('FRONTENAC'):
             memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'standard', 1, '',
+                                                                               input_walltime='30:00:00')
+        elif h_type in ('SLURM'):
+            memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, None, 1, '',
                                                                                input_walltime='30:00:00')
     else:
         memory = '2'
@@ -1042,7 +1172,7 @@ def get_hpc_spec(h_type=None, options=None):
         spec['memory'] = ('-l mem=', memory)
         spec['numcores'] = ('-l ppn=', numcores)
         spec['queue'] = ('-q ', queue)
-    elif h_type in ('FRONTENAC', 'SLURM'):
+    elif h_type in ('FRONTENAC'):  #FROTENAC is SLURM
         prefix = '#SBATCH'
         spec['memory'] = ('--mem=', int(memory)*1024) #
         spec['numcores'] = ('-c ', numcores)
@@ -1055,6 +1185,20 @@ def get_hpc_spec(h_type=None, options=None):
         spec['submit_cmd'] = 'sbatch'
         # slurm does not allow any shell specification
         shell=None
+    elif h_type in ('SLURM'):
+        prefix = '#SBATCH'
+        spec['memory'] = ('--mem=', int(memory)*1024) #
+        spec['numcores'] = ('-c ', numcores)
+        spec['queue'] = ('-p ', queue)
+        spec['walltime'] = ('-t ', walltime)
+        spec['export_user_env'] = ('--export=', 'ALL')
+        spec['workdir'] = '--workdir'
+        spec['jobname'] = '--job-name'
+        spec['jobname_slurm'] = '--output=%x_%j.log'
+        spec['submit_cmd'] = 'sbatch'
+        # slurm does not allow any shell specification
+        shell=None
+
     else:
         raise ValueError('HPC type {} unrecognized or not implemented.'.format(h_type))
 
@@ -1320,38 +1464,90 @@ def make_job_file(file_path):
     st = os.stat(file_path)
     os.chmod(file_path, st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
+def subprocess_output_reader(proc, outq):
+    ''' 
+    Obtain a line at atime from the subrpocess - place in queue
+    V 0.7 L. Mark Prati
+    '''
+ 
+    for line in iter(proc.stdout.readline, b''):
+        outq.put(line.decode('utf-8'))
+	
 
 def local_exec(script_path):
     """
-    Runs a job script locally using subprocess, optionally returning stdout
+    Runs a job script locally using subprocess, logging stdout in close to "real time"
+    V 0.7 mods. by L.Mark Prati
     """
+    # pdb.set_trace() #debug
 
-    # logger = logging.getLogger(script_path + '.log')
-
-    # make it executable
-
-    #script_path = list(script_path) # adjusted quick fix
-    #script_path = script_path[0] # adjusted quicik fix
-
+    # make the script (proc) executable
     st = os.stat(script_path)
-    #st = os.stat(script_path)
-
-    print('Check the log file for progress:')
-    print(script_path + '.log')
-
     os.chmod(script_path, st.st_mode | stat.S_IXGRP)
+    
+    # create a log file for the process
+    logFileName = 'OPPNI.log'
+    logFilePath = os.path.join(os.path.dirname(script_path),logFileName)
+    print('Check the log file for progress: {0}'.format(logFilePath))
 
+    logger = logging.getLogger('OPPNI')
+    #ensure log handler is not added multiple times
+    if not len(logger.handlers):
+        fh = logging.FileHandler(logFilePath)
+        formatter = logging.Formatter('%(asctime)s - %(filename)s - %(funcName)s - %(levelname)s - %(message)s')
+        fh.setFormatter(formatter)
+        fh.setLevel(logging.INFO)
+        logging.basicConfig(level=logging.INFO)
+        logger.addHandler(fh)
+
+    logger.info('Starting subprocess: {0}'.format(script_path))
     proc = subprocess.Popen(script_path, shell=True, stdin=subprocess.PIPE,
-                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-    # communicate waits for the subprocess to finish
-    std_output, _ = proc.communicate()
-    # # print(outputs and logs
-    # logger.info('\n%s\n', std_output)
-    print(std_output)
+    #create a thread to output from the sub_process
+    outq = queue.Queue() 
+    reader_thread = threading.Thread(target=subprocess_output_reader, args=(proc,outq))
+    reader_thread.start()
 
-    # TODO return the actual return code
-    return -random.randrange(1000)  # proc.returncode
+    try:
+        while True:
+	    #do nothing while subprocesses do their thing
+            try:
+                proc.wait(timeout=0.2)
+                logger.info('== subprocess exited with rc = {0}'.format(proc.returncode))
+                break
+
+            except subprocess.TimeoutExpired:
+                # subprocess did not terminate yet 
+                try:
+                    #check for output in the queue
+                    while True:
+                        line = outq.get(block=False)
+                        logger.info(line) #add some better formating here!
+
+                except queue.Empty:
+                    pass
+
+    finally:
+        # 'finally' so that we can terminate the child if something goes wrong        
+        try:
+            proc.wait(timeout=0.2)
+        except subprocess.TimeoutExpired:
+            logger.warning('subprocess did not terminate after completeion - forcing termination')
+            proc.terminate()
+
+    #clear any last output from the queue
+    try:
+	#check for output in the queue
+        while True:
+            line = outq.get(block=False)
+            logger.info(line) #maybe add some better formating here!
+
+    except queue.Empty:
+        pass
+
+    # return the subprocess return code
+    return proc.returncode
 
 
 def reprocess_failed_subjects(prev_proc_status, prev_options, failed_sub_file, failed_spnorm_file,
@@ -1536,21 +1732,31 @@ def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=N
     elif environment.lower() in ('octave'):
          
         # Same as Matlab but change out the full_cmd call and replace the getReport
-         single_quoted = lambda s: r"'{}'".format(s)
-         cmd_options = ', '.join(map(single_quoted, arg_list))
-         oppni_octave_path = os.getenv('OPPNI_PATH') # The original path now defaults to octave use
-
-         # make an m-file script
-         mfile_name = prefix.replace('-', '_')
-         mfile_path = os.path.join(job_dir, mfile_name + '.m')
-         with open(mfile_path, 'w') as mfile:
+        single_quoted = lambda s: r"'{}'".format(s)
+        cmd_options = ', '.join(map(single_quoted, arg_list))
+        oppni_octave_path = os.getenv('OPPNI_OCTAVE_PATH') # The original path now defaults to octave use
+        if not oppni_octave_path:
+            oppni_octave_path = os.getenv('OPPNI_PATH_MATLAB_ORIG') # The original matlab path by default
+            
+        # make an m-file script
+        mfile_name = prefix.replace('-', '_')
+        mfile_path = os.path.join(job_dir, mfile_name + '.m')
+        with open(mfile_path, 'w') as mfile:
             mfile.write('\n')
             mfile.write("addpath(genpath('{}'));".format(oppni_octave_path))
-            mfile.write("try, {0}({1}); catch ; exc_report = lasterror; display('reporting exception details ..'); display(exc_report.message); display(exc_report.identifier); display(exc_report.stack(1).file); display(exc_report.stack(1).line); display(' <<--- Done.'); end; ".format(step_cmd_matlab,cmd_options))
+            mfile.write("try, {0}({1}); catch ; exc_report = lasterror; display('reporting exception details ..'); display(exc_report.message); display(exc_report.identifier); display(exc_report.stack(1).file); display(exc_report.stack(1).line); display(' <<--- Done.'); exit(1); end; exit; ".format(step_cmd_matlab,cmd_options))
             mfile.write('\n')
 
-         setup_cmd = ''
-         full_cmd = setup_cmd + "\n" + r"octave -W --traditional -q {0}".format(mfile_path)
+        setup_cmd = ''
+        # check if we are a singularity container image runing on a cluster - LMP
+        # Note the correct scheduler libraries / commands need to have been bouund to the image for job bubmission.
+        #if (hpc['type'] != 'LOCAL') and InSigularity == True:
+            # FUTURE - modify this to launch a singularity exec command
+            #full_cmd = setup_cmd + "\n" + r"singularity exec \"octave -W --traditional -q {0}\"".format(mfile_path)
+        #    full_cmd = setup_cmd + "\n" + r"octave -W --traditional -q {0}".format(mfile_path)
+        #else:
+         
+        full_cmd = setup_cmd + "\n" + r"octave -W --traditional -q {0}".format(mfile_path)
 
 
     elif environment.lower() in ('standalone', 'compiled'):

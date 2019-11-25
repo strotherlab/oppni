@@ -1,40 +1,36 @@
-
-from collections import namedtuple
-import os,sys,subprocess
-from os.path import basename as pbasename
-from os.path import dirname as pdirname
-from os.path import splitext as psplit
-from os.path import join as pjoin
+#
+# Mark Prati
+# Modified to set up an Octave environment for running OPPNI on Compute Canada (Cedar)
+#
+import os
+import subprocess
 
 def main():
     """To be called when using octave for the first time"""
 
-    print "Setting Up Octave Packages - Loading octave module..."
+    # Load the CC module
+    print ("Loading octave version 4.4.1 ...")
     try:
-        subprocess.call("module load octave/4.4.1")
+        subprocess.call("module load nixpkgs/16.09  gcc/7.3.0  octave/4.4.1")
+        subprocess.call("export OPPNI_PATH=/home/mprati/workspace/oppni/cPronto")
+        print ("HPC Environment Found...")
     except:
-        print "WARNING: Unable to load octave"
-        sys.exit()
+        print ("Local Environment Found... set OPPNI_PATH yourself")
 
-    try:
-        # Install the packages from within octave, in order
-        subprocess.call(["octave-cli","--eval","disp('Searching Octave forge...')"])
-        subprocess.call(["octave-cli","--eval","pkg install -forge io"])
-        subprocess.call(["octave-cli","--eval","pkg install -forge control"])
-        subprocess.call(["octave-cli","--eval","pkg install -forge struct"])
-        subprocess.call(["octave-cli","--eval","pkg install -forge statistics"])
-        subprocess.call(["octave-cli","--eval","pkg install -forge signal"])
-        subprocess.call(["octave-cli","--eval","pkg install -forge optim"])
-        print "Installed Octave Packages using Octave Forge"
-    except:
-        print "WARNING: Unable to load octave Packages"
-        sys.exit()
-        
-    print "Creating an .octaverc..."
-    #This needs to be modified to reflect the "Release source paths for scripts and extras"
+    # Install the packages from within octave, in order
+    subprocess.call(["octave-cli","--eval","disp('Searching Octave forge...')"])
+    subprocess.call(["octave-cli","--eval","pkg install -forge io"])
+    subprocess.call(["octave-cli","--eval","pkg install -forge control"])
+    subprocess.call(["octave-cli","--eval","pkg install -forge struct"])
+    subprocess.call(["octave-cli","--eval","pkg install -forge statistics"])
+    subprocess.call(["octave-cli","--eval","pkg install -forge signal"])
+    subprocess.call(["octave-cli","--eval","pkg install -forge optim"])
+    print ("Installed Octave Packages using Octave Forge")
+    print ("Creating an .octaverc...")
+
     octaverc_string = """display('Octave OPPNI setting up...') 
-                    addpath(genpath('/global/home/hpc3194/oppni-0.7.3.1_06JUL2017/scripts_matlab')) 
-                    addpath(genpath('/global/home/hpc3194/oppni-0.7.3.1_06JUL2017/extra')) 
+                    addpath(genpath('/home/mprati/workspace/oppni/scripts_matlab')) 
+                    addpath(genpath('/home/mprati/workspace/oppni/extra')) 
                     % Modify the --traditional settings 
                     try 
                         OCTAVE_VERSION; 
@@ -64,8 +60,7 @@ def main():
     with open(opath, 'w+') as makeoctaverc:
         makeoctaverc.write(octaverc_string)
 
-    print "Moved .octaverc to ~/ /home/user"
-    print "Octave Package setup is complete"
+    print ("Moved .octaverc to ~/ /home/user")
 
 
 if __name__ == '__main__':

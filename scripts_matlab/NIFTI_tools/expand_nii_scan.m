@@ -21,7 +21,7 @@ function expand_nii_scan(filename, img_idx, newpath)
          error('Please check filename.');
       end
 
-      if str2num(v(1:3)) < 7.1 | ~usejava('jvm')
+      if (str2num(v(1:3)) < 7.1 | ~usejava('jvm')) && (in_octave() == 0) 
          error('Please use MATLAB 7.1 (with java) and above, or run gunzip outside MATLAB.');
       else
          gzFile = 1;

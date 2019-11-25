@@ -107,6 +107,22 @@ NUMBER_OF_CORES = str2double(getenv('PIPELINE_NUMBER_OF_CORES'));
 if isnan(NUMBER_OF_CORES)
     NUMBER_OF_CORES = 1;
 end
+
+inOctave = in_octave();
+% May be of future value once the Octave JIT is reliable - LMP
+%if inOctave
+%   try
+%        disp('Enableing Octave - JIT');
+%        val = jit_enable();
+%        disp('Octave - JIT now enabled');
+%    catch
+%        disp('Warning unable to activate Octave - JIT');
+%    end 
+% debug
+%    disp('Enableing Octave Profiling');
+%    profile on
+%end
+
 display(sprintf('The number of cores used by the code=%d',NUMBER_OF_CORES));
 if ( ~exist('OCTAVE_VERSION','builtin') && exist('maxNumCompThreads') )
     maxNumCompThreads(NUMBER_OF_CORES);
@@ -650,6 +666,16 @@ for ksub = 1:numel(InputStruct)
 end
 
 disp('OPPNI__STEP__COMPLETION__CODE Part1');
+% Degug only ==========
+%inOctave = in_octave();
+%if inOctave
+%    profile off;
+%    pData = profile("info");
+%    disp('Profile Dump PPNI__STEP__COMPLETION__CODE Part1 ====');
+%    profshow(pData,10);
+%    profile resume;
+%end
+% =====================
 
 %%
 function name = generate_pipeline_name(pipechars,pipeset)
@@ -710,12 +736,15 @@ end
 out_vol_denoi  = apply_glm( volmat, Regressors);
 
 %%% ==== Step 2.3(c): global signal removed ==== %%%
+disp ("==== Step 2.3(c): global signal removed ====");
 %
 % if GlobalSignal regression is "on", estimate and regress from data
+
 nomen=[nomen 'g' num2str(GS)];
 
 % customreg included (GS=2,3)
 if fix(GS/2)==1
+    disp ("customreg included (GS=2,3)");
     for( is=1:length(volmat) )
         ln = find(noise_roi>0);
         weight = noise_roi(ln)/sum(noise_roi(ln));
@@ -727,7 +756,7 @@ end
 out_vol_denoi  = apply_glm( volmat, Regressors);
 % global estimation included (GS=0,1)
 if( GS == 1 )
-    
+    disp ("global estimation included (GS=0,1)");
     for( is=1:length(volmat) )
         % get PC components on vascular-masked data
         volmat_temp = bsxfun(@times,out_vol_denoi{is},split_info_set{1}.spat_weight);
@@ -757,8 +786,16 @@ end
 %%
 %%% ==== Step 2.3(e): run analysis with multiple contrasts==== %%%
 
+% Degug only ==========
+%inOctave = in_octave();
+%if inOctave
+%    disp('Octave Profiling On');
+%    profile on;
+%end
+% =====================
+disp ("Step 2.3(e): run analysis with multiple contrasts");
 if( ~strcmpi(analysis_model,'NONE') )
-
+    disp ("analysis_model = NONE");
     for contrast_counter = 1:size(Contrast_List,1)
         if (strcmpi(split_info_set{1}.type,'block') || strcmpi(split_info_set{1}.type,'multitask-block'))
             for k = 1:length(split_info_set)
@@ -825,12 +862,23 @@ else
         METRIC_set_0 = [];
     end
 end
+% Degug only ==========
+%disp('Profile Dump ==== Step 2.3(e): run analysis with multiple contrasts ====');
+%inOctave = in_octave();
+%if inOctave
+%    profile off;
+%    pData = profile("info");
+%    profshow(pData,10);
+%    profile resume;
+%end
+% =====================
 
 save([Subject_OutputDirIntermed '/regressors/reg' subjectprefix  '/' nomen 'y0.mat'],'Regressors','CODE_PROPERTY','-v7');
 METRIC_set_0.cond_struc = design_cond(volmat,Regressors);
 
 %% PHYCAA+ option
 %%
+
 if( ~isempty(find( phySet == 1 )) ) % perform if PHYCAA+ is being tested
     
     %%% ==== Step 2.3(f): PHYCAA+ physiological regression ==== %%%
@@ -928,6 +976,15 @@ else
     TEMP_set_y   = [];
     METRIC_set_y = [];
 end
+% Degug only ==========
+%inOctave = in_octave();
+%if inOctave
+%    profile off;
+%    pData = profile("info");
+%    disp('Profile Dump ==== after PHYCAA+ option ====');
+%    profshow(pData,10);
+%end
+% =====================
 
 
 function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet,Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix, subjectprefix, Contrast_List,VV,KEEPMEAN)
@@ -1228,5 +1285,17 @@ else
     IMAGE_set_y  = [];
     TEMP_set_y   = [];
     METRIC_set_y = [];
+end
+
+
+
+function inOctave = in_octave()
+try
+    ver_num = OCTAVE_VERSION;
+    inOctave = 1;
+    version_str = ['OCTAVE ' ver_num];
+catch
+    inOctave = 0;
+    version_str  = ['MATLAB ' version];
 end
 

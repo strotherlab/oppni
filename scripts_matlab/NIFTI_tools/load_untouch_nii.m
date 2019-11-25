@@ -112,7 +112,7 @@ function nii = load_untouch_nii(filename, img_idx, dim5_idx, dim6_idx, dim7_idx,
          error('Please check filename.');
       end
 
-      if str2num(v(1:3)) < 7.1 | ~usejava('jvm')
+      if (str2num(v(1:3)) < 7.1 | ~usejava('jvm')) && (in_octave() == 0) 
          error('Please use MATLAB 7.1 (with java) and above, or run gunzip outside MATLAB.');
       elseif strcmp(filename(end-6:end), '.img.gz')
          filename1 = filename;
@@ -143,8 +143,22 @@ function nii = load_untouch_nii(filename, img_idx, dim5_idx, dim6_idx, dim7_idx,
       elseif strcmp(filename(end-6:end), '.nii.gz')
          tmpDir = tempname;
          mkdir(tmpDir);
-         gzFileName = filename;
-         filename = gunzip(filename, tmpDir);
+         
+         %LMP copy source .gz for compatibility between matlam and octave gunzip
+         if in_octave()
+            copyfile(filename, tmpDir);
+            [dir, name, ext] = fileparts (filename);
+            gzFileName = [tmpDir, "/", name, ext];
+         else
+            gzFileName = filename;
+         end
+         
+         %debug LMP
+         %printf("load_untouch_nii - tmpDir: %s\n",tmpDir);
+         %printf("load_untouch_nii - gzFileName: %s\n",gzFileName);    
+         %filename = gunzip(filename, tmpDir);
+         filename = gunzip(gzFileName, tmpDir);
+
          filename = char(filename);	% convert from cell to string
       end
    end

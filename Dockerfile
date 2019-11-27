@@ -9,6 +9,7 @@ ENV LD_LIBRARY_PATH=/usr/lib/fsl/5.0
 ENV FSLTCLSH=/usr/bin/tclsh
 ENV FSLWISH=/usr/bin/wish
 
+# Configure important paths
 ENV AFNI_PATH /opt/afni/
 ENV FSL_PATH $FSLDIR/bin/
 ENV MCR_PATH /opt/mcr/v80/
@@ -24,7 +25,7 @@ RUN /tmp/cpac_install.sh -n afni
 RUN /tmp/cpac_install.sh -n fsl
 
 
-#
+# start by installing python
 RUN apt-get install -y python
 
 
@@ -40,6 +41,7 @@ RUN apt-get -qq update && apt-get -qq install -y unzip xorg wget curl && \
     cd / && \
     rm -rf /mcr-install
 
+# creating necessary folders
 RUN mkdir -p /code
 RUN mkdir /oppni
 RUN mkdir /projects

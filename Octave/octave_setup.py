@@ -9,11 +9,11 @@ from os.path import join as pjoin
 def main():
     """To be called when using octave for the first time"""
 
-    print "Setting Up Octave Packages - Loading octave module..."
+    print("Setting Up Octave Packages - Loading octave module...")
     try:
         subprocess.call("module load octave/4.4.1")
     except:
-        print "WARNING: Unable to load octave"
+        print("WARNING: Unable to load octave")
         sys.exit()
 
     try:
@@ -25,12 +25,12 @@ def main():
         subprocess.call(["octave-cli","--eval","pkg install -forge statistics"])
         subprocess.call(["octave-cli","--eval","pkg install -forge signal"])
         subprocess.call(["octave-cli","--eval","pkg install -forge optim"])
-        print "Installed Octave Packages using Octave Forge"
+        print("Installed Octave Packages using Octave Forge")
     except:
-        print "WARNING: Unable to load octave Packages"
+        print("WARNING: Unable to load octave Packages")
         sys.exit()
         
-    print "Creating an .octaverc..."
+    print("Creating an .octaverc...")
     #This needs to be modified to reflect the "Release source paths for scripts and extras"
     octaverc_string = """display('Octave OPPNI setting up...') 
                     addpath(genpath('/global/home/hpc3194/oppni-0.7.3.1_06JUL2017/scripts_matlab')) 
@@ -64,8 +64,8 @@ def main():
     with open(opath, 'w+') as makeoctaverc:
         makeoctaverc.write(octaverc_string)
 
-    print "Moved .octaverc to ~/ /home/user"
-    print "Octave Package setup is complete"
+    print("Moved .octaverc to ~/ /home/user")
+    print("Octave Package setup is complete")
 
 
 if __name__ == '__main__':

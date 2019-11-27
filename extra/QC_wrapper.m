@@ -1,5 +1,5 @@
 function QC_wrapper(step,inputfile, newmaskname, Npcs)
-
+disp("DEBUG - Entering QC_wrapper.m");
 if nargin < 3
     newmaskname = [];
     Npcs = 10;

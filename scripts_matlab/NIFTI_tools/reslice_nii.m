@@ -59,23 +59,23 @@
 %
 function reslice_nii(old_fn, new_fn, voxel_size, verbose, bg, method, img_idx, preferredForm)
 
-   if ~exist('old_fn','var') | ~exist('new_fn','var')
+   if ~exist('old_fn','var') || ~exist('new_fn','var')
       error('Usage: reslice_nii(old_fn, new_fn, [voxel_size], [verbose], [bg], [method], [img_idx])');
    end
 
-   if ~exist('method','var') | isempty(method)
+   if ~exist('method','var') || isempty(method)
       method = 1;
    end
 
-   if ~exist('img_idx','var') | isempty(img_idx)
+   if ~exist('img_idx','var') || isempty(img_idx)
       img_idx = [];
    end
 
-   if ~exist('verbose','var') | isempty(verbose)
+   if ~exist('verbose','var') || isempty(verbose)
       verbose = 1;
    end
 
-   if ~exist('preferredForm','var') | isempty(preferredForm)
+   if ~exist('preferredForm','var') || isempty(preferredForm)
       preferredForm= 's';				% Jeff
    end
 
@@ -85,13 +85,13 @@ function reslice_nii(old_fn, new_fn, voxel_size, verbose, bg, method, img_idx, p
       error('Transform of this NIFTI data is not supported by the program.');
    end
 
-   if ~exist('voxel_size','var') | isempty(voxel_size)
+   if ~exist('voxel_size','var') || isempty(voxel_size)
       voxel_size = abs(min(nii.hdr.dime.pixdim(2:4)))*ones(1,3);
    elseif length(voxel_size) < 3
       voxel_size = abs(voxel_size(1))*ones(1,3);
    end
 
-   if ~exist('bg','var') | isempty(bg)
+   if ~exist('bg','var') || isempty(bg)
       bg = mean([nii.img(1) nii.img(end)]);
    end
 
@@ -147,14 +147,14 @@ function [nii] = load_nii_no_xform(filename, img_idx, old_RGB, preferredForm)
    %
    if length(filename) > 2 & strcmp(filename(end-2:end), '.gz')
 
-      if ~strcmp(filename(end-6:end), '.img.gz') & ...
-	 ~strcmp(filename(end-6:end), '.hdr.gz') & ...
+      if ~strcmp(filename(end-6:end), '.img.gz') && ...
+	 ~strcmp(filename(end-6:end), '.hdr.gz') && ...
 	 ~strcmp(filename(end-6:end), '.nii.gz')
 
          error('Please check filename.');
       end
 
-      if str2num(v(1:3)) < 7.1 | ~usejava('jvm')
+      if (str2num(v(1:3)) < 7.1 | ~usejava('jvm')) && (in_octave() == 0) 
          error('Please use MATLAB 7.1 (with java) and above, or run gunzip outside MATLAB.');
       elseif strcmp(filename(end-6:end), '.img.gz')
          filename1 = filename;

@@ -19,7 +19,7 @@ function [selected_file, selected_path] = rri_select_file(varargin)
 %  -- Modified Dec 2002 by Jimmy Shen, Rotman Research Institute
 %
 
-   if nargin == 0 | ischar(varargin{1}) 	% create rri_select_file figure
+   if nargin == 0 || ischar(varargin{1}) 	% create rri_select_file figure
 
       dir_name = '';
       fig_title = 'Select a File';
@@ -88,7 +88,7 @@ function [selected_file, selected_path] = rri_select_file(varargin)
       h = findobj(gcf,'Tag','SelectionEdit');
       [filepath,filename,fileext] = fileparts(get(h,'String'));
 
-      if isempty(filepath) | isempty(filename) | isempty(fileext)
+      if isempty(filepath) || isempty(filename) || isempty(fileext)
          setappdata(gcf,'SelectedDirectory',[]);
          setappdata(gcf,'SelectedFile',[]);
       else

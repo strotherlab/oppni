@@ -106,7 +106,7 @@ function diagnostic_fmri_pca( volname, maskname, mpename, outprefix )
 if( exist('OCTAVE_VERSION','builtin') )
     % load stats packages
     pkg load statistics;
-    pkg load optim; 
+    pkg load optim;
 end
  
 %% (0) PREPARATION

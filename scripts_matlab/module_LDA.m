@@ -35,14 +35,11 @@ design1 = [ ones( size(block_cond1_sp1,2), 1 ); -ones( size(block_cond2_sp1,2), 
 design2 = [ ones( size(block_cond1_sp2,2), 1 ); -ones( size(block_cond2_sp2,2), 1 )];
 % linear discriminant analysis, under single-split structure
 results = lda_optimization( [block_cond1_sp1 block_cond2_sp1], [block_cond1_sp2 block_cond2_sp2], design1,design2, split_info.drf );
-
 % Euclid. distance from (P=1,R=1)
 DD = sqrt( (1-results.R).^2 + (1-results.P).^2 );
 % select PC subspace that minimizes D(P,R)
 [vd id]  = min(DD);
-
 % [Record optimal statistics + eigenimages]
-%
 output.metrics.R    =  results.R(id);
 output.metrics.P    =  results.P(id);
 output.metrics.Acc  =  results.Acc(id); % alt: fractional classif. accuracy
@@ -56,7 +53,6 @@ output.images  = results.eig(:,id);
 output.temp.CV_ref = results.CV(:,id);
 % CV score timeseries, on unit-normed rSPM eigenimage
 output.temp.CV_alt = datamat' * (output.images ./ sqrt(sum(output.images.^2)));
-
 % [Fractional Variance Explained by eigenimage basis]
 %
 % the scaled projection

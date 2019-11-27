@@ -30,7 +30,7 @@ function [ext, esize_total] = verify_nii_ext(ext)
    esize_total = 0;
 
    for i=1:ext.num_ext
-      if ~isfield(ext.section(i), 'ecode') | ~isfield(ext.section(i), 'edata')
+      if ~isfield(ext.section(i), 'ecode') || ~isfield(ext.section(i), 'edata')
          error('Incorrect NIFTI header extension structure.');
       end
 

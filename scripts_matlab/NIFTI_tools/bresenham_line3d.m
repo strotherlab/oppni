@@ -53,7 +53,7 @@
 %
 function [X,Y,Z] = bresenham_line3d(P1, P2, precision)
 
-   if ~exist('precision','var') | isempty(precision) | round(precision) == 0
+   if ~exist('precision','var') || isempty(precision) || round(precision) == 0
       precision = 0;
       P1 = round(P1);
       P2 = round(P2);

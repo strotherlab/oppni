@@ -199,7 +199,16 @@ if( regMethod>0 )
     %
     disp( '    (task SPM included - performing residual subspace estimation)')
     %
-    for(r=1:Nruns)       
+    for(r=1:Nruns) 
+	    % Validate data matrix - LMP
+	    if (any(isinf(dataMat{r}) == 1) == 1)
+	       disp("WARNING dataMat contains Inf elements")
+	    end
+
+	    if (any(isnan(dataMat{r}) == 1) == 1)
+	       disp("WARNING dataMat contains NaN elements")
+	    end
+      
         % regress out estimated signal effect
         residualMat{r} = ols_regress_ex( dataMat{r}, task_course{r}, 0 );
         % using SVD to reduce dimensionality of residual data

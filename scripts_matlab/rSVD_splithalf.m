@@ -49,9 +49,9 @@ function [ output ] = rSVD_splithalf( X, Npc, Niters, threshold )
 %
 
  % get dimensions, and number of subjects in 1 split-half
- [Nvox Nsubj] = size(X);  Nsp = floor(Nsubj/2);
+ [Nvox, Nsubj] = size(X);  Nsp = floor(Nsubj/2);
  % SVD on full data matrix for reference
- [Vref Sref] = svd( X'*X );
+ [Vref, Sref, temp] = svd( X'*X );
  % these are the reference eigenimages, we use these to match split-half components
  Uref = X * Vref;% variance scaled eigenimage
  % reduce to top "Nsp" components
@@ -79,11 +79,11 @@ for( i=1:Niters )
    X2 = X(:,list2);
    
    % run split 1 SVD
-   [V1 S1] = svd( X1'*X1 ); s11 = diag(S1)./trace(S1);
+   [V1, S1, temp] = svd( X1'*X1 ); s11 = diag(S1)./trace(S1);
    % these are the reference eigenimages
    U1 = X1 * V1(:,1:Npc); % variance scaled eigenimage
    % run split 2 SVD
-   [V2 S2] = svd( X2'*X2 ); s22 = diag(S2)./trace(S2);
+   [V2, S2, temp] = svd( X2'*X2 ); s22 = diag(S2)./trace(S2);
    % these are the reference eigenimages
    U2 = X2 * V2(:,1:Npc); % variance scaled eigenimage
    
@@ -103,7 +103,7 @@ for( i=1:Niters )
       U1(:,k) = U1(:,k) .* sign( corr( U1(:,k), Uref(:,k) ) );
       U2(:,k) = U2(:,k) .* sign( corr( U2(:,k), Uref(:,k) ) );       
    end
-   svar(:,i) = ( s11(:) + s22(:) )./2;
+   svar(:,i) = ( s11(1:Npc) + s22(1:Npc) )./2;
    
    % estimate reproducible SPM for each component dimension:
    for(k=1:Npc)

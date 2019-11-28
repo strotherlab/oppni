@@ -13,19 +13,19 @@
 %
 function save_untouch_nii(nii, filename)
    
-   if ~exist('nii','var') | isempty(nii) | ~isfield(nii,'hdr') | ...
-	~isfield(nii,'img') | ~exist('filename','var') | isempty(filename)
+   if ~exist('nii','var') || isempty(nii) || ~isfield(nii,'hdr') || ...
+	~isfield(nii,'img') || ~exist('filename','var') || isempty(filename)
 
       error('Usage: save_untouch_nii(nii, filename)');
    end
 
-   if ~isfield(nii,'untouch') | nii.untouch == 0
+   if ~isfield(nii,'untouch') || nii.untouch == 0
       error('Usage: please use ''save_nii.m'' for the modified structure.');
    end
 
-   if isfield(nii.hdr.hist,'magic') & strcmp(nii.hdr.hist.magic(1:3),'ni1')
+   if isfield(nii.hdr.hist,'magic') && strcmp(nii.hdr.hist.magic(1:3),'ni1')
       filetype = 1;
-   elseif isfield(nii.hdr.hist,'magic') & strcmp(nii.hdr.hist.magic(1:3),'n+1')
+   elseif isfield(nii.hdr.hist,'magic') && strcmp(nii.hdr.hist.magic(1:3),'n+1')
       filetype = 2;
    else
       filetype = 0;
@@ -35,16 +35,16 @@ function save_untouch_nii(nii, filename)
 
    %  Check file extension. If .gz, unpack it into temp folder
    %
-   if length(filename) > 2 & strcmp(filename(end-2:end), '.gz')
+   if length(filename) > 2 && strcmp(filename(end-2:end), '.gz')
 
-      if ~strcmp(filename(end-6:end), '.img.gz') & ...
-	 ~strcmp(filename(end-6:end), '.hdr.gz') & ...
+      if ~strcmp(filename(end-6:end), '.img.gz') && ...
+	 ~strcmp(filename(end-6:end), '.hdr.gz') && ...
 	 ~strcmp(filename(end-6:end), '.nii.gz')
 
          error('Please check filename.');
       end
 
-      if str2num(v(1:3)) < 7.1 | ~usejava('jvm')
+      if (str2num(v(1:3)) < 7.1 | ~usejava('jvm')) && (in_octave() == 0) 
          error('Please use MATLAB 7.1 (with java) and above, or run gunzip outside MATLAB.');
       else
          gzFile = 1;
@@ -89,7 +89,7 @@ function write_nii(nii, filetype, fileprefix)
 
    hdr = nii.hdr;
 
-   if isfield(nii,'ext') & ~isempty(nii.ext)
+   if isfield(nii,'ext') && ~isempty(nii.ext)
       ext = nii.ext;
       [ext, esize_total] = verify_nii_ext(ext);
    else
@@ -194,7 +194,7 @@ function write_nii(nii, filetype, fileprefix)
    
    x = 1:PixelDim;
    
-   if filetype == 2 & isempty(ext)
+   if filetype == 2 && isempty(ext)
       skip_bytes = double(hdr.dime.vox_offset) - 348;
    else
       skip_bytes = 0;

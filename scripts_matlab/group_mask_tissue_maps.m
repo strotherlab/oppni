@@ -40,8 +40,9 @@ function group_mask_tissue_maps( inputfile, newmaskname )
 % CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
 % ------------------------------------------------------------------------%
 if( exist('OCTAVE_VERSION','builtin') )
-    % load stats packages
+    % backup load of stats packages
     pkg load statistics;
+    pkg load struct;
     pkg load optim; 
 end
   
@@ -63,7 +64,6 @@ if nargin < 2
 end
 
 %% Load individual masks
-
 % opens the inputfile (includes subject/dataset names that preprocessing is performed on...
 fid   = fopen(inputfile);
 tline = fgetl(fid);
@@ -297,6 +297,7 @@ brain_volumes.MASK_fract = maskFract_vect;
 
 % save results to matfile
      % matlab-compatible
+disp('OPPNI__STEP__COMPLETION__CODE GMASK');
 save([newmaskname,'_spat_norm_qc.mat'],'brain_volumes','volume_stats', '-v7');
 
 

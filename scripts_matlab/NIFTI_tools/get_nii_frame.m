@@ -27,16 +27,16 @@ function [ total_scan ] = get_nii_frame(filename)
 
    %  Check file extension. If .gz, unpack it into temp folder
    %
-   if length(filename) > 2 & strcmp(filename(end-2:end), '.gz')
+   if length(filename) > 2 && strcmp(filename(end-2:end), '.gz')
 
-      if ~strcmp(filename(end-6:end), '.img.gz') & ...
-	 ~strcmp(filename(end-6:end), '.hdr.gz') & ...
+      if ~strcmp(filename(end-6:end), '.img.gz') && ...
+	 ~strcmp(filename(end-6:end), '.hdr.gz') && ...
 	 ~strcmp(filename(end-6:end), '.nii.gz')
 
          error('Please check filename.');
       end
 
-      if str2num(v(1:3)) < 7.1 | ~usejava('jvm')
+      if (str2num(v(1:3)) < 7.1 | ~usejava('jvm')) && (in_octave() == 0) 
          error('Please use MATLAB 7.1 (with java) and above, or run gunzip outside MATLAB.');
       elseif strcmp(filename(end-6:end), '.img.gz')
          filename1 = filename;
@@ -77,16 +77,16 @@ function [ total_scan ] = get_nii_frame(filename)
    machine = 'ieee-le';
    new_ext = 0;
 
-   if findstr('.nii',fileprefix) & strcmp(fileprefix(end-3:end), '.nii')
+   if findstr('.nii',fileprefix) && strcmp(fileprefix(end-3:end), '.nii')
       new_ext = 1;
       fileprefix(end-3:end)='';
    end
 
-   if findstr('.hdr',fileprefix) & strcmp(fileprefix(end-3:end), '.hdr')
+   if findstr('.hdr',fileprefix) && strcmp(fileprefix(end-3:end), '.hdr')
       fileprefix(end-3:end)='';
    end
 
-   if findstr('.img',fileprefix) & strcmp(fileprefix(end-3:end), '.img')
+   if findstr('.img',fileprefix) && strcmp(fileprefix(end-3:end), '.img')
       fileprefix(end-3:end)='';
    end
 

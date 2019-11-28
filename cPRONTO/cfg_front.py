@@ -1,3 +1,4 @@
+# organized collection of important options and constants and names
 
 from collections import namedtuple
 
@@ -21,12 +22,14 @@ CODES_OPTIM_SCHEMES_OPTIONS = [ 'CON', 'FIX', 'IND', 'ALL' ] # ['CON', 'FIX', 'I
 
 CODES_SUBSPACES = [ 'onecomp','multicomp' ]
 
+WARP_TYPES = [ "affine", "nonlinear" ]
+
 CODES_SPM_TYPES = ['zscore', 'corr']
 
 SLICE_TIMING_PATTERNS = ['alt+z', 'alt+z2', 'alt-z', 'alt-z2', 'seq+z', 'seq-z', 'auto_hdr']
 
-STEPS_PROCESSING_STATUS_WITH_QC = ['preprocessing', 'stats', 'optimization', 'spnorm', 'QC1', 'QC2', 'all_done' ]
-STEPS_PROCESSING_STATUS         = ['preprocessing', 'stats', 'optimization', 'spnorm', 'QC1', 'QC2', 'all_done' ]
+STEPS_PROCESSING_STATUS_WITH_QC = ['preprocessing', 'stats', 'optimization', 'spnorm', 'QC1', 'QC2', 'all_done', 'gmask']
+STEPS_PROCESSING_STATUS         = ['preprocessing', 'stats', 'optimization', 'spnorm', 'QC1', 'QC2', 'all_done', 'gmask']
 
 qc_out_format = 'pdf' # 'png
 outputs_qc_part_one = [ 'FIG1_motion_statistics.' + qc_out_format,
@@ -50,3 +53,6 @@ def initialize_proc_status():
         setattr(proc_status, flag, False)
 
     return proc_status
+
+if __name__ == '__main__':
+    pass

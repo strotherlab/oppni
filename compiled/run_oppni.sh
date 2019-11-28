@@ -4,6 +4,7 @@
 # Sets up the MCR environment for the current $ARCH and executes 
 # the specified command.
 #
+
 exe_name=$0
 exe_dir=`dirname "$0"`
 echo "------------------------------------------"

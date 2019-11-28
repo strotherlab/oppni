@@ -36,7 +36,7 @@ xx_sp2 = [block_cond1_sp2 block_cond2_sp2]; xx_sp2=bsxfun(@minus,xx_sp2,mean(xx_
 
 % sp1
 cl_av = [mean(xx_sp1(:,design1<0),2) mean(xx_sp1(:,design1>0),2)]; % class avg.
-[u l] = svd( cl_av,'econ' ); % eigen-decomp
+[u, l, temp] = svd( cl_av,'econ' ); % eigen-decomp
 u_sp1 = u(:,1) * double( sign((cl_av(:,2)'*u(:,1)) - (cl_av(:,1)'*u(:,1))) ); % sign-flip
 
 % predict(1)
@@ -64,7 +64,7 @@ sum_correct_sp2on1 = (  sum( pp1_priors_norm(design2<0,:) >0.5 ) + sum( pp2_prio
 
 % sp2
 cl_av = [mean(xx_sp2(:,design2<0),2) mean(xx_sp2(:,design2>0),2)]; % class avg.
-[u l] = svd( cl_av,'econ' ); % eigen-decomp
+[u, l, temp] = svd( cl_av,'econ' ); % eigen-decomp
 u_sp2 = u(:,1) * double( sign((cl_av(:,2)'*u(:,1)) - (cl_av(:,1)'*u(:,1))) ); % sign-flip
 
 % predict(2)

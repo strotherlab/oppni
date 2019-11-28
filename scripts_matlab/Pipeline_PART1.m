@@ -1,4 +1,5 @@
-function Pipeline_PART1(InputStruct, input_pipeset, analysis_model, modelparam, niiout, contrast_list_str, dospnormfirst, DEOBLIQUE, TPATTERN, TOFWHM)
+function Pipeline_PART1(InputStruct, input_pipeset, analysis_model, modelparam, niiout, contrast_list_str, dospnormfirst, DEOBLIQUE, TPATTERN, TOFWHM, KEEPMEAN)
+%
 %
 %==========================================================================
 % PIPELINE_PART1 : main script used for running pipelines and obtaining
@@ -99,6 +100,7 @@ function Pipeline_PART1(InputStruct, input_pipeset, analysis_model, modelparam, 
 % CODE_DATE    = '$Date: 2014-12-04 18:33:31 -0500 (Thu, 04 Dec 2014) $';
 % ------------------------------------------------------------------------%
 
+
 % Check Parameters
 %%
 global NUMBER_OF_CORES
@@ -106,6 +108,22 @@ NUMBER_OF_CORES = str2double(getenv('PIPELINE_NUMBER_OF_CORES'));
 if isnan(NUMBER_OF_CORES)
     NUMBER_OF_CORES = 1;
 end
+
+inOctave = in_octave();
+% May be of future value once the Octave JIT is reliable - LMP
+%if inOctave
+%   try
+%        disp('Enableing Octave - JIT');
+%        val = jit_enable();
+%        disp('Octave - JIT now enabled');
+%    catch
+%        disp('Warning unable to activate Octave - JIT');
+%    end 
+% debug
+%    disp('Enableing Octave Profiling');
+%    profile on
+%end
+
 display(sprintf('The number of cores used by the code=%d',NUMBER_OF_CORES));
 if ( ~exist('OCTAVE_VERSION','builtin') && exist('maxNumCompThreads') )
     maxNumCompThreads(NUMBER_OF_CORES);
@@ -213,6 +231,14 @@ if ~ismember(TOFWHM,[0 1])
     TOFWHM = 0;
 end
 
+if nargin<11 || isempty(KEEPMEAN)
+    KEEPMEAN = 0;
+else
+    if ischar(KEEPMEAN)
+        KEEPMEAN = str2num(KEEPMEAN);
+    end    
+end
+
 % %%========== TEMPORARY: uncomment this option to turn on BlurToFWHM
 % 
 % TOFWHM=1; %% --> this option force on BlurToFWHM smoothing
@@ -254,6 +280,7 @@ for ksub = 1:numel(InputStruct)
     end
 end
 clear split_info
+
 
 %%
 for ksub = 1:numel(InputStruct)
@@ -486,13 +513,14 @@ for ksub = 1:numel(InputStruct)
                     noise_roi{krun} = nifti_to_mat(VV,MM);
                 else
                     noise_roi{krun}= [];
-                end
+		 end
                 % 
             end
 
             %%%%% III. Third iteration level. run through each pipeline combination that
             %%%%%      is performed on pre-loaded data, analyze + save results
 
+            
             %% run through additional proccessing choices
             for DET = detSet
                 for MPR = mprSet
@@ -500,23 +528,21 @@ for ksub = 1:numel(InputStruct)
                         for GS  = gsSet
                             for LP = lpSet
 
-                            kall = kall + 1;
-                            % full list of preprocessing choices for this pipeline step
-                            pipeset_full(kall,:) = [pipeset_half(i,:) DET MPR TASK GS LP];
+                                kall = kall + 1;
+                                % full list of preprocessing choices for this pipeline step
+                                pipeset_full(kall,:) = [pipeset_half(i,:) DET MPR TASK GS LP];
 
-                            if N_run>1
-                                  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV);
-                            else  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal{1}, Xnoise{1}, noise_roi{1}, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV);
-
-                            end
-
+                                if N_run>1
+                                  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV,KEEPMEAN);
+                                else
+				                  [IMAGE_set_0{kall},TEMP_set_0{kall},METRIC_set_0{kall},IMAGE_set_y{kall},TEMP_set_y{kall},METRIC_set_y{kall},modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal{1}, Xnoise{1}, noise_roi{1}, split_info_set, analysis_model, InputStruct(ksub).run(1).Output_nifti_file_path,subjectprefix,Contrast_List,VV,KEEPMEAN);
+                                end
                             end
                         end
                     end
                 end
             end
         end
-
 
         % pipeline information
         pipechars = ['m' 'c' 'p' 't' 's' 'd' 'r' 'x' 'g' 'l' 'y'];
@@ -640,15 +666,28 @@ for ksub = 1:numel(InputStruct)
     end
 end
 
-%%
+disp('OPPNI__STEP__COMPLETION__CODE Part1');
+% Degug only ==========
+%inOctave = in_octave();
+%if inOctave
+%    profile off;
+%    pData = profile("info");
+%    disp('Profile Dump PPNI__STEP__COMPLETION__CODE Part1 ====');
+%    profshow(pData,10);
+%    profile resume;
+%end
+% =====================
+
 %%
 function name = generate_pipeline_name(pipechars,pipeset)
+
 for i = 1:length(pipechars)
     name(i*2-1) = pipechars(i);
     name(i*2) = pipeset(i);
 end
 
-function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix,subjectprefix,Contrast_List,VV)
+
+function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step_group(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet, Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix,subjectprefix,Contrast_List,VV,KEEPMEAN)
 
 global CODE_PROPERTY
 
@@ -658,7 +697,17 @@ Subject_OutputDirOptimize = [OutputDirPrefix '/optimization_results'];
 N_run = length(volmat);
 EmptyCell = cell(1,N_run);
 % build pipeline prefix name -- and define current noise matrix
-nomen=[PipeHalfList 'd' num2str(DET)];
+if(DET==-1)
+nomen=[PipeHalfList 'dA'];
+else
+nomen=[PipeHalfList 'd' num2str(DET)];  
+end
+
+for(n=1:N_run)
+    if(KEEPMEAN>0) mean_volmat{n} = mean(volmat{n},2);
+    else           mean_volmat{n} = 0;
+    end
+end
 
 %%% ==== Step 2.3(b): regression-based preprocessing ==== %%%
 %
@@ -674,21 +723,29 @@ end
 for run_counter = 1:N_run
     Regressors{run_counter}.MP       = Xnoi_curr{run_counter};
     Regressors{run_counter}.Signal   = Xsig_curr{run_counter};
-    Regressors{run_counter}.NOISEROI = [];    
-    Regressors{run_counter}.DET      = DET;
+    Regressors{run_counter}.NOISEROI = []; 
+    if( DET==-1 )
+        Regressors{run_counter}.DET = 1+floor( (split_info_set{1}.TR_MSEC./1000) * (Ntime/2) ./ 150 );    
+    else
+        Regressors{run_counter}.DET      = DET;
+    end    
     Regressors{run_counter}.GSPC1    = [];
     Regressors{run_counter}.PHYPLUS  = [];
+    Regressors{run_counter}.TR = (split_info_set{1}.TR_MSEC./1000);
 end
 % General Linear Model regression:
 out_vol_denoi  = apply_glm( volmat, Regressors);
 
 %%% ==== Step 2.3(c): global signal removed ==== %%%
+disp ("==== Step 2.3(c): global signal removed ====");
 %
 % if GlobalSignal regression is "on", estimate and regress from data
+
 nomen=[nomen 'g' num2str(GS)];
 
 % customreg included (GS=2,3)
 if fix(GS/2)==1
+    disp ("customreg included (GS=2,3)");
     for( is=1:length(volmat) )
         ln = find(noise_roi>0);
         weight = noise_roi(ln)/sum(noise_roi(ln));
@@ -700,7 +757,7 @@ end
 out_vol_denoi  = apply_glm( volmat, Regressors);
 % global estimation included (GS=0,1)
 if( GS == 1 )
-    
+    disp ("global estimation included (GS=0,1)");
     for( is=1:length(volmat) )
         % get PC components on vascular-masked data
         volmat_temp = bsxfun(@times,out_vol_denoi{is},split_info_set{1}.spat_weight);
@@ -730,8 +787,16 @@ end
 %%
 %%% ==== Step 2.3(e): run analysis with multiple contrasts==== %%%
 
+% Degug only ==========
+%inOctave = in_octave();
+%if inOctave
+%    disp('Octave Profiling On');
+%    profile on;
+%end
+% =====================
+disp ("Step 2.3(e): run analysis with multiple contrasts");
 if( ~strcmpi(analysis_model,'NONE') )
-
+    disp ("analysis_model = NONE");
     for contrast_counter = 1:size(Contrast_List,1)
         if (strcmpi(split_info_set{1}.type,'block') || strcmpi(split_info_set{1}.type,'multitask-block'))
             for k = 1:length(split_info_set)
@@ -774,9 +839,15 @@ else
         TMPVOL = zeros( [size(split_info_set{is}.mask_vol), size(out_vol_filt{is},2)] );
         % vascular weighting
         for(p=1:size(out_vol_filt{is},2) )
-            tmp=split_info.mask_vol;tmp(tmp>0)= out_vol_filt{is}(:,p) .* split_info_set{1}.spat_weight;
+            tmp=split_info.mask_vol;tmp(tmp>0)= (out_vol_filt{is}(:,p) .* split_info_set{1}.spat_weight) + mean_volmat{is};
             TMPVOL(:,:,:,p) = tmp;
         end
+        
+        if(KEEPMEAN>0)
+            nii.hdr.hist.descrip = [CODE_PROPERTY.NII_HEADER  ' PREPROCESSING: KEEPMEAN-' subjectprefix,'_run',num2str(is) '-'  [nomen,'y0']   ];
+        else
+            nii.hdr.hist.descrip = [CODE_PROPERTY.NII_HEADER ' PREPROCESSING: REMOVEMEAN-' subjectprefix,'_run',num2str(is) '-' [nomen,'y0']   ];
+        end        
 
         nii=VV;
         nii.img = TMPVOL;
@@ -792,12 +863,23 @@ else
         METRIC_set_0 = [];
     end
 end
+% Degug only ==========
+%disp('Profile Dump ==== Step 2.3(e): run analysis with multiple contrasts ====');
+%inOctave = in_octave();
+%if inOctave
+%    profile off;
+%    pData = profile("info");
+%    profshow(pData,10);
+%    profile resume;
+%end
+% =====================
 
 save([Subject_OutputDirIntermed '/regressors/reg' subjectprefix  '/' nomen 'y0.mat'],'Regressors','CODE_PROPERTY','-v7');
 METRIC_set_0.cond_struc = design_cond(volmat,Regressors);
 
 %% PHYCAA+ option
 %%
+
 if( ~isempty(find( phySet == 1 )) ) % perform if PHYCAA+ is being tested
     
     %%% ==== Step 2.3(f): PHYCAA+ physiological regression ==== %%%
@@ -864,9 +946,15 @@ else
         TMPVOL = zeros( [size(split_info_set{is}.mask_vol), size(out_vol_filt{is},2)] );
 
         for(p=1:size(out_vol_filt{is},2) )
-            tmp=split_info.mask_vol;tmp(tmp>0)=out_vol_filt{is}(:,p) .* split_info_set{1}.spat_weight;
+            tmp=split_info.mask_vol;tmp(tmp>0)= (out_vol_filt{is}(:,p) .* split_info_set{1}.spat_weight) + mean_volmat{is};
             TMPVOL(:,:,:,p) = tmp;
         end
+        
+        if(KEEPMEAN>0)
+            nii.hdr.hist.descrip = [CODE_PROPERTY.NII_HEADER  ' PREPROCESSING: KEEPMEAN-' subjectprefix,'_run',num2str(is) '-'  [nomen,'y1']   ];
+        else
+            nii.hdr.hist.descrip = [CODE_PROPERTY.NII_HEADER ' PREPROCESSING: REMOVEMEAN-' subjectprefix,'_run',num2str(is) '-' [nomen,'y1']   ];
+        end         
 
         nii=VV;
         nii.img = TMPVOL;
@@ -889,8 +977,18 @@ else
     TEMP_set_y   = [];
     METRIC_set_y = [];
 end
+% Degug only ==========
+%inOctave = in_octave();
+%if inOctave
+%    profile off;
+%    pData = profile("info");
+%    disp('Profile Dump ==== after PHYCAA+ option ====');
+%    profshow(pData,10);
+%end
+% =====================
 
-function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet,Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix, subjectprefix, Contrast_List,VV)
+
+function [IMAGE_set_0,TEMP_set_0,METRIC_set_0,IMAGE_set_y,TEMP_set_y,METRIC_set_y,modeltype] = apply_regression_step(volmat,PipeHalfList,DET,MPR,TASK,GS,LP,phySet,Xsignal, Xnoise, noise_roi, split_info_set, analysis_model,OutputDirPrefix, subjectprefix, Contrast_List,VV,KEEPMEAN)
 
 % build pipeline prefix name -- and define current noise matrix
 global CODE_PROPERTY
@@ -899,11 +997,18 @@ Subject_OutputDirIntermed = [OutputDirPrefix '/intermediate_metrics'];
 Subject_OutputDirOptimize = [OutputDirPrefix '/optimization_results'];
 
 volmat = volmat{1};
+if(KEEPMEAN>0) mean_volmat = mean(volmat,2);
+else           mean_volmat = 0;
+end
 Ntime = size(volmat,2);
 split_info = split_info_set{1};
 
 % build pipeline prefix name -- and define current noise matrix
-nomen=[PipeHalfList 'd' num2str(DET)];
+if(DET==-1)
+nomen=[PipeHalfList 'dA'];
+else
+nomen=[PipeHalfList 'd' num2str(DET)];  
+end
 
 %%% ==== Step 2.3(b): regression-based preprocessing ==== %%%
 %
@@ -947,11 +1052,14 @@ else
 end
 
 % General Linear Model regression on splits:
-Regressors.DET     = DET;
+if( DET==-1 )
+    Regressors.DET = 1+floor( (split_info_set{1}.TR_MSEC./1000) * (Ntime/2) ./ 150 );    
+else
+    Regressors.DET     = DET;
+end
 Regressors.NOISEROI= [];
 Regressors.GSPC1   = [];
 Regressors.PHYPLUS = [];
-
 
 %%% ==== Step 2.3(c): global signal removed ==== %%%
 %
@@ -1018,7 +1126,9 @@ if( ~strcmpi(analysis_model,'NONE') )
         if strcmpi(split_info.type,'event')
             split_info.onsetlist    = split_info.cond(max(Contrast_List(contrast_counter,:))).onsetlist;
         end
+       
         output_temp = run_analyses_wrapper( vol_filt, split_info, analysis_model );
+        
         if contrast_counter>1
             output.images = [output.images output_temp.images];
             output.temp   = [output.temp output_temp.temp];
@@ -1047,8 +1157,14 @@ else
     TMPVOL = zeros( [size(split_info.mask_vol), size(vol_concat,2)] );
 
     for(p=1:size(vol_concat,2) )
-        tmp=split_info.mask_vol;tmp(tmp>0)=vol_filt(:,p).*split_info.spat_weight;
+        tmp=split_info.mask_vol;tmp(tmp>0)= (vol_filt(:,p).*split_info.spat_weight) + mean_volmat;
         TMPVOL(:,:,:,p) = tmp;
+    end
+    
+    if(KEEPMEAN>0)
+        nii.hdr.hist.descrip = [CODE_PROPERTY.NII_HEADER  ' PREPROCESSING: KEEPMEAN-' subjectprefix '-'  [nomen,'y0']   ];
+    else
+        nii.hdr.hist.descrip = [CODE_PROPERTY.NII_HEADER ' PREPROCESSING: REMOVEMEAN-' subjectprefix '-' [nomen,'y0']   ];
     end
     
     nii=VV;
@@ -1114,8 +1230,9 @@ if( ~strcmpi(analysis_model,'NONE') )
             split_info.idx_cond2_sp1 = split_info.single.idx_cond(contrast_counter,2).sp1;
             split_info.idx_cond2_sp2 = split_info.single.idx_cond(contrast_counter,2).sp2;
         end
+                       
         output_temp = run_analyses_wrapper( vol_filt, split_info, analysis_model );
-
+        
         if contrast_counter>1
             output.images = [output.images output_temp.images];
             output.temp   = [output.temp output_temp.temp];
@@ -1138,10 +1255,16 @@ else
     modeltype = [];
     TMPVOL = zeros( [size(split_info.mask_vol), size(vol_filt,2)] );
 
-    for(p=1:size(vol_filt,2) )
-        tmp=split_info.mask_vol;tmp(tmp>0)=vol_filt(:,p).*split_info.spat_weight;
+    for(p=1:size(vol_concat,2) )
+        tmp=split_info.mask_vol;tmp(tmp>0)= (vol_filt(:,p).*split_info.spat_weight) + mean_volmat;
         TMPVOL(:,:,:,p) = tmp;
     end
+    
+    if(KEEPMEAN>0)
+        nii.hdr.hist.descrip = [CODE_PROPERTY.NII_HEADER  ' PREPROCESSING: KEEPMEAN-' subjectprefix '-'  [nomen,'y1']   ];
+    else
+        nii.hdr.hist.descrip = [CODE_PROPERTY.NII_HEADER ' PREPROCESSING: REMOVEMEAN-' subjectprefix '-' [nomen,'y1']   ];
+    end    
     
     nii=VV;
     nii.img = TMPVOL;
@@ -1164,3 +1287,16 @@ else
     TEMP_set_y   = [];
     METRIC_set_y = [];
 end
+
+
+
+function inOctave = in_octave()
+try
+    ver_num = OCTAVE_VERSION;
+    inOctave = 1;
+    version_str = ['OCTAVE ' ver_num];
+catch
+    inOctave = 0;
+    version_str  = ['MATLAB ' version];
+end
+

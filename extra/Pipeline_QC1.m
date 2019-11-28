@@ -53,6 +53,8 @@ function Pipeline_QC1( inputfile, varargin )
 % CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
 % ------------------------------------------------------------------------%
 
+% Modifications for Octave compatibility by L. Mark Prati
+
 % add paths
 % addpath_oppni MatFiles;
 % addpath_oppni MatFiles/NIFTI_tools;
@@ -61,7 +63,7 @@ function Pipeline_QC1( inputfile, varargin )
 
 % initializing constants
 
-
+disp("Pipeline_QC1 is Starting")
 
 [pathstr] = which('Pipeline_QC1.m');
 pathstr = fileparts(pathstr);
@@ -263,7 +265,9 @@ while ischar(tline) % for every input line in textfile...
     
     % load subject SPM data
     mat_instring  = strcat(outdir,'/intermediate_metrics/res1_spms/spms_',prefix,'.mat'    );
-    load(mat_instring);
+    % correct mat file variable load for Octave compatibility - LMP 
+    s1 = load(mat_instring);
+    IMAGE_set = s1.IMAGE_set; 
     
     % compute cross-correlation between pipeline SPMs
     eigo=zeros( size(IMAGE_set{1},1), length(IMAGE_set) );
@@ -287,7 +291,12 @@ while ischar(tline) % for every input line in textfile...
     end
     
     mat_instring  = strcat(outdir,'/intermediate_metrics/res3_stats/stats_',prefix,'.mat'    );
-    load(mat_instring);
+    % correct mat file variable load for Octave compatibility - LMP 
+    s2 = load(mat_instring);
+    METRIC_set =  s2.METRIC_set;
+    pipeset = s2.pipeset;
+    pipechars = s2.pipechars;
+    pipenames = s2.pipenames;
     
     % get the list of available performance metrics
     if( ksub==1 )
@@ -676,6 +685,7 @@ output_pc1.pipelines.pipeset        = pipeset;
 out_results = fullfile(QC1_folder,'output_qc1.mat');
 save(out_results,'output_qc1');
 
+disp('OPPNI__STEP__COMPLETION__CODE QC1');
 fprintf('QC1 done. \n\t Results saved to %s', out_results);
 
 end

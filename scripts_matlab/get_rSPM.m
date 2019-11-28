@@ -26,15 +26,17 @@ function [ rep, rSPM ] = get_rSPM( vect1, vect2, keepMean )
 % ------------------------------------------------------------------------%
 
 inOctave = in_octave();
-if inOctave
-    for k = 1:size(vect1,2)
-        rep(k) = corrcoef(vect1(:,k), vect2(:,k));
-    end
-else
+%if inOctave
+% this section was removed as octave uses the corr function
+% now, and its corrcoef function does not work completely.
+%    for k = 1:size(vect1,2)
+%        rep(k) = corrcoef(vect1(:,k), vect2(:,k));
+%    end
+%else
     for k =1:size(vect1,2)
         rep(k) = corr(vect1(:,k), vect2(:,k));
     end
-end
+%end
 
 %(1) getting the mean offsets (normed by SD)
 normedMean1 = mean(vect1)./std(vect1);
@@ -74,4 +76,3 @@ catch
     inOctave = 0;
     version_str  = ['MATLAB ' version];
 end
-    

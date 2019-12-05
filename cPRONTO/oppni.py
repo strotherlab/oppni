@@ -2,11 +2,23 @@
 # OPPNI Tool: for fMRI pReprocessing and OptimizatioN Toolkit
 # Author: Pradeep Reddy Raamana <praamana@research.baycrest.org>
 # 
-# Version 0.6 (May 2016)
+# Version 0.6.0 (May 2016)
+# Version 0.7.0 (Oct 2018) - L. Mark Prati - Octave support
+# Version 0.8.0 (Nov 2019) - L. Mark Prati - BIDS support
 #
-# Version 0.7 (Oct 2018) - L. Mark Prati
-# 
 from __future__ import print_function
+ 
+__author__      = "Pradeep Reddy Raamana, L. Mark Prati"
+__copyright__   = "Copyright 2019, The OPPNI Project"
+__credits__     = ["Stephen Strother"]
+__maintainer__  = "Mark Prati"
+__email__       = "mprati@research.baycrest.org"
+__status__      = "Development"
+__license__     = ""
+__version__     = "0.8.0"
+
+OPPNI = {"version":"0.8.0"};
+
 #import pdb #debugger
 import argparse
 import json
@@ -33,11 +45,12 @@ from shutil import rmtree
 from time import localtime, strftime
 from datetime import timedelta
 
-BIDS_TESTING = False;
-
-if BIDS_TESTING:
+#LMP some alpha level BIDS processing within the wrapper 
+BIDS_SUPPORT = True;
+if BIDS_SUPPORT:
+    from bids_parsejobs import bids_parsejobs
     #LMP BID's support "pybids"
-    from bids import BIDSLayout
+    #from bids import BIDSLayout
 
 # Testing making my own which to allow ver < 3.3 - adlofts
 import platform
@@ -77,7 +90,7 @@ DONE = True
 
 # noinspection PyGlobalUndefined
 global hpc
-hpc = {'type': 'SGE',
+hpc = {'type': 'SLURM',
        'shell': '/bin/bash',
        'prefix': '#$',
        'spec': None,
@@ -118,8 +131,9 @@ def get_out_dir_first_line(input_file):
         # read one line
         first_line = fID.readline()
         # and move on
-
-    return os.path.dirname(get_out_dir_line(first_line))
+    
+    out_line = get_out_dir_line(first_line)
+    return os.path.dirname(out_line), os.path.basename(out_line)
 
 
 def make_time_stamp():
@@ -139,7 +153,7 @@ def validate_pipeline_file(pipeline_file):
     with open(pipeline_file) as pip_f:
         for line in pip_f.readlines():
             steps_list_file.append(line.strip())
-
+            
     steps_spec = rePip2.findall(' '.join(steps_list_file).upper())
     # steps_no_spec = map( lambda str1: str1.strip(' \n'), steps_no_spec)
     steps_dict = {}
@@ -173,7 +187,7 @@ def validate_task_file(task_path, cond_names_in_contrast=None):
         for name in cond_names_in_contrast:
             if name not in cond_names_in_file:
                 raise ValueError("Condition {} in contrast is not defined in task file:"
-                                 "\n {} \n Defined: {}".format(name, task_path, cond_names_in_file))
+                                 "\n {} \n Conditions defined are: {}".format(name, task_path, cond_names_in_file))
 
     return True
 
@@ -244,10 +258,12 @@ def validate_input_file(input_file, options=None, new_input_file=None, cond_name
         new_file = tempfile.TemporaryFile(mode='w')
         # in case of resubmission, this should not append additional layer
         cur_suffix = None
+        cur_prefix = None
     else:
         new_file = open(new_input_file, 'w')
         cur_suffix = options.suffix
-
+        cur_prefix = options.output_prefix
+        
     unique_subjects = OrderedDict()
     invalid_lines = list()
     line_count = 0
@@ -255,7 +271,7 @@ def validate_input_file(input_file, options=None, new_input_file=None, cond_name
     with open(input_file, 'r') as ipf:
         for line in ipf.readlines():
             line_count += 1
-            subject, new_line = validate_input_line(line, cur_suffix, cond_names_in_contrast)
+            subject, new_line = validate_input_line(line, cur_prefix, cur_suffix, cond_names_in_contrast)
             if subject is False or subject is None:
                 print('Error in line number {}.'.format(line_count))
                 invalid_lines.append(line_count)
@@ -309,7 +325,7 @@ def validate_input_file(input_file, options=None, new_input_file=None, cond_name
     return unique_subjects
 
 
-def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
+def validate_input_line(ip_line, prefix='', suffix='', cond_names_in_contrast=None):
     """Method where the real validation of the input line happens!"""
 
     line = ip_line.strip()
@@ -374,12 +390,19 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
         out = reOut.search(line).group(1)
         base_out_dir = os.path.dirname(out)
         # adding another directory level based on input file name and analysis model
-        if suffix not in [None, '']:
-            subject['out'] = os.path.join(base_out_dir, suffix)
-        else:
+        if suffix in [None, '']:
             # in case of resubmission, don't alter the previous setup
             subject['out'] = base_out_dir
-
+        else:  
+            #LMP add prefix and suffix for new "OUT="  
+            new_out_dir = os.path.join(base_out_dir, suffix)
+            if prefix not in [None, '']:
+                #LMP remove any leading slashes else os.path.join will not work!!!!!
+                if new_out_dir[0] in ['/','\\']:
+                    new_out_dir = new_out_dir[1:]                
+                new_out_dir = os.path.join(prefix, new_out_dir)
+            subject['out'] = new_out_dir
+            
         if not os.path.exists(subject['out']):
             os.makedirs(subject['out'])
 
@@ -462,8 +485,8 @@ def validate_input_line(ip_line, suffix='', cond_names_in_contrast=None):
 
 def parse_args_check():
     """Parser setup and assessment of different input flags."""
+       
     parser = argparse.ArgumentParser(prog="oppni")
-
     parser.add_argument("-s", "--status", action="store", dest="status_update_in",
                         default=None,
                         help="Performs a status update on previously submitted processing. "
@@ -483,16 +506,19 @@ def parse_args_check():
                              "\n\t 3: Spatial normalization,"
                              "\n\t 4: quality control. ")
     parser.add_argument("-i", "--input_data", action="store", dest="input_data_orig",
-                        help="File containing the input and output data paths.", metavar="input spec file")
+                        help="OPPNI input file containing the input and output data paths."
+                        "If a BIDS data set is specified (--dids_dir) this is the Input file path that will be used to create "
+                        "OPPNI input files when the BIDS data structure is processed", metavar="input specification file")
     
     parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file", metavar="pipeline combination file",
                         help="select the preprocessing steps")
 
-    # parser.add_argument("-o","--output_dir_common", action="store", dest="out_dir_common",
-    #                     help="Output folder to store all the processing and results. "
-    #                          "This is convenient way to specify once, instead of having to repeat it on every line in the input file. "
-    #                          "If you specify this, you don't have to include OUT= in the input file. "
-    #                          "If you do, this will overwrite what is included in input file.")
+    parser.add_argument("-o","--output_prefix", action="store", dest="output_prefix",
+                        default='',
+                        help="Output folder prefix for storage of all the processing and results. "
+                              "This is convenient way to specify an base output folder, instead of having to repeat it on every line in the input file. "
+                              "If you specify this, OUT=/path in input files maps to OUT=output_prefix/path."
+                              "The prefix folder must be an absolute path from root")
 
     parser.add_argument("-a", "--analysis", action="store", dest="analysis",
                         default="None",
@@ -517,6 +543,7 @@ def parse_args_check():
     parser.add_argument("-r", "--reference", action="store", dest="reference",
                         default=None,
                         help="anatomical reference to be used in the spatial normalization step, i.e. -p,--part=3")
+    
     parser.add_argument("--dospnormfirst",
                         action="store_true", dest="dospnormfirst", default=False,
                         help=argparse.SUPPRESS)
@@ -638,7 +665,7 @@ def parse_args_check():
 
     parser.add_argument("-q", "--queue", action="store", dest="queue",
                         default=None,
-                        help="(optional) SGE queue name. Default is bigmem_16.q, but it is recommended to specify this explicitly.")
+                        help="(optional) SGE queue name. Default is None but it is recommended to specify this explicitly.")
 
     parser.add_argument("-pe", "--parallel_env", action="store", dest="parallel_env",
                         default=None,
@@ -646,7 +673,7 @@ def parse_args_check():
 
     parser.add_argument("--run_locally", action="store_true", dest="run_locally",
                         default=False,
-                        help="Run the pipeline on this computer without using SGE. This has not been fully tested yet, and is not recommended."
+                        help="Run the pipeline on this computer without using a HPC cluster. This has not been fully tested yet, and is not recommended."
                              "Specify the number of cores using -n (or --numcores) to allow the program to run in pararallel")
     parser.add_argument("--noSGE", action="store_true", dest="run_locally",
                         default=False,
@@ -678,34 +705,50 @@ def parse_args_check():
                         help=argparse.SUPPRESS) # "Performs a basic validation of user environment and version checks.")
 
     #
-    # LMP - Additional args for handling BIDS formatted input dataset 
+    # LMP - Additional args for handling BIDS formatted input data sets 
     # In Development
     #
-    if BIDS_TESTING:
+    if BIDS_SUPPORT:
 
-        parser.add_argument("--bids_dir", action="store_true", dest="bids_dir",
-                        default=None,
-                        help="The directory folder with the input dataset formatted according to the BIDS standard. "
-                             "NOTE: output dir is rerquired for bids")
+        parser.add_argument("-b", "--bidsdir", action="store", dest="bids_dir",
+                            default=None,
+                            help="The directory folder with the input data set formatted according to the BIDS standard. "
+                             "NOTE: output_dir is required for bids")
     
-        parser.add_argument("-o","--output_dir", action="store_true", dest="output_dir",
-                        default=None,
-                        help="The directory folder where the output files will be stored. If you are running group level analysis "
-                             "this folder should have been prepopulated with the results of the participant level analysis. "
+        parser.add_argument("--bidsoutputdir", action="store", dest="bidsoutput_dir",
+                            default=None,
+                            help="The directory folder where the output files will be stored. If you are running group level analysis "
+                             "this folder should have been pre-populated with the results of the participant level analysis. "
                              "If specified, then no need to include OUT= in the input file.")
     
-        parser.add_argument("--analysis_level", action="store_true", dest="analysis_level",
-                        default="participant",
-                        help="Level of the analysis that will be performed. "
-                             "Multiple participant level analyses can be run independently (in parallel) using the same output_dir.",
-                        choices=['participant', 'group','participant1', 'group1', 'participant2', 'group2'])
+        parser.add_argument("--analysislevel", action="store", dest="analysis_level",
+                            default="participant",
+                            #choices=['participant', 'group','participant1', 'group1', 'participant2', 'group2'],
+                            help="Level of the analysis that will be performed. "
+                             "Multiple participant level analysis can be run independently (in parallel) using the same output_dir.")
 
-        parser.add_argument("--participant_label", action="store_true", dest="participant_label",
-                        default=None,
-                        help="The label(s) of the participant(s) that should be analyzed. The label(s) "
+        parser.add_argument("--participantlabel", action="store", dest="participant_label",
+                            default=None,
+                            help="The label(s) of the participant(s) that should be analyzed. The label(s) "
                              "corresponds to sub-<participant_label> from the BIDS spec (so it does not include 'sub-'). "
                              "If this parameter is not provided all subjects will be analyzed. "
                              "Multiple participants can be specified with a space or comma separated list.")
+        
+        parser.add_argument("--taskname", action="store", dest="task_name",
+                            default="",
+                            help="String specifying the name of the fMRI task you want to analyze. "
+                             " Note all tasks in the data set will processed if not specified. ")
+        
+        parser.add_argument("--taskdesign", action="store", dest="task_design",
+                            default="event",
+                            help="Type of task. Must be either 'block' or 'event. Default is event")
+        
+        parser.add_argument("--ndrop", action="store", dest="ndrop",
+                            default=0,
+                            help="Positive integer, specifying number of scans to drop from the start of the run," 
+                             "in order to avoid non-equilibrium effects. Default: don't drop any scan volumes")
+        
+
     #
     #LMP end
     #
@@ -722,70 +765,26 @@ def parse_args_check():
         parser.exit(1)
     
     #    
-    #LMP - check for BID's formated input dataset
+    #LMP - check for BID's formated input data set
     #In development 
     #
-    if BIDS_TESTING:
-    
+    if BIDS_SUPPORT:        
+        ''' 
+        # TODO Validate parameters needed for BIDS here
+        '''
+        #BIDS - for BIDS write output to input_data_orig file        
         if options.bids_dir is not None:
-            if options.output_dir is None:
-                print("ERROR: Argument- output_dir must be provded")
-                sys_exit(0)   
-                    
-            layout = BIDSLayout(options.bids_dir,validate=True)        
-    
-            if options.analysis_level in [ "participant", "participant1"]:
+            if options.input_data_orig is None:
+                print("ERROR: for BIDS, argument -i input_data_orig path must be provided")
+                sys_exit(0)
             
-                #build subject input records from referencing BID's data structure.
-                #     common      /funcional    / site    /    subject fMRI nifty                    /            common    /anatomical/  subject strutural T1
-                #IN=$COMMON_INPATH/GoNoGo_Niftis/CBN01_CAM/CBN01_CAM_0006_01_SE01_fMRI-GoNoGo_0000.nii STRUCT=$COMMON_INPATH/T1_Niftis /CBN01_CAM/CBN01_CAM_0006_01_SE01_T1_0000.nii OUT=$COMMON_OUTPATH/CBN01_CAM_0006_01_SE01_fMRI-GoNoGo TASK=$COMMON_INPATH/taskinfo_files/CBN01_CAM/CBN01_CAM_0006_01_SE01_MR_gonogo_trialB_taskinfo.txt DROP=[3,0]            
-                #Append records to file specified by options.input_data
-                    
-                # Get lists of subjects, sessions, runs TODO need to provide task as arg
-                sublist = layout.get_subjects()
-                seslist = layout.get_sessions()
-                tasklist = layout.get_tasks() 
-                runlist = []
-                
-                #build the run list
-                runfiles = layout.get(task='rest', extension='nii.gz', return_type='file')
-                for f in runfiles:
-                    #get runname : substring between 'run-' and '_bold' in the filename
-                    runnumber = f[f.find('run-')+4,f.find('_bold')]                 
-                    runList.append(runnumber)
-                    
-                for tsk in tasklist:
-                    for subj in sublist:
-                        indx = 0
-                        if (seslist): 
-                            for sess in seslist: 
-                                for runnumber in runlist:                  
-                                    fmri_in_list[tsk][subj][indx] = layout.get(subject=subj, session=sess, run=int(runnumber), task=tsk, extension='nii.gz', return_type='file')[0]
-                                    fmri_out_list[tsk][subj][indx] = options.output_dir + '/' + subj + '_' + sess + '_task-' + tsk + 'run-' + runnumber
-                                    struct_list[tsk][subj][indx] = layout.get(subject=subj, session=sess, run=int(runnumber), suffix='T1w', task=tsk, return_type='file')[0]
-                                    tsvfile_list[tsk][subj][indx] = layout.get(subject=subj, session=sess, run=int(runnumber), task=tsk, suffix='events', extension='tsv', return_type='file')[0]
-                                    ++indx
-                        else:
-                            for runnumber in runlist:                                                   
-                                fmri_in_list[tsk][subj][indx] = layout.get(subject=subj, run=int(runnumber), task=tsk, extension='nii.gz', return_type='file')[0]
-                                fmri_out_list[tsk][subj][indx] = output_dir + '/' + subj + '_task-' + tsk + 'run-' + runnumber
-                                struct_list[tsk][subj][indx] = layout.get(subject=subj, run=int(runnumber), suffix='T1w', task=tsk, return_type='file')[0]
-                                tsvfile_list[tsk][subj][indx] = layout.get(subject=subj, run=int(runnumber), task=tsk, suffix='events', extension='tsv', return_type='file')[0]
-                                ++indx
-                               
-                if options.participant_label is not None:
-                    #parse field for a set of subjects
-                    pass
-                else:
-                    #process ALL subjects in teh BIDS structure
-                    pass
-                
-            if options.analysis_level in [ "group", "group1"]:
-                pass
+            #Examine BIDS data set and produce a set of OPPNI input files.      
+            newinputfile = bids_parsejobs(options.bids_dir, options.input_data_orig, options.analysis_level, options.participant_label, options.task_name, options.task_design, options.ndrop, 0, options.reference )        
+            #reset options.input_data_orig 
+            options.input_data_orig = newinputfile
     #        
     #LMP end   
     #
-    
     
     # updating the status to the user if requested.
     if options.status_update_in is not None and options.input_data_orig is None:
@@ -885,6 +884,13 @@ def parse_args_check():
     setattr(options, 'vasc_mask_requested', vasc_mask_requested)
     setattr(options, 'custom_mask_requested', custom_mask_requested)
 
+    #LMP validate output prefix
+    if options.output_prefix:
+        if options.output_prefix[0] == '~':
+            options.output_prefix = os.path.expanduser(options.output_prefix)
+        if options.output_prefix[0] != '/':
+            raise ValueError('ERROR -o output_prexix must specify an absolute path from root.')
+            
     cur_garage, time_stamp, proc_out_dir, suffix = organize_output_folders(options)
     setattr(options, 'out_dir_common', cur_garage)
     setattr(options, 'suffix', suffix)
@@ -921,7 +927,7 @@ def parse_args_check():
     if hasattr(options, 'reference') and options.reference is not None:
         reference = os.path.abspath(options.reference)
         if not os.path.isfile(reference):
-            raise IOError('Reference file supplied does not exist!')
+            raise IOError('ERROR: Reference file specified does not exist! - {}'.format(reference))
     else:
         options.reference = ""
 
@@ -997,20 +1003,39 @@ def parse_args_check():
 
     print("Chosen options:")
     print(options)
-
+    
+    #LMP gather and record software version information
+    version_info = {};
+    version_info["OPPNI"]   = OPPNI["version"]
+    version_info["python"]  = sys.version.split("\n")[0]
+    version_info["ANFI"]    = subprocess.check_output(['afni', '-ver' ]).decode("utf-8").split("\n")[0].strip()
+    version_info["octave"]  = subprocess.check_output(['octave', '--version' ]).decode("utf-8").split("\n")[0].strip()   
+    version_info["matlab"]  = subprocess.check_output(['matlab', '-nodesktop -nojvm -nosplash -r exit']).decode("utf-8").split("\n")[3].strip()
+    #version_info["java"]    = str(subprocess.check_output(['java', '-version' ])).decode("utf-8").split("\n")[0].strip()
+    
     saved_cfg_path = os.path.join(cur_garage, file_name_prev_options)
     with open(saved_cfg_path, 'wb') as cfg:
-        pickle.dump([unique_subjects, options, new_input_file, cur_garage], cfg, protocol=2)
+        pickle.dump([unique_subjects, options, new_input_file, cur_garage, version_info], cfg, protocol=2)
 
     return unique_subjects, options, new_input_file, cur_garage, time_stamp, proc_out_dir
 
 
 def organize_output_folders(options):
     """Organization of the folders and cleanup if needed."""
-
     parent_dir_wrapper = os.path.dirname(os.path.abspath(sys.argv[0]))
 
-    proc_out_dir = get_out_dir_first_line(options.input_data_orig)
+    #LMP correct folder structure to work with output_prefix option  
+    proc_out_dir, proc_out_base = get_out_dir_first_line(options.input_data_orig)
+    #print("\nFirst Dir Folder: {}".format(proc_out_dir))
+        
+    prefix = options.output_prefix
+    if prefix not in [None, '']:
+        #LMP remove any leading slashes else os.path.join will not work!!!!!
+        if proc_out_dir[0] in ['/','\\']:
+            proc_out_dir = proc_out_dir[1:]
+                            
+        proc_out_dir = os.path.join(prefix, proc_out_dir)
+            
     if not os.path.exists(proc_out_dir):
         os.makedirs(proc_out_dir)
 
@@ -1034,6 +1059,15 @@ def organize_output_folders(options):
         suffix = "processing_{0}".format(suffix)
 
         cur_garage = os.path.join(proc_out_dir, suffix)
+        print("\nOutput processing folder: {}".format(cur_garage))
+
+        #LMP check maximum path length (this is a current AFNI restriction)
+        lengthcheck = len(cur_garage) + len(proc_out_base) + 55
+        print("\nEstimated intermediate_processing path length: {}\n".format(lengthcheck))
+        
+        if lengthcheck > 255:
+            raise ValueError('Output intermediate_processing file path lengths will exceed maximum of 255 characters, Please reduce output path lengths')
+                    
         if os.path.exists(cur_garage):
             if options.force_rerun:
                 user_confirmation = input("Are you sure you want to delete previous results? (y/[N])")
@@ -1045,9 +1079,7 @@ def organize_output_folders(options):
                     print('Leaving the existing preprocessing as is!')
         else:
             os.mkdir(cur_garage)
-
-    print("Output processing folder: " + cur_garage)
-
+               
     return cur_garage, time_stamp, proc_out_dir, suffix
 
 
@@ -1110,8 +1142,7 @@ def set_defaults_hpc(options, input_memory, input_queue, input_numcores, input_p
 
 
 def get_hpc_spec(h_type=None, options=None):
-    """Helper to provide the HPC directives for different HPC environments, such as SGE and Torque.
-    SLURM is not fully supported yet."""
+    """Helper to provide the HPC directives for different HPC environments, such as SGE and Torque, SLURM."""
 
     if h_type is None:
         h_type = find_hpc_type().upper()
@@ -1123,17 +1154,15 @@ def get_hpc_spec(h_type=None, options=None):
     if options is not None:
         if h_type in ('ROTMAN', 'ROTMAN-SGE', 'SGE'):
             memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'all.q', 1, 'npairs')
-        elif h_type in ('CAC', 'HPCVL', 'QUEENSU'):
-            memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'abaqus.q', 1, 'shm.pe')
         elif h_type in ('BRAINCODE-SGE', 'BRAINCODE', 'BCODE'):
             memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'common.q', 1, '')
         elif h_type in ('SCINET', 'PBS', 'TORQUE'):
             warnings.warn('HPC {} has not been tested fully. Use at your own risk!'.format(h_type))
             memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'batch', 1, '')
-        elif h_type in ('FRONTENAC'):
+        elif h_type in ('FRONTENAC','CAC', 'HPCVL', 'QUEENSU'):
             memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, 'standard', 1, '',
                                                                                input_walltime='30:00:00')
-        elif h_type in ('SLURM'):
+        elif h_type in ('SLURM',"CC","CEDAR","GRAHAM"):
             memory, queue, numcores, parallel_env, walltime = set_defaults_hpc(options, 2, None, 1, '',
                                                                                input_walltime='30:00:00')
     else:
@@ -1144,20 +1173,11 @@ def get_hpc_spec(h_type=None, options=None):
 
     spec = {'memory': None, 'numcores': None, 'queue': None}
 
-    if h_type in ('ROTMAN', 'ROTMAN-SGE', 'SGE'):
+    if h_type in ('ROTMAN', 'ROTMAN-SGE', 'SGE'): 
         prefix = '#$'
         spec['memory'] = ('-l mf=', memory + 'G')
         spec['numcores'] = ('-pe {} '.format(parallel_env), numcores)
         spec['queue'] = ('-q ', queue)
-    elif h_type in ('CAC', 'HPCVL', 'QUEENSU'):
-        prefix = '#$'
-        spec['memory'] = ('-l mf=', memory + 'G')
-        spec['numcores'] = ('-pe shm.pe ', numcores)
-        spec['queue'] = ('-q ', queue)
-        spec['export_user_env'] = ('-V', '')
-        spec['workdir'] = '-wd'
-        spec['jobname'] = '-N'
-        spec['submit_cmd'] = 'qsub'
     elif h_type in ('BRAINCODE-SGE', 'BRAINCODE', 'BCODE'):
         prefix = '#$'
         spec['memory'] = ('-l mf=', memory + 'G')
@@ -1172,7 +1192,7 @@ def get_hpc_spec(h_type=None, options=None):
         spec['memory'] = ('-l mem=', memory)
         spec['numcores'] = ('-l ppn=', numcores)
         spec['queue'] = ('-q ', queue)
-    elif h_type in ('FRONTENAC'):  #FROTENAC is SLURM
+    elif h_type in ('FRONTENAC','CAC', 'HPCVL', 'QUEENSU'):  #LMP: ALL now use SLURM
         prefix = '#SBATCH'
         spec['memory'] = ('--mem=', int(memory)*1024) #
         spec['numcores'] = ('-c ', numcores)
@@ -1185,7 +1205,7 @@ def get_hpc_spec(h_type=None, options=None):
         spec['submit_cmd'] = 'sbatch'
         # slurm does not allow any shell specification
         shell=None
-    elif h_type in ('SLURM'):
+    elif h_type in ('SLURM','CC','CEDAR','GRAHAM'):
         prefix = '#SBATCH'
         spec['memory'] = ('--mem=', int(memory)*1024) #
         spec['numcores'] = ('-c ', numcores)
@@ -1222,12 +1242,18 @@ def get_hpc_spec(h_type=None, options=None):
 
 
 def print_options(proc_path):
+    prev_versions = {}
     """prints the various options specified by the user for previous processing."""
     proc_path = os.path.abspath(proc_path)
     assert os.path.exists(proc_path), "Specified processing folder does not exist!"
     opt_file = os.path.join(proc_path, file_name_prev_options)
     with open(opt_file, 'rb') as of:
-        all_subjects, prev_options, prev_input_file, _ = pickle.load(of)
+        try:
+            all_subjects, prev_options, prev_input_file, prev_garage, prev_versions = pickle.load(of)
+        except:
+            #older pickle file
+            of.seek(0)
+            all_subjects, prev_options, prev_input_file, prev_garage = pickle.load(of)
         attr_width = 29
         step_width = 10
         for attr in dir(prev_options):
@@ -1240,7 +1266,9 @@ def print_options(proc_path):
                     print(" ")
                 else:
                     print("{:>{}} : {}".format(attr, attr_width, attr_val))
-
+        
+        for val in prev_versions:
+            print("\n{} version:\n   {}".format(val, prev_versions[val] ))
 
 def estimate_processing_times(input_file_all, options, all_subjects):
     """Helper to make a very rough estimate of processing time for entire workflow."""
@@ -1324,7 +1352,12 @@ def update_proc_status(out_dir):
     """Helper to the original update_status routine."""
     opt_file = os.path.join(out_dir, file_name_prev_options)
     with open(opt_file, 'rb') as of:
-        all_subjects, options, new_input_file, _ = pickle.load(of)
+        try:
+            all_subjects, options, new_input_file, prev_garage, prev_versions = pickle.load(of)
+        except:
+            # older pickle file
+            of.seek(0)
+            all_subjects, options, new_input_file, prev_garage = pickle.load(of)    
         print(new_input_file)
         proc_status, failed_sub_file, failed_spnorm_file = check_proc_status.run(
             [new_input_file, options.pipeline_file, '--skip_validation'], options)
@@ -1444,7 +1477,7 @@ def make_job_file_and_1linecmd(file_path,environment):
 
 def make_job_file(file_path):
     """Generic job file generator"""
-
+    
     hpc_directives = list()
     job_name = os.path.splitext(os.path.basename(file_path))[0]
     if not hpc['type'].upper() == "LOCAL":
@@ -1701,6 +1734,9 @@ def process_group_mask_generation(subjects, opt, input_file, garage):
 
 def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=None, job_dir=None):
     """Helper to construct the necessary complete commands for various parts of the OPPNI processing."""
+    #LMP - commands to support virtulal X11 display on cluster nodes"  
+    XVFB = "Xvfb :88 -screen 0 1024x768x24 >/dev/null 2>&1 & sleep 4\nexport DISPLAY=':88'"
+
     if environment.lower() in ('matlab'):
         oppni_matlab_path = os.getenv('OPPNI_PATH_MATLAB_ORIG')
         single_quoted = lambda s: r"'{}'".format(s)
@@ -1728,7 +1764,8 @@ def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=N
         setup_cmd = ''
         # if hpc['type'] == 'CAC':
         #    setup_cmd = r'use matlab'
-        full_cmd = setup_cmd + "\n" + r"matlab -nodesktop -nosplash -r {0}".format(mfile_name)
+        # full_cmd = setup_cmd + "\n" + r"matlab -nodesktop -nosplash -r {0}".format(mfile_name)
+        full_cmd = setup_cmd + "\n" + XVFB + "\n" + r"matlab -nodesktop -nosplash -r {0}".format(mfile_name)
     elif environment.lower() in ('octave'):
          
         # Same as Matlab but change out the full_cmd call and replace the getReport
@@ -1756,7 +1793,7 @@ def construct_full_cmd(environment, step_id, step_cmd_matlab, arg_list, prefix=N
         #    full_cmd = setup_cmd + "\n" + r"octave -W --traditional -q {0}".format(mfile_path)
         #else:
          
-        full_cmd = setup_cmd + "\n" + r"octave -W --traditional -q {0}".format(mfile_path)
+        full_cmd = setup_cmd + "\n" + XVFB + "\n" + r"octave -W --traditional -q {0}".format(mfile_path)
 
 
     elif environment.lower() in ('standalone', 'compiled'):

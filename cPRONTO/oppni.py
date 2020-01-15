@@ -704,6 +704,10 @@ def parse_args_check():
                         default=False,
                         help=argparse.SUPPRESS) # "Performs a basic validation of user environment and version checks.")
 
+    parser.add_argument("--min_subjects", action="store", dest="min_subjects",
+                        default=4,
+                        help="(optional) Override default(4), specify minimum of unique subjects required.")
+
     #
     # LMP - Additional args for handling BIDS formatted input data sets 
     # In Development
@@ -922,7 +926,10 @@ def parse_args_check():
     ## -------------- Check the Input parameters  --------------
 
     # assert N > 3 to ensure QC/split-half mechanism doesnt fail
-    assert len(unique_subjects) > 3, 'Too few (N<=3) runs in the input file (unique_subjects = {}). Rerun with N>3 runs.'.format(len(unique_subjects))
+    # allow commandline override of min_subjects = 4 
+    # assert len(unique_subjects) > 3, 'Too few (N<=3) runs in the input file (unique_subjects = {}). Rerun with N>3 runs.'.format(len(unique_subjects))
+    min_subjects = int(options.min_subjects)-1;
+    assert len(unique_subjects) > min_subjects, 'Too few (N<={}) runs in the input file (unique_subjects = {}). Rerun with N > {} runs.'.format(min_subjects, len(unique_subjects), min_subjects)
 
     if hasattr(options, 'reference') and options.reference is not None:
         reference = os.path.abspath(options.reference)

@@ -39,8 +39,10 @@ def make_input_file( filename, fmri_in_list, fmri_out_list, struct_list, physio_
                     if (fmri_in_list[sub][tsk][ses]):
                         fout.write("IN={} ".format(fmri_in_list[sub][tsk][ses][0]))
                         fout.write("OUT={} ".format(fmri_out_list[sub][tsk][ses][0]))
-                        fout.write("STRUCT={} ".format(struct_list[sub][tsk][ses][0]))
-                        if (physio_list): 
-                            fout.write("PHYSIO={} ".format(physio_list[sub][tsk][ses][0]))
+                        if len(struct_list[sub][tsk][ses]):
+                            fout.write("STRUCT={} ".format(struct_list[sub][tsk][ses][0]))
+                        if (physio_list):
+                            if len(physio_list[sub][tsk][ses]): 
+                                fout.write("PHYSIO={} ".format(physio_list[sub][tsk][ses][0]))
                         fout.write("DROP=[{},{}] TASK={}\n".format(drop1, drop2, taskfile_list[sub][tsk][ses][0]))         
         fout.close()

@@ -20,7 +20,8 @@ from make_input_file import make_input_file
 from bids_to_oppni_task import bids_to_oppni_task 
         
 #def bids_setupjobs(proc, outpath, varargin):
-def bids_setupjobs(proc, outpath, fmri_in_list, fmri_out_list, struct_list, physio_list, drop1, drop2, jsonfile_list, tsvfile_list, reference_file, task_type):
+#def bids_setupjobs(proc, outpath, fmri_in_list, fmri_out_list, struct_list, physio_list, drop1, drop2, jsonfile_list, tsvfile_list, reference_file, task_type):
+def bids_setupjobs(outpath, fmri_in_list, fmri_out_list, struct_list, physio_list, drop1, drop2, jsonfile_list, tsvfile_list, reference_file, task_type):
 
 # BIDS_SETUPJOBS: takes in formatted list of bids files and prepares
 # requisite oppni input files for running the pipelines
@@ -126,6 +127,8 @@ def bids_setupjobs(proc, outpath, fmri_in_list, fmri_out_list, struct_list, phys
     return newinputfile
 
     """
+    All this is now handles in OPPNI wrapper
+    
     proc = proc.upper()
     if proc == 'PART1'
         Pipeline_PART1(newinputfile,newpipefile, analysis_model, modelparam, niiout, contrast_list_str, dospnormfirst, DEOBLIQUE,  TPATTERN,   TOFWHM);

@@ -43,7 +43,7 @@ def bids_parsejobs(bids_dir, output_dir, level, participant, task_name, task_des
     sublist = layout.get_subjects()
     seslist = layout.get_sessions()
     if task_name:
-        tasklist = [task_name]
+        tasklist = task_name.split(",")
     else:
         tasklist = layout.get_tasks()
     
@@ -149,18 +149,18 @@ def bids_parsejobs(bids_dir, output_dir, level, participant, task_name, task_des
         print('\nJSONFILE = ')
         pprint.pprint(json_list)
         
-    if (level == "participant"):
-        """            
-        if(participant):  #if individual:            
-            fmri_in_list  = fmri_in_list[participant];
-            fmri_out_list = fmri_out_list[participant];
-            tsv_list      = tsv_list[participant];
-            struct_list   = struct_list[participant];
-        """ 
-        #call bids_setupjobs to generate processed data (PART1)
-        newinputfile = bids_setupjobs( 'PART1', output_dir, fmri_in_list, fmri_out_list, struct_list, {}, drop1, 0, json_list, tsv_list, [atlasfile], task_design);
+    if (level == "participant"):            
+        if (participant):  #if individual adjust lists:            
+            fmri_in_list  = list(fmri_in_list[participant]);
+            fmri_out_list = list(fmri_out_list[participant]);
+            tsv_list      = list(tsv_list[participant]);
+            struct_list   = list(struct_list[participant]);
 
-    #LMP this is handled by wrapper and should not be called from within oppni wrapper
+    #call bids_setupjobs to generate processed data (PART1)
+    newinputfile = bids_setupjobs(output_dir, fmri_in_list, fmri_out_list, struct_list, {}, drop1, 0, json_list, tsv_list, [atlasfile], task_design);
+
+    '''
+    #LMP All this is now handled by OPPNI 
     elif (level == 'group'):
         #call bids_setupjobs (PART2,spnorm,groupmask)
         bids_setupjobs( 'PART2', output_dir, fmri_in_list, fmri_out_list, struct_list, {}, drop1, 0, json_list, tsv_list, [atlasfile], task_design);
@@ -168,6 +168,8 @@ def bids_parsejobs(bids_dir, output_dir, level, participant, task_name, task_des
             bids_setupjobs( 'SPNORM',output_dir, fmri_in_list, fmri_out_list, struct_list, [], drop1, 0, json_list, tsv_list, [atlasfile], task_design);
             bids_setupjobs( 'GMASK', output_dir, fmri_in_list, fmri_out_list, struct_list, [], drop1, 0, json_list, tsv_list, [atlasfile], task_design);
         pass
+    '''
+    
     pass
 
     return newinputfile

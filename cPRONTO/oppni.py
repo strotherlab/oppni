@@ -507,7 +507,7 @@ def parse_args_check():
                              "\n\t 4: quality control. ")
     parser.add_argument("-i", "--input_data", action="store", dest="input_data_orig",
                         help="OPPNI input file containing the input and output data paths."
-                        "If a BIDS data set is specified (--dids_dir) this is the Input file path that will be used to create "
+                        "If a BIDS data set is specified (--bids_dir) this is the Input file path that will be used to create "
                         "OPPNI input files when the BIDS data structure is processed", metavar="input specification file")
     
     parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file", metavar="pipeline combination file",
@@ -714,12 +714,12 @@ def parse_args_check():
     #
     if BIDS_SUPPORT:
 
-        parser.add_argument("-b", "--bidsdir", action="store", dest="bids_dir",
+        parser.add_argument("-b", "--bids_dir", action="store", dest="bids_dir",
                             default=None,
                             help="The directory folder with the input data set formatted according to the BIDS standard. "
                              "NOTE: output_dir is required for bids")
     
-        parser.add_argument("--bidsoutputdir", action="store", dest="bidsoutput_dir",
+        parser.add_argument("--output_dir", action="store", dest="bidsoutput_dir",
                             default=None,
                             help="The directory folder where the output files will be stored. If you are running group level analysis "
                              "this folder should have been pre-populated with the results of the participant level analysis. "
@@ -731,7 +731,7 @@ def parse_args_check():
                             help="Level of the analysis that will be performed. "
                              "Multiple participant level analysis can be run independently (in parallel) using the same output_dir.")
 
-        parser.add_argument("--participantlabel", action="store", dest="participant_label",
+        parser.add_argument("--participant_label", action="store", dest="participant_label",
                             default=None,
                             help="The label(s) of the participant(s) that should be analyzed. The label(s) "
                              "corresponds to sub-<participant_label> from the BIDS spec (so it does not include 'sub-'). "
@@ -786,6 +786,14 @@ def parse_args_check():
             newinputfile = bids_parsejobs(options.bids_dir, options.input_data_orig, options.analysis_level, options.participant_label, options.task_name, options.task_design, options.ndrop, 0, options.reference )        
             #reset options.input_data_orig 
             options.input_data_orig = newinputfile
+            
+            #set OPPNI parts to be run based on analysis level
+            if options.analysis_level == 'participant':
+                options.part = 1
+            elif options.analysis_level == 'group':
+                #TODO verify which parts of OPPNI are to be run for 'group'
+                options.part = 5
+                
     #        
     #LMP end   
     #
@@ -2115,7 +2123,7 @@ def submit_jobs():
         run_gmask = True
         run_qc1 = True
         run_qc2 = True
-    elif options.part is 1:
+    elif options.part is 1:     #equivalent to BIDSApp level = 'participant'
         run_part_one = True
         run_part_two = False
         run_sp_norm = False
@@ -2149,6 +2157,13 @@ def submit_jobs():
         run_gmask = False
         run_qc1 = True
         run_qc2 = True
+    elif options.part is 5:    #equivalent to BIDSApp level = 'group'
+        run_part_one = False
+        run_part_two = True
+        run_sp_norm = True
+        run_gmask = True
+        run_qc1 = False
+        run_qc2 = False
 
     if options.part in [1, 2, 4]:
         run_sp_norm = False

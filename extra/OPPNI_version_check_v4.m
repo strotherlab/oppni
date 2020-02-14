@@ -498,7 +498,7 @@ else
                             %file mismatch
                             erstr1=[]; for(i=1:numel(eu1)) erstr1=[erstr1,', ',eu1{i}]; end
                             erstr2=[]; for(i=1:numel(eu2)) erstr2=[erstr2,', ',eu2{i}]; end
-                            error('cannot match optimally processed, unnormalized datasets for %s.\nFiles for pipeline 1:%s\nFiles for pipeline 2:%s\n\n',InputStruct1(ksub).run(1).subjectprefix,errstr1(2:end),errstr2(2:end));
+                            error('cannot match optimally processed, unnormalized datasets for %s.\nFiles for pipeline 1:%s\nFiles for pipeline 2:%s\n\n',InputStruct1(ksub).run(1).subjectprefix,erstr1(2:end),erstr2(2:end));
                         end
                         %
                         if( prod(strcmpi(es1,es2)) )
@@ -513,7 +513,7 @@ else
                             %file mismatch
                             erstr1=[]; for(i=1:numel(es1)) erstr1=[erstr1,', ',es1{i}]; end
                             erstr2=[]; for(i=1:numel(es2)) erstr2=[erstr2,', ',es2{i}]; end
-                            error('cannot match optimally processed, spatially normalized datasets for %s.\nFiles for pipeline 1:%s\nFiles for pipeline 2:%s\n\n',InputStruct1(ksub).run(1).subjectprefix,errstr1(2:end),errstr2(2:end));
+                            error('cannot match optimally processed, spatially normalized datasets for %s.\nFiles for pipeline 1:%s\nFiles for pipeline 2:%s\n\n',InputStruct1(ksub).run(1).subjectprefix,erstr1(2:end),erstr2(2:end));
                         end
                         
                         
@@ -646,7 +646,7 @@ else
                     %file mismatch
                     erstr1=[]; for(i=1:numel(eu1)) erstr1=[erstr1,', ',eu1{i}]; end
                     erstr2=[]; for(i=1:numel(eu2)) erstr2=[erstr2,', ',eu2{i}]; end
-                    error('cannot match optimally processed, unnormalized datasets for %s.\nFiles for pipeline 1:%s\nFiles for pipeline 2:%s\n\n',InputStruct1(ksub).run(1).subjectprefix,errstr1(2:end),errstr2(2:end));
+                    error('cannot match optimally processed, unnormalized datasets for %s.\nFiles for pipeline 1:%s\nFiles for pipeline 2:%s\n\n',InputStruct1(ksub).run(1).subjectprefix,erstr1(2:end),erstr2(2:end));
                 end
                 %
                 if( prod(strcmpi(es1,es2)) )
@@ -661,7 +661,7 @@ else
                     %file mismatch
                     erstr1=[]; for(i=1:numel(es1)) erstr1=[erstr1,', ',es1{i}]; end
                     erstr2=[]; for(i=1:numel(es2)) erstr2=[erstr2,', ',es2{i}]; end
-                    error('cannot match optimally processed, spatially normalized datasets for %s.\nFiles for pipeline 1:%s\nFiles for pipeline 2:%s\n\n',InputStruct1(ksub).run(1).subjectprefix,errstr1(2:end),errstr2(2:end));
+                    error('cannot match optimally processed, spatially normalized datasets for %s.\nFiles for pipeline 1:%s\nFiles for pipeline 2:%s\n\n',InputStruct1(ksub).run(1).subjectprefix,erstr1(2:end),erstr2(2:end));
                 end
                 
                 

@@ -18,18 +18,19 @@ TEST_MODE = True
 
 import json
 import pprint
+from os import path
 from bids_setupjobs import bids_setupjobs
 from bids import BIDSLayout
 
 
 
-def bids_parsejobs(bids_dir, output_dir, level, participant, task_name, task_design, drop1, drop2, atlasfile ):
+def bids_parsejobs(bids_dir, input_dir, output_dir, level, participant, task_name, task_design, drop1, drop2, atlasfile ):
     '''
     BIDS_PARSEJOBS: script takes in bids input arguments, then constructs a set of files, in preparation of setting up oppni analyses
 
     Syntax:
     
-    bids_parsejobs( bids_dir, output_dir, level, participant, task_name, task_design, drop1, drop2, atlasfile )
+    bids_parsejobs( bids_dir, input_dir, output_dir, level, participant, task_name, task_design, drop1, drop2, atlasfile )
     '''
         
     fmri_in_list = {}
@@ -105,7 +106,8 @@ def bids_parsejobs(bids_dir, output_dir, level, participant, task_name, task_des
                         #skip if no data
                         if niifile_list:
                             fmri_in_list[subj][tsk][sess].append(niifile_list[0])
-                            fmri_out_list[subj][tsk][sess].append('/bidsResult' + '/' + subj + '_' + sess + '_task-' + tsk + 'run-' + runnumber)
+                            #fmri_out_list[subj][tsk][sess].append('bidsResult' + '/' + subj + '_' + sess + '_task-' + tsk + 'run-' + runnumber)
+                            fmri_out_list[subj][tsk][sess].append(path.join(output_dir, subj + '_' + sess + '_task-' + tsk + 'run-' + runnumber))
 
                             structfile_list = layout.get(subject=subj, session=sess, suffix='T1w', extension='nii.gz', return_type='file')
                             if structfile_list:
@@ -127,7 +129,8 @@ def bids_parsejobs(bids_dir, output_dir, level, participant, task_name, task_des
                     niifile_list = layout.get(subject=subj, session=sess, run=int(runnumber), task=tsk, extension='nii.gz', return_type='file')
                     if niifile_list:                                             
                         fmri_in_list[subj][tsk]['01'].append(layout.get(subject=subj, run=int(runnumber), task=tsk, extension='nii.gz', return_type='file')[0])
-                        fmri_out_list[subj][tsk]['01'].append('/bidsResult' + '/' + subj + '_task-' + tsk + 'run-' + runnumber)
+                        #fmri_out_list[subj][tsk]['01'].append('bidsResult' + '/' + subj + '_task-' + tsk + 'run-' + runnumber)
+                        fmri_out_list[subj][tsk]['01'].append(path.join(output_dir, subj + '_task-' + tsk + 'run-' + runnumber))
 
                         structfile_list = layout.get(subject=subj, suffix='T1w', extension='nii.gz', return_type='file')
                         if structfile_list:  
@@ -157,7 +160,7 @@ def bids_parsejobs(bids_dir, output_dir, level, participant, task_name, task_des
             struct_list   = list(struct_list[participant]);
 
     #call bids_setupjobs to generate processed data (PART1)
-    newinputfile = bids_setupjobs(output_dir, fmri_in_list, fmri_out_list, struct_list, {}, drop1, 0, json_list, tsv_list, [atlasfile], task_design);
+    newinputfile = bids_setupjobs(input_dir, fmri_in_list, fmri_out_list, struct_list, {}, drop1, 0, json_list, tsv_list, [atlasfile], task_design);
 
     '''
     #LMP All this is now handled by OPPNI 

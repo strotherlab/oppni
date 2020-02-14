@@ -723,9 +723,9 @@ def parse_args_check():
                             default=None,
                             help="The directory folder where the output files will be stored. If you are running group level analysis "
                              "this folder should have been pre-populated with the results of the participant level analysis. "
-                             "If specified, then no need to include OUT= in the input file.")
+                             "Becomes OUT= in the OPPNI input files.")
     
-        parser.add_argument("--analysislevel", action="store", dest="analysis_level",
+        parser.add_argument("--analysis_level", action="store", dest="analysis_level",
                             default="participant",
                             #choices=['participant', 'group','participant1', 'group1', 'participant2', 'group2'],
                             help="Level of the analysis that will be performed. "
@@ -778,18 +778,32 @@ def parse_args_check():
         '''
         #BIDS - for BIDS write output to input_data_orig file        
         if options.bids_dir is not None:
+            
             if options.input_data_orig is None:
-                print("ERROR: for BIDS, argument -i input_data_orig path must be provided")
+                print("ERROR: BIDS, argument -i input_data_orig path must be provided")
                 sys_exit(0)
             
+            if options.bidsoutput_dir is None:
+                print("ERROR: BIDS, argument --output_dir, absolute output_path base must be provided")
+                sys_exit(0)
+            
+            #override output prefix when processing BIDS data
+            options.output_prefix = ''
+            
             #Examine BIDS data set and produce a set of OPPNI input files.      
-            newinputfile = bids_parsejobs(options.bids_dir, options.input_data_orig, options.analysis_level, options.participant_label, options.task_name, options.task_design, options.ndrop, 0, options.reference )        
+            #newinputfile = bids_parsejobs(options.bids_dir, options.input_data_orig, options.analysis_level, options.participant_label, options.task_name, options.task_design, options.ndrop, 0, options.reference )        
+            newinputfile = bids_parsejobs(options.bids_dir, options.input_data_orig, options.bidsoutput_dir, options.analysis_level, options.participant_label, options.task_name, options.task_design, options.ndrop, 0, options.reference )        
+
             #reset options.input_data_orig 
             options.input_data_orig = newinputfile
             
             #set OPPNI parts to be run based on analysis level
             if options.analysis_level == 'participant':
-                options.part = 1
+                if options.participant_label is not None:
+                    options.part = 1
+                else:
+                    options.part = 0
+                    
             elif options.analysis_level == 'group':
                 #TODO verify which parts of OPPNI are to be run for 'group'
                 options.part = 5
@@ -2123,7 +2137,7 @@ def submit_jobs():
         run_gmask = True
         run_qc1 = True
         run_qc2 = True
-    elif options.part is 1:     #equivalent to BIDSApp level = 'participant'
+    elif options.part is 1:     #equivalent to BIDSApp level = 'participant' and participant_label = subject
         run_part_one = True
         run_part_two = False
         run_sp_norm = False

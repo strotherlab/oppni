@@ -50,9 +50,9 @@ def bids_to_oppni_task(jsonfilelist, tsvfilelist, task_type, newtaskfilelist):
                     
                     if newtaskfilelist[sub][tsk][ses][i]:
                         with open(newtaskfilelist[sub][tsk][ses][i],'w+') as fout:
+                            fout.write("UNIT=[msec]\n")    
                             fout.write("TR_MSEC=[{}]\n".format(str(1000*RepetitionTime))) 
-                            fout.write("UNIT=[sec]\n")    
-                            fout.write("TYPE=[{}]\n\n".format(task_type)) 
+                            fout.write("TYPE=[{}]\n".format(task_type)) 
                                
                             #2. task conditions, onsets, durations
                             if len(tsvfilelist[sub][tsk][ses]) > i:
@@ -133,8 +133,8 @@ def bids_to_oppni_task(jsonfilelist, tsvfilelist, task_type, newtaskfilelist):
                                     # print to file                                       
                                     if (onslist and durlist):        
                                         fout.write('NAME=[{}]\n'.format(tasklist[k].replace('-','_')))    
-                                        fout.write('ONSETS={}\n'.format(onslist))    
-                                        fout.write('DURATION={}\n\n'.format(durlist))  
+                                        fout.write('ONSETS={}\n'.format(onslist).replace("'","").replace(" ",""))    
+                                        fout.write('DURATIONS={}\n'.format(durlist).replace("'","").replace(" ",""))  
                                     pass
                                 pass
                             pass

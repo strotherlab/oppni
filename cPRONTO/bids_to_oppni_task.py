@@ -15,6 +15,7 @@ __version__     = "0.9"
 
 import pprint
 import json
+import sys
 
 def is_number(s):
     if s.isdigit():
@@ -49,13 +50,14 @@ def bids_to_oppni_task(jsonfilelist, tsvfilelist, task_type, newtaskfilelist):
                     
                     if newtaskfilelist[sub][tsk][ses][i]:
                         with open(newtaskfilelist[sub][tsk][ses][i],'w+') as fout:
+                            fout.write("UNIT=[msec]\n")    
                             fout.write("TR_MSEC=[{}]\n".format(str(1000*RepetitionTime))) 
-                            fout.write("UNIT=[sec]\n")    
-                            fout.write("TYPE=[{}]\n\n".format(task_type)) 
+                            fout.write("TYPE=[{}]\n".format(task_type)) 
                                
                             #2. task conditions, onsets, durations
-                            if len(tsvfilelist[sub][tsk][ses]) > i: 
-                                with open(tsvfilelist[sub][tsk][ses][i]) as fid:
+                            if len(tsvfilelist[sub][tsk][ses]) > i:
+                                tsvfile = tsvfilelist[sub][tsk][ses][i] 
+                                with open(tsvfile) as fid:
                                     C_text = fid.readlines()
                                     # remove whitespace characters `\n` at the end of each line
                                     C_text = [x.strip('\n') for x in C_text] 
@@ -68,18 +70,18 @@ def bids_to_oppni_task(jsonfilelist, tsvfilelist, task_type, newtaskfilelist):
                                 
                                 colnames = headr.split('\t')
                                 if ( colnames[0] != 'onset'): 
-                                    print('ERROR: onset should be 1st column - {}'.format(tsvfilelist[sub][tsk][ses][i]))
+                                    print('ERROR: onset should be 1st column - {}'.format(tsvfile))
                                     exit()
                                     
                                 if ( colnames[1] != 'duration' ): 
-                                    print('ERROR: duration should be 2nd column - {}'.format(tsvfilelist[sub][tsk][ses][i]))
+                                    print('ERROR: duration should be 2nd column - {}'.format(tsvfile))
                                     exit()
                                                                 
                                 ncol = len(colnames);
                                
                                 nrow = len(body);                                                    
                                 if nrow < 2:
-                                    print('WARNING - tsv file contain no usable data : {}'.format(tsvfilelist[sub][tsk][ses][i]))
+                                    print('WARNING - tsv file contain no usable data : {}'.format(tsvfile))
                                     continue
                                                         
                                 body.pop(0)             #remove header
@@ -93,7 +95,7 @@ def bids_to_oppni_task(jsonfilelist, tsvfilelist, task_type, newtaskfilelist):
                                 try:
                                     ixtrial = colnames.index('trial_type')
                                 except ValueError:
-                                    print('ERROR: tsv file missing trial_type specification')
+                                    print('ERROR: tsv file missing trial_type specification : {}'.format(tsvfile))
                                     sys.exit()
                                     break
                                 
@@ -131,8 +133,8 @@ def bids_to_oppni_task(jsonfilelist, tsvfilelist, task_type, newtaskfilelist):
                                     # print to file                                       
                                     if (onslist and durlist):        
                                         fout.write('NAME=[{}]\n'.format(tasklist[k].replace('-','_')))    
-                                        fout.write('ONSETS={}\n'.format(onslist))    
-                                        fout.write('DURATION={}\n\n'.format(durlist))  
+                                        fout.write('ONSETS={}\n'.format(onslist).replace("'","").replace(" ",""))    
+                                        fout.write('DURATIONS={}\n'.format(durlist).replace("'","").replace(" ",""))  
                                     pass
                                 pass
                             pass

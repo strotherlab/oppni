@@ -613,7 +613,7 @@ def parse_args_check():
                         # help="Specify the number of resamples for multi-run analysis")
     parser.add_argument("--TR_MSEC", action="store", dest="TR_MSEC",
                         default="None",
-                        help="Specify TR in msec for all entries in the input file, overides the TR_MSEC in the TASK files")
+                        help="Specify TR in msec for all entries in the input file, overrides the TR_MSEC in the TASK files")
     parser.add_argument("--DEOBLIQUE", action="store_true", dest="DEOBLIQUE",
                         default="0",
                         help="Correct for oblique scans (DEOBLIQUE) to improve spatial normalization")
@@ -651,9 +651,9 @@ def parse_args_check():
                         help="Please specify the type of cluster you're running the code on.")
 
     parser.add_argument("--memory", action="store", dest="memory",
-                        default="4",
-                        help="(optional) determine the minimum amount RAM needed for the job, e.g. --memory 8 (in gigabytes)!")
-
+                        default="6",
+                        help="(optional) determine the minimum amount RAM (GB) needed for the job, e.g. --memory 8")
+                        
     parser.add_argument("--walltime", action="store", dest="walltime",
                         default="30:00:00",
                         help="(optional) specify total run time needed for each job, e.g. --walltime 30:00:00 (in hours:minutes:seconds format)!")
@@ -728,7 +728,7 @@ def parse_args_check():
         parser.add_argument("--analysis_level", action="store", dest="analysis_level",
                             default="participant",
                             #choices=['participant', 'group','participant1', 'group1', 'participant2', 'group2'],
-                            help="Level of the analysis that will be performed. "
+                            help="Level of the analysis that will be performed. Must begin with either participant or group."
                              "Multiple participant level analysis can be run independently (in parallel) using the same output_dir.")
 
         parser.add_argument("--participant_label", action="store", dest="participant_label",
@@ -779,14 +779,13 @@ def parse_args_check():
         #BIDS - for BIDS write output to input_data_orig file        
         if options.bids_dir is not None:
             
-            if options.input_data_orig is None:
-                print("ERROR: BIDS, argument -i input_data_orig path must be provided")
-                sys_exit(0)
-            
             if options.bidsoutput_dir is None:
                 print("ERROR: BIDS, argument --output_dir, absolute output_path base must be provided")
-                sys_exit(0)
-            
+                sys.exit(0)
+                
+            if options.input_data_orig is None:
+                options.input_data_orig = os.path.join(options.bidsoutput_dir,"inputFiles_for_OPPNI")
+                        
             #override output prefix when processing BIDS data
             options.output_prefix = ''
             
@@ -798,13 +797,14 @@ def parse_args_check():
             options.input_data_orig = newinputfile
             
             #set OPPNI parts to be run based on analysis level
-            if options.analysis_level == 'participant':
+            if options.analysis_level.startswith('participant'):
                 if options.participant_label is not None:
                     options.part = 1
+                    options.min_subjects = 1 
                 else:
                     options.part = 0
                     
-            elif options.analysis_level == 'group':
+            elif options.analysis_level.startswith('group'):
                 #TODO verify which parts of OPPNI are to be run for 'group'
                 options.part = 5
                 

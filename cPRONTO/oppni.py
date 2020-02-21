@@ -260,7 +260,7 @@ def validate_input_file(input_file, options=None, new_input_file=None, cond_name
         cur_suffix = None
         cur_prefix = None
     else:
-        new_file = open(new_input_file, 'w')
+        new_file = open(new_input_file, 'w')   
         cur_suffix = options.suffix
         cur_prefix = options.output_prefix
         
@@ -1051,7 +1051,7 @@ def parse_args_check():
 
 def organize_output_folders(options):
     """Organization of the folders and cleanup if needed."""
-    parent_dir_wrapper = os.path.dirname(os.path.abspath(sys.argv[0]))
+    #parent_dir_wrapper = os.path.dirname(os.path.abspath(sys.argv[0]))
 
     #LMP correct folder structure to work with output_prefix option  
     proc_out_dir, proc_out_base = get_out_dir_first_line(options.input_data_orig)
@@ -1077,6 +1077,9 @@ def organize_output_folders(options):
     else:
         # TODO need a way to pass the suffix to matlab core so it can reuse preprocessing for multiple analysis models and contrasts.
         suffix = os.path.splitext(os.path.basename(options.input_data_orig))[0]
+        if options.analysis_level.startswith("participant") or options.analysis_level.startswith("group"):
+            suffix = "input_group_" + suffix.split("_")[2]
+
         if options.analysis is not "None":
             suffix = suffix + '_' + options.analysis
 
@@ -1087,7 +1090,7 @@ def organize_output_folders(options):
         # suffix = "garage_{0}_{1}".format(time_stamp,suffix)
         suffix = "processing_{0}".format(suffix)
 
-        cur_garage = os.path.join(proc_out_dir, suffix)
+        cur_garage = os.path.join(proc_out_dir, suffix) 
         print("\nOutput processing folder: {}".format(cur_garage))
 
         #LMP check maximum path length (this is a current AFNI restriction)

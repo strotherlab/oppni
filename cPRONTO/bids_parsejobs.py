@@ -16,6 +16,7 @@ __version__     = "0.9"
 
 TEST_MODE = True
 
+import glob
 import json
 import pprint
 from os import path
@@ -24,25 +25,36 @@ from bids import BIDSLayout
 
 
 
-def bids_parsejobs(bids_dir, input_dir, output_dir, level, participant_label, task_name, task_design, drop1, drop2, atlasfile ):
+def bids_parsejobs(bids_dir, input_dir, output_dir, analysis_level, participant_label, task_name, task_design, drop1, drop2, atlasfile ):
     '''
     BIDS_PARSEJOBS: script takes in bids input arguments, then constructs a set of files, in preparation of setting up oppni analyses
 
     Syntax:
     
-    bids_parsejobs( bids_dir, input_dir, output_dir, level, participant_label, task_name, task_design, drop1, drop2, atlasfile )
+    bids_parsejobs( bids_dir, input_dir, output_dir, analysis_level, participant_label, task_name, task_design, drop1, drop2, atlasfile )
     '''
-    # check if we need to crate an input file of group processing
-    if level.startswith("group"):
-        if (level == "group"):
-            groupName = "input_group_subs.txt"
+    # check if we need to create an input file of group processing
+    if analysis_level.startswith("group"):
+        if (analysis_level == "group"):
+            groupName = "group"
         else:
-            groupName = "input_group_{}_subs.txt".format(level[5:])
-                
-        newinputfile = path.join( input_dir, 'input_files', groupName )
+            groupName = "group_" + analysis_level[5:]
+            
+        groupFileName = "input_{}_participants.txt".format(groupName)
+        
+        #create group inputfile from participant inputfiles (overwrite if exists)
+        newinputfile = path.join( input_dir, 'input_files', groupFileName )
+        participantFiles = glob.glob(path.join(input_dir, "input_files" , "input_" + groupName + "_*.txt"))
+        with open(newinputfile, 'w') as outfile:
+            for fname in participantFiles:
+                with open(fname) as infile:
+                    outfile.write(infile.read())
+                infile.close()
+            outfile.close()
+                                    
         '''
         #LMP All this is now handled by main OPPNI wrapper 
-        elif (level == 'group'):
+        elif (analysis_level == 'group'):
             #call bids_setupjobs (PART2,spnorm,groupmask)
             bids_setupjobs( 'PART2', output_dir, fmri_in_list, fmri_out_list, struct_list, {}, drop1, 0, json_list, tsv_list, [atlasfile], task_design);
             if (atlasfile):
@@ -68,7 +80,7 @@ def bids_parsejobs(bids_dir, input_dir, output_dir, level, participant_label, ta
         
         #BIDS spec subject at top level        
         for subj in sublist:
-            if level.startswith("participant"):        
+            if analysis_level.startswith("participant"):        
                 if (participant_label and (subj != participant_label)):  #if individual:            
                     continue
                 
@@ -169,6 +181,6 @@ def bids_parsejobs(bids_dir, input_dir, output_dir, level, participant_label, ta
             pprint.pprint(json_list)
         
         #call bids_setupjobs to generate processed data (PART1)
-        newinputfile = bids_setupjobs(input_dir, fmri_in_list, fmri_out_list, struct_list, {}, drop1, 0, json_list, tsv_list, [atlasfile], task_design);
+        newinputfile = bids_setupjobs(input_dir, fmri_in_list, fmri_out_list, struct_list, {}, drop1, 0, json_list, tsv_list, [atlasfile], task_design, analysis_level);
     
     return newinputfile

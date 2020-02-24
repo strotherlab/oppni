@@ -25,13 +25,13 @@ from bids import BIDSLayout
 
 
 
-def bids_parsejobs(bids_dir, input_dir, output_dir, analysis_level, participant_label, task_name, task_design, drop1, drop2, atlasfile ):
+def bids_parsejobs(bids_dir, input_dir, output_dir, analysis_level, participant_labels, task_name, task_design, drop1, drop2, atlasfile ):
     '''
     BIDS_PARSEJOBS: script takes in bids input arguments, then constructs a set of files, in preparation of setting up oppni analyses
 
     Syntax:
     
-    bids_parsejobs( bids_dir, input_dir, output_dir, analysis_level, participant_label, task_name, task_design, drop1, drop2, atlasfile )
+    bids_parsejobs( bids_dir, input_dir, output_dir, analysis_level, participant_labels, task_name, task_design, drop1, drop2, atlasfile )
     '''
     # check if we need to create an input file of group processing
     if analysis_level.startswith("group"):
@@ -78,10 +78,15 @@ def bids_parsejobs(bids_dir, input_dir, output_dir, analysis_level, participant_
         else:
             tasklist = layout.get_tasks()
         
+        #make a list of participants from space or comma separated list
+        if participant_labels:
+            participantlist = participant_labels.replace(","," ").split()
+        
         #BIDS spec subject at top level        
         for subj in sublist:
-            if analysis_level.startswith("participant"):        
-                if (participant_label and (subj != participant_label)):  #if individual:            
+            if analysis_level.startswith("participant"):
+                #Only process labels provided if none process participants         
+                if (participant_labels and (subj not in participantlist)):           
                     continue
                 
             if subj not in fmri_in_list: 

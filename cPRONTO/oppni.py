@@ -1078,7 +1078,10 @@ def organize_output_folders(options):
         # TODO need a way to pass the suffix to matlab core so it can reuse preprocessing for multiple analysis models and contrasts.
         suffix = os.path.splitext(os.path.basename(options.input_data_orig))[0]
         if options.analysis_level.startswith("participant") or options.analysis_level.startswith("group"):
-            suffix = "input_group_" + suffix.split("_")[2]
+            if options.analysis_level in ["participant","group"]:
+                suffix = "input_group"
+            else:    
+                suffix = "input_group_" + suffix.split("_")[2]
 
         if options.analysis is not "None":
             suffix = suffix + '_' + options.analysis

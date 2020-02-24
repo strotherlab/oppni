@@ -113,16 +113,7 @@ def bids_setupjobs(outpath, fmri_in_list, fmri_out_list, struct_list, physio_lis
     
     # create "all subjects" input file or individual input file
     nsub = len(fmri_out_list)    
-    if (nsub > 1):
-        newinputfile = path.join( outpath, 'input_files', 'input_all_sub.txt' ) ## change to either "all_sub" or "single-sub"
-#    elif analysis_level.startswith("participant"):
-#        # handle BIDSApp group participant
-#        if (analysis_level == "participant"):
-#            groupName = "group"
-#        else:
-#            groupName = "group_" + analysis_level[11:]
-#        newinputfile = path.join( outpath, 'input_files', 'input_' + groupName + '_participants.txt' ) ## change to either "all_sub" or "single-sub"  
-    elif (nsub == 1): 
+    if analysis_level.startswith("participant") or (nsub == 1): 
         sub = list(fmri_out_list.keys())[0]
         tsk = list(fmri_out_list[sub].keys())[0]
         ses = list(fmri_out_list[sub][tsk].keys())[0][2:] #skip first 2 characters in ses
@@ -135,7 +126,9 @@ def bids_setupjobs(outpath, fmri_in_list, fmri_out_list, struct_list, physio_lis
             else:
                 groupName = "group_" + analysis_level[11:]
         newinputfile = path.join( outpath, 'input_files', 'input_' + groupName + "_" + sufix +'.txt' ) ## change to either "all_sub" or "single-sub"
-    
+    elif (nsub > 1):
+        newinputfile = path.join( outpath, 'input_files', 'input_all_sub.txt' ) ## change to either "all_sub" or "single-sub"
+        
     make_input_file( newinputfile, fmri_in_list, fmri_out_list, struct_list, physio_list, drop1, drop2, newtaskfile ) ## modify to generate multi-line input file
 
     return newinputfile

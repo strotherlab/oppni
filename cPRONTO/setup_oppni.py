@@ -524,7 +524,7 @@ def check_current_setup():
         if os.path.exists(octaverc):
             print("   octaverc: {}".format(octaverc))
             
-        return input("\nDo you want to overwrite the existing environment [Yes]/No: ").upper() in ['Y','Yes']
+        return input("\nDo you want to overwrite the existing environment [Yes]/No: ").upper() in ['Y','YES']
     else:
         print("\nNo previous setup found - continuing with OPPNI setup...")
         return True

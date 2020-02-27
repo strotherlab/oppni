@@ -111,15 +111,16 @@ def parse_args_check():
         options.octave_path = '/opt/octave'
     elif options.env.upper() in [ 'CC', 'CEDAR', 'GRAHAM'] :    
         print ('Preconfigured Strother lab setup for CC CEDAR / GRAHAM chosen. Ignoring the other paths provided, if any.')
-        options.oppni_path  = '/home/raamana/software/oppni'
-        options.afni_path   = '/home/raamana/software/afni'
+        options.oppni_path  = '/home/raamana/software/oppni/cPRONTO'
+        #options.afni_path   = '/home/raamana/software/afni'
+        options.afni_path   = CVMFS_AFNI        
         options.fsl_path    = '/home/raamana/software/fsl/bin'
         options.fsl_dir     = '/home/raamana/software/fsl'
         options.mcr_path    = '/home/raamana/software/mcr/v80'
         options.octave_path = CVMFS_OCTAVE
     elif options.env.upper() in ['CAC', 'FRONTENAC'] :
         print ('Preconfigured Strother lab setup for CAC FRONTENAC chosen. Ignoring the other paths provided, if any.')
-        options.oppni_path  = '/global/home/hpc3194/software/oppni'
+        options.oppni_path  = '/global/home/hpc3194/software/oppni/cPRONTO'
         options.afni_path   = '/global/home/hpc3194/software/afni'
         options.fsl_path    = '/global/home/hpc3194/software/fsl/bin'
         options.fsl_dir     = '/global/home/hpc3194/software/fsl'

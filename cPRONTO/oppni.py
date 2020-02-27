@@ -647,7 +647,7 @@ def parse_args_check():
                         help="(optional) determine which software to use to run the code: matlab or compiled(default)")
 
     parser.add_argument("--cluster", action="store", dest="hpc_type",
-                        default=None, choices=('FRONTENAC', 'BRAINCODE', 'CAC', 'SCINET', 'SHARCNET', 'CBRAIN', 'SLURM'),
+                        default=None, choices=('FRONTENAC', 'BRAINCODE', 'CAC', 'CC','SCINET', 'SHARCNET', 'CBRAIN', 'CEDAR', 'GRAHAM', 'SLURM'),
                         help="Please specify the type of cluster you're running the code on.")
 
     parser.add_argument("--account", action="store", dest="hpc_account",
@@ -1254,7 +1254,7 @@ def get_hpc_spec(h_type=None, options=None):
         spec['queue'] = ('-p ', queue)
         spec['walltime'] = ('-t ', walltime)
         spec['export_user_env'] = ('--export=', 'ALL')
-        spec['workdir'] = '--workdir'
+        spec['workdir'] = '--chdir'
         spec['jobname'] = '--job-name'
         spec['jobname_slurm'] = '--output=%x_%j.log'
         spec['submit_cmd'] = 'sbatch'
@@ -2058,12 +2058,12 @@ def submit_queue(job, depends_on_steps):
         qsub_cmd = qsub_path
         terse = '-terse'
         hold_spec = '-hold_jid ' + ",".join(job_id_list_str)
-    elif hpc['type'].upper() in ('CAC', 'HPCVL', 'QUEENSU'):
+    elif hpc['type'].upper() in ('HPCVL', 'QUEENSU'):
         # qsub_cmd  = qsub_path + ' -terse '
         qsub_cmd = qsub_path
         terse = '-terse'
         hold_spec = '-hold_jid ' + ",".join(job_id_list_str)
-    elif hpc['type'].upper() in ('FRONTENAC', 'SLURM'):
+    elif hpc['type'].upper() in ('FRONTENAC', 'SLURM' 'CEDAR', 'GRAHAM', 'CC', 'CAC'):
         qsub_cmd = qsub_path
         terse = '--parsable'
         hold_spec = '--dependency=afterok:' + ":".join(job_id_list_str)

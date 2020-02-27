@@ -650,6 +650,10 @@ def parse_args_check():
                         default=None, choices=('FRONTENAC', 'BRAINCODE', 'CAC', 'SCINET', 'SHARCNET', 'CBRAIN', 'SLURM'),
                         help="Please specify the type of cluster you're running the code on.")
 
+    parser.add_argument("--account", action="store", dest="hpc_account",
+                        default=None,
+                        help="If you have multiple HPC allocations, specify the account to be used on the cluster.")
+    
     parser.add_argument("--memory", action="store", dest="memory",
                         default="6",
                         help="(optional) determine the minimum amount RAM (GB) needed for the job, e.g. --memory 8")
@@ -806,7 +810,7 @@ def parse_args_check():
                     
             elif options.analysis_level.startswith('group'):
                 #TODO verify which parts of OPPNI are to be run for 'group'
-                options.part = 5
+                options.part = 2
                 
     #        
     #LMP end   
@@ -851,6 +855,7 @@ def parse_args_check():
     # on HPC inputs and obtaining the cfg of hpc
     options.numcores = int(options.numcores)
     hpc['type'] = options.hpc_type
+    hpc['account'] = options.hpc_account
     if options.run_locally is False:
 
         if options.numcores > 1:
@@ -1038,8 +1043,10 @@ def parse_args_check():
     version_info["OPPNI"]   = OPPNI["version"]
     version_info["python"]  = sys.version.split("\n")[0]
     version_info["ANFI"]    = subprocess.check_output(['afni', '-ver' ]).decode("utf-8").split("\n")[0].strip()
-    version_info["octave"]  = subprocess.check_output(['octave', '--version' ]).decode("utf-8").split("\n")[0].strip()   
-    version_info["matlab"]  = subprocess.check_output(['matlab', '-nodesktop -nojvm -nosplash -r exit']).decode("utf-8").split("\n")[3].strip()
+    if options.environment == 'octave':
+        version_info["octave"]  = subprocess.check_output(['octave', '--version' ]).decode("utf-8").split("\n")[0].strip()
+    if options.environment == 'matlab':       
+        version_info["matlab"]  = subprocess.check_output(['matlab', '-nodesktop -nojvm -nosplash -r exit']).decode("utf-8").split("\n")[3].strip()
     #version_info["java"]    = str(subprocess.check_output(['java', '-version' ])).decode("utf-8").split("\n")[0].strip()
     
     saved_cfg_path = os.path.join(cur_garage, file_name_prev_options)
@@ -1488,6 +1495,8 @@ def make_job_file_and_1linecmd(file_path,environment):
         hpc_directives.extend(hpc['header'])
         hpc_directives.append('{0} {1} {2}'.format(hpc['prefix'], hpc['spec']['jobname'], job_name))
         hpc_directives.append('{0} {1} {2}'.format(hpc['prefix'], hpc['spec']['workdir'], os.path.dirname(file_path)))
+        if hpc['account']:
+            hpc_directives.append('#SBATCH --account {0]'.format(hpc['account'])) 
     else:
         # for jobs to run locally, no hpc directives are needed.
 
@@ -2136,56 +2145,56 @@ def submit_jobs():
     else:
         hpc['type'] = find_hpc_type(options.hpc_type)
 
-    if options.part is 0:
+    if options.part is 0:       #Not available for BIDSApp
         run_part_one = True
         run_part_two = True
         run_sp_norm = True
         run_gmask = True
         run_qc1 = True
         run_qc2 = True
-    elif options.part is 1:     #equivalent to BIDSApp level = 'participant' and participant_label = subject
+    elif options.part is 1:     #default for BIDSApp level = 'participant' and participant_label = subject
         run_part_one = True
         run_part_two = False
         run_sp_norm = False
         run_gmask = False
         run_qc1 = False
         run_qc2 = False
-    elif options.part is 2:
+    elif options.part is 2:      #default for BIDSApp group process
         run_part_one = False
         run_part_two = True
         run_sp_norm = False
         run_gmask = False
         run_qc1 = False
         run_qc2 = False
-    elif options.part is 3:
+    elif options.part is 3:      #A BIDSApp participant process 
         run_part_one = False
         run_part_two = False
         # run spatial norm only when the reference is specified and exists
         if options.reference_specified:
             run_sp_norm = True
-            run_gmask = True
         else:
             print('A reference atlas is not specified - skipping spatial normalization..')
             run_sp_norm = False
-            run_gmask = False
+            
+        run_gmask = False
         run_qc1 = False
         run_qc2 = False
-    elif options.part is 4:
+    elif options.part is 4:      #A BIDSApp participant process 
+        run_part_one = False
+        run_part_two = False
+        run_sp_norm = False
+        run_gmask = True
+        run_qc1 = False
+        run_qc2 = False
+    elif options.part is 5:     #A BIDSApp group process
         run_part_one = False
         run_part_two = False
         run_sp_norm = False
         run_gmask = False
         run_qc1 = True
         run_qc2 = True
-    elif options.part is 5:    #equivalent to BIDSApp level = 'group'
-        run_part_one = False
-        run_part_two = True
-        run_sp_norm = True
-        run_gmask = True
-        run_qc1 = False
-        run_qc2 = False
 
-    if options.part in [1, 2, 4]:
+    if options.part in [1, 2, 5]:
         run_sp_norm = False
         if options.reference_specified:
             print('A reference atlas is specified although SPNORM is not requested - ignoring the atlas.')
@@ -2211,18 +2220,19 @@ def submit_jobs():
             spnorm_step1_completed = True
 
     # submitting jobs for optimization
-    if options.analysis in [ "None", None, '' ]:
-        print("WARNING: analysis model is NOT specified (specified by switch -a)")
-        print("\tNO optimization will be performed, OPPNI will generate ONLY the preprocessed data.\n")
-    elif run_part_two and proc_status.optimization is False:
-        # optimization is done for ALL the subjects in the input file,
-        # even though part 1 may have been rerun just for failed/unfinished subjects
-        print('stats and optimization :')
-        status_p2, job_ids_pTwo = run_optimization(unique_subjects, options, input_file, cur_garage)
-        if options.run_locally is True and (status_p2 is False or status_p2 is None):
-            raise Exception('Optimization failed.')
-    else:
-        raise ValueError('Unexpected or invalid state of flags in the wrapper.')
+    if not options.analysis_level.startswith("participant"):
+        if options.analysis in [ "None", None, '' ]:
+            print("WARNING: analysis model is NOT specified (specified by switch -a)")
+            print("\tNO optimization will be performed, OPPNI will generate ONLY the preprocessed data.\n")
+        elif run_part_two and proc_status.optimization is False:
+            # optimization is done for ALL the subjects in the input file,
+            # even though part 1 may have been rerun just for failed/unfinished subjects
+            print('stats and optimization :')
+            status_p2, job_ids_pTwo = run_optimization(unique_subjects, options, input_file, cur_garage)
+            if options.run_locally is True and (status_p2 is False or status_p2 is None):
+                raise Exception('Optimization failed.')
+        else:
+            raise ValueError('Unexpected or invalid state of flags in the wrapper.')
 
     # finishing up the spatial normalization
     if run_sp_norm:

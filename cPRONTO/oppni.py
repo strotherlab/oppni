@@ -2063,7 +2063,7 @@ def submit_queue(job, depends_on_steps):
         qsub_cmd = qsub_path
         terse = '-terse'
         hold_spec = '-hold_jid ' + ",".join(job_id_list_str)
-    elif hpc['type'].upper() in ('FRONTENAC', 'SLURM' 'CEDAR', 'GRAHAM', 'CC', 'CAC'):
+    elif hpc['type'].upper() in ('FRONTENAC', 'SLURM', 'CEDAR', 'GRAHAM', 'CC', 'CAC'):
         qsub_cmd = qsub_path
         terse = '--parsable'
         hold_spec = '--dependency=afterok:' + ":".join(job_id_list_str)

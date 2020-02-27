@@ -260,7 +260,7 @@ def validate_input_file(input_file, options=None, new_input_file=None, cond_name
         cur_suffix = None
         cur_prefix = None
     else:
-        new_file = open(new_input_file, 'w')
+        new_file = open(new_input_file, 'w')   
         cur_suffix = options.suffix
         cur_prefix = options.output_prefix
         
@@ -613,7 +613,7 @@ def parse_args_check():
                         # help="Specify the number of resamples for multi-run analysis")
     parser.add_argument("--TR_MSEC", action="store", dest="TR_MSEC",
                         default="None",
-                        help="Specify TR in msec for all entries in the input file, overides the TR_MSEC in the TASK files")
+                        help="Specify TR in msec for all entries in the input file, overrides the TR_MSEC in the TASK files")
     parser.add_argument("--DEOBLIQUE", action="store_true", dest="DEOBLIQUE",
                         default="0",
                         help="Correct for oblique scans (DEOBLIQUE) to improve spatial normalization")
@@ -650,10 +650,14 @@ def parse_args_check():
                         default=None, choices=('FRONTENAC', 'BRAINCODE', 'CAC', 'SCINET', 'SHARCNET', 'CBRAIN', 'SLURM'),
                         help="Please specify the type of cluster you're running the code on.")
 
+    parser.add_argument("--account", action="store", dest="hpc_account",
+                        default=None,
+                        help="If you have multiple HPC allocations, specify the account to be used on the cluster.")
+    
     parser.add_argument("--memory", action="store", dest="memory",
-                        default="4",
-                        help="(optional) determine the minimum amount RAM needed for the job, e.g. --memory 8 (in gigabytes)!")
-
+                        default="6",
+                        help="(optional) determine the minimum amount RAM (GB) needed for the job, e.g. --memory 8")
+                        
     parser.add_argument("--walltime", action="store", dest="walltime",
                         default="30:00:00",
                         help="(optional) specify total run time needed for each job, e.g. --walltime 30:00:00 (in hours:minutes:seconds format)!")
@@ -728,7 +732,7 @@ def parse_args_check():
         parser.add_argument("--analysis_level", action="store", dest="analysis_level",
                             default="participant",
                             #choices=['participant', 'group','participant1', 'group1', 'participant2', 'group2'],
-                            help="Level of the analysis that will be performed. "
+                            help="Level of the analysis that will be performed. Must begin with either participant or group."
                              "Multiple participant level analysis can be run independently (in parallel) using the same output_dir.")
 
         parser.add_argument("--participant_label", action="store", dest="participant_label",
@@ -779,14 +783,13 @@ def parse_args_check():
         #BIDS - for BIDS write output to input_data_orig file        
         if options.bids_dir is not None:
             
-            if options.input_data_orig is None:
-                print("ERROR: BIDS, argument -i input_data_orig path must be provided")
-                sys_exit(0)
-            
             if options.bidsoutput_dir is None:
                 print("ERROR: BIDS, argument --output_dir, absolute output_path base must be provided")
-                sys_exit(0)
-            
+                sys.exit(0)
+                
+            if options.input_data_orig is None:
+                options.input_data_orig = os.path.join(options.bidsoutput_dir,"inputFiles_for_OPPNI")
+                        
             #override output prefix when processing BIDS data
             options.output_prefix = ''
             
@@ -798,15 +801,16 @@ def parse_args_check():
             options.input_data_orig = newinputfile
             
             #set OPPNI parts to be run based on analysis level
-            if options.analysis_level == 'participant':
+            if options.analysis_level.startswith('participant'):
                 if options.participant_label is not None:
                     options.part = 1
+                    options.min_subjects = 1 
                 else:
                     options.part = 0
                     
-            elif options.analysis_level == 'group':
+            elif options.analysis_level.startswith('group'):
                 #TODO verify which parts of OPPNI are to be run for 'group'
-                options.part = 5
+                options.part = 2
                 
     #        
     #LMP end   
@@ -851,6 +855,7 @@ def parse_args_check():
     # on HPC inputs and obtaining the cfg of hpc
     options.numcores = int(options.numcores)
     hpc['type'] = options.hpc_type
+    hpc['account'] = options.hpc_account
     if options.run_locally is False:
 
         if options.numcores > 1:
@@ -1038,8 +1043,10 @@ def parse_args_check():
     version_info["OPPNI"]   = OPPNI["version"]
     version_info["python"]  = sys.version.split("\n")[0]
     version_info["ANFI"]    = subprocess.check_output(['afni', '-ver' ]).decode("utf-8").split("\n")[0].strip()
-    version_info["octave"]  = subprocess.check_output(['octave', '--version' ]).decode("utf-8").split("\n")[0].strip()   
-    version_info["matlab"]  = subprocess.check_output(['matlab', '-nodesktop -nojvm -nosplash -r exit']).decode("utf-8").split("\n")[3].strip()
+    if options.environment == 'octave':
+        version_info["octave"]  = subprocess.check_output(['octave', '--version' ]).decode("utf-8").split("\n")[0].strip()
+    if options.environment == 'matlab':       
+        version_info["matlab"]  = subprocess.check_output(['matlab', '-nodesktop -nojvm -nosplash -r exit']).decode("utf-8").split("\n")[3].strip()
     #version_info["java"]    = str(subprocess.check_output(['java', '-version' ])).decode("utf-8").split("\n")[0].strip()
     
     saved_cfg_path = os.path.join(cur_garage, file_name_prev_options)
@@ -1051,7 +1058,7 @@ def parse_args_check():
 
 def organize_output_folders(options):
     """Organization of the folders and cleanup if needed."""
-    parent_dir_wrapper = os.path.dirname(os.path.abspath(sys.argv[0]))
+    #parent_dir_wrapper = os.path.dirname(os.path.abspath(sys.argv[0]))
 
     #LMP correct folder structure to work with output_prefix option  
     proc_out_dir, proc_out_base = get_out_dir_first_line(options.input_data_orig)
@@ -1077,6 +1084,12 @@ def organize_output_folders(options):
     else:
         # TODO need a way to pass the suffix to matlab core so it can reuse preprocessing for multiple analysis models and contrasts.
         suffix = os.path.splitext(os.path.basename(options.input_data_orig))[0]
+        if options.analysis_level.startswith("participant") or options.analysis_level.startswith("group"):
+            if options.analysis_level in ["participant","group"]:
+                suffix = "input_group"
+            else:    
+                suffix = "input_group_" + suffix.split("_")[2]
+
         if options.analysis is not "None":
             suffix = suffix + '_' + options.analysis
 
@@ -1087,7 +1100,7 @@ def organize_output_folders(options):
         # suffix = "garage_{0}_{1}".format(time_stamp,suffix)
         suffix = "processing_{0}".format(suffix)
 
-        cur_garage = os.path.join(proc_out_dir, suffix)
+        cur_garage = os.path.join(proc_out_dir, suffix) 
         print("\nOutput processing folder: {}".format(cur_garage))
 
         #LMP check maximum path length (this is a current AFNI restriction)
@@ -1482,6 +1495,8 @@ def make_job_file_and_1linecmd(file_path,environment):
         hpc_directives.extend(hpc['header'])
         hpc_directives.append('{0} {1} {2}'.format(hpc['prefix'], hpc['spec']['jobname'], job_name))
         hpc_directives.append('{0} {1} {2}'.format(hpc['prefix'], hpc['spec']['workdir'], os.path.dirname(file_path)))
+        if hpc['account']:
+            hpc_directives.append('#SBATCH --account {0]'.format(hpc['account'])) 
     else:
         # for jobs to run locally, no hpc directives are needed.
 
@@ -2130,56 +2145,56 @@ def submit_jobs():
     else:
         hpc['type'] = find_hpc_type(options.hpc_type)
 
-    if options.part is 0:
+    if options.part is 0:       #Not available for BIDSApp
         run_part_one = True
         run_part_two = True
         run_sp_norm = True
         run_gmask = True
         run_qc1 = True
         run_qc2 = True
-    elif options.part is 1:     #equivalent to BIDSApp level = 'participant' and participant_label = subject
+    elif options.part is 1:     #default for BIDSApp level = 'participant' and participant_label = subject
         run_part_one = True
         run_part_two = False
         run_sp_norm = False
         run_gmask = False
         run_qc1 = False
         run_qc2 = False
-    elif options.part is 2:
+    elif options.part is 2:      #default for BIDSApp group process
         run_part_one = False
         run_part_two = True
         run_sp_norm = False
         run_gmask = False
         run_qc1 = False
         run_qc2 = False
-    elif options.part is 3:
+    elif options.part is 3:      #A BIDSApp participant process 
         run_part_one = False
         run_part_two = False
         # run spatial norm only when the reference is specified and exists
         if options.reference_specified:
             run_sp_norm = True
-            run_gmask = True
         else:
             print('A reference atlas is not specified - skipping spatial normalization..')
             run_sp_norm = False
-            run_gmask = False
+            
+        run_gmask = False
         run_qc1 = False
         run_qc2 = False
-    elif options.part is 4:
+    elif options.part is 4:      #A BIDSApp participant process 
+        run_part_one = False
+        run_part_two = False
+        run_sp_norm = False
+        run_gmask = True
+        run_qc1 = False
+        run_qc2 = False
+    elif options.part is 5:     #A BIDSApp group process
         run_part_one = False
         run_part_two = False
         run_sp_norm = False
         run_gmask = False
         run_qc1 = True
         run_qc2 = True
-    elif options.part is 5:    #equivalent to BIDSApp level = 'group'
-        run_part_one = False
-        run_part_two = True
-        run_sp_norm = True
-        run_gmask = True
-        run_qc1 = False
-        run_qc2 = False
 
-    if options.part in [1, 2, 4]:
+    if options.part in [1, 2, 5]:
         run_sp_norm = False
         if options.reference_specified:
             print('A reference atlas is specified although SPNORM is not requested - ignoring the atlas.')
@@ -2205,18 +2220,19 @@ def submit_jobs():
             spnorm_step1_completed = True
 
     # submitting jobs for optimization
-    if options.analysis in [ "None", None, '' ]:
-        print("WARNING: analysis model is NOT specified (specified by switch -a)")
-        print("\tNO optimization will be performed, OPPNI will generate ONLY the preprocessed data.\n")
-    elif run_part_two and proc_status.optimization is False:
-        # optimization is done for ALL the subjects in the input file,
-        # even though part 1 may have been rerun just for failed/unfinished subjects
-        print('stats and optimization :')
-        status_p2, job_ids_pTwo = run_optimization(unique_subjects, options, input_file, cur_garage)
-        if options.run_locally is True and (status_p2 is False or status_p2 is None):
-            raise Exception('Optimization failed.')
-    else:
-        raise ValueError('Unexpected or invalid state of flags in the wrapper.')
+    if not options.analysis_level.startswith("participant"):
+        if options.analysis in [ "None", None, '' ]:
+            print("WARNING: analysis model is NOT specified (specified by switch -a)")
+            print("\tNO optimization will be performed, OPPNI will generate ONLY the preprocessed data.\n")
+        elif run_part_two and proc_status.optimization is False:
+            # optimization is done for ALL the subjects in the input file,
+            # even though part 1 may have been rerun just for failed/unfinished subjects
+            print('stats and optimization :')
+            status_p2, job_ids_pTwo = run_optimization(unique_subjects, options, input_file, cur_garage)
+            if options.run_locally is True and (status_p2 is False or status_p2 is None):
+                raise Exception('Optimization failed.')
+        else:
+            raise ValueError('Unexpected or invalid state of flags in the wrapper.')
 
     # finishing up the spatial normalization
     if run_sp_norm:

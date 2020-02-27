@@ -1496,7 +1496,7 @@ def make_job_file_and_1linecmd(file_path,environment):
         hpc_directives.append('{0} {1} {2}'.format(hpc['prefix'], hpc['spec']['jobname'], job_name))
         hpc_directives.append('{0} {1} {2}'.format(hpc['prefix'], hpc['spec']['workdir'], os.path.dirname(file_path)))
         if hpc['account']:
-            hpc_directives.append('#SBATCH --account {0]'.format(hpc['account'])) 
+            hpc_directives.append('#SBATCH --account {0}'.format(hpc['account'])) 
     else:
         # for jobs to run locally, no hpc directives are needed.
 

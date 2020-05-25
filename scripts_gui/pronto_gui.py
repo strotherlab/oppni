@@ -1,8 +1,11 @@
 # -*- coding: cp1252 -*-
-from Tkinter import Tk, Button,OptionMenu, Toplevel, Message, Checkbutton, Frame, Label, LabelFrame, Entry, Menu, END, LEFT, RIGHT, BOTH, Y, INSERT,IntVar, StringVar, W, E, S, N, Listbox, Scrollbar, VERTICAL, HORIZONTAL, SUNKEN
-from tkFileDialog import askopenfilename, askdirectory, asksaveasfilename, askopenfilenames
-import tkMessageBox
-import ScrolledText
+#LMP 06/19 Start mods for P3 compatibility
+# 
+from tkinter import Tk, Button,OptionMenu, Toplevel, Message, Checkbutton, Frame, Label, LabelFrame, Entry, Menu, END, LEFT, RIGHT, BOTH, Y, INSERT,IntVar, StringVar, W, E, S, N, Listbox, Scrollbar, VERTICAL, HORIZONTAL, SUNKEN
+from tkinter import scrolledtext, messagebox
+from tkinter.filedialog import askopenfilename, askdirectory, asksaveasfilename, askopenfilenames
+#import tkinter.messagebox
+#import tkinter.scrolledtext
 import os,sys
 import numpy
 from  scipy.io import loadmat, savemat
@@ -365,7 +368,7 @@ class Files(Frame):
        
 
         # text editor
-        self.textpad = ScrolledText.ScrolledText(master)
+        self.textpad = scrolledtext.ScrolledText(master)
         #self.textpad.place(relx=0.47,rely=0.22, relheight=0.25, relwidth=0.3)                                      
 
         self.lunit = Label(self.master,text="UNIT:", anchor=E)
@@ -1162,8 +1165,8 @@ class Files(Frame):
                 temp=ctemp[0].rstrip()
                 k     = [i for i in range(0,12) if (steps[i]==temp)]
                 if not k:   
-                    print "Unknown preprocessing step in line: "+line.rstrip()
-                    print "Check file: "+pipeline
+                    print ("Unknown preprocessing step in line: "+line.rstrip())
+                    print ("Check file: "+pipeline)
                 else:
                     s = l[k[0]]
                     pl.remove(k[0])
@@ -1178,7 +1181,7 @@ class Files(Frame):
                             if int(number[0])==1:
                                 s["text"]="ON"
                             if int(number[0])>1:
-                                print "ERROR"
+                                print ("ERROR")
                     else:
                         if k[0]==1:
                             self.ccensor.delete(0,END)
@@ -1595,7 +1598,7 @@ class Files(Frame):
         #    if not self.list_entries.taskinfo[i]:
             self.list_entries.taskinfo[i] = dirname+"%03d.txt" %i
             self.save_task_info(i)
-        print inputfile_name
+        print(inputfile_name)
         self.save_input_file(inputfile_name)
         pipelinelist_name = os.path.dirname(y) + "/%s_PipelineList.txt" % fname
 
@@ -1653,7 +1656,7 @@ class Files(Frame):
 
         if submissionnode:
             cmd = cmd + "\""
-        print cmd
+        print(cmd)
         os.system(cmd)
         
     def set_tooltip_messages(self):

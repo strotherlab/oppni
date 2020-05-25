@@ -8,7 +8,7 @@ import sys
 from argparse import ArgumentParser
 from io import StringIO
 
-import oppni
+#import oppni #remove unused circuler import
 import cfg_front as cfg_pronto
 
 tick_mark = u'\u2713'.encode('utf-8')

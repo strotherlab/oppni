@@ -1273,7 +1273,7 @@ def get_hpc_spec(h_type=None, options=None):
         else:
             header.append('{0} {1}{2}'.format(prefix, val[0], val[1]))
 
-    if h_type in ('FRONTENAC', 'SLURM'):
+    if h_type in ('FRONTENAC', 'SLURM','CEDAR','GRAHAM'):
         # controlling the output job name
         header.append('{0} --output=%x_%j.log'.format(prefix))
 
@@ -1496,7 +1496,7 @@ def make_job_file_and_1linecmd(file_path,environment):
         hpc_directives.append('{0} {1} {2}'.format(hpc['prefix'], hpc['spec']['jobname'], job_name))
         hpc_directives.append('{0} {1} {2}'.format(hpc['prefix'], hpc['spec']['workdir'], os.path.dirname(file_path)))
         if hpc['account']:
-            hpc_directives.append('#SBATCH --account {0]'.format(hpc['account'])) 
+            hpc_directives.append('#SBATCH --account {0}'.format(hpc['account'])) 
     else:
         # for jobs to run locally, no hpc directives are needed.
 
@@ -2063,7 +2063,7 @@ def submit_queue(job, depends_on_steps):
         qsub_cmd = qsub_path
         terse = '-terse'
         hold_spec = '-hold_jid ' + ",".join(job_id_list_str)
-    elif hpc['type'].upper() in ('FRONTENAC', 'SLURM' 'CEDAR', 'GRAHAM', 'CC', 'CAC'):
+    elif hpc['type'].upper() in ('FRONTENAC', 'SLURM', 'CEDAR', 'GRAHAM', 'CC', 'CAC'):
         qsub_cmd = qsub_path
         terse = '--parsable'
         hold_spec = '--dependency=afterok:' + ":".join(job_id_list_str)

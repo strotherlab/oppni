@@ -172,7 +172,9 @@ def validate_pipeline_file(pipeline_file):
 
 def validate_task_file(task_path, cond_names_in_contrast=None):
     """Basic validation of task spec file."""
-
+    if not os.path.isfile(task_path):
+        raise IOError('Task file specified doesn\'t exist: {}'.format(task_path))
+        
     with open(task_path, 'r') as tf:
         task_spec = tf.read().splitlines()
         # task_spec = [ line.strip('\n ') for line in task_spec ]
@@ -251,6 +253,9 @@ def validate_user_env(opt, verbose = False):
 def validate_input_file(input_file, options=None, new_input_file=None, cond_names_in_contrast=None):
     """Key function to ensure input file is valid, and creates a copy of the input file in the output folders.
         Also handles the reorganization of output files depending on options chosen."""
+        
+    if not os.path.isfile(input_file):
+        raise IOError('Input file specified doesn\'t exist: {}'.format(input_file))
 
     if (new_input_file is None) or (options is None) or (options.use_prev_processing_for_QC):
         # in case of resubmission, or when applying QC on an existing processing from older versions of OPPNI,
@@ -519,8 +524,10 @@ def parse_args_check():
                         help="Filename of OPPNI input.txt file containing the input and output data paths."
                         "If specified this non-BIDS-dataset Input file will be used for the OPPNI pipeline", metavar="input specification file")
     
-    parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file", metavar="pipeline combination file",
-                        help="select the preprocessing steps")
+    parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file",
+                        default='pipeline.txt', 
+                        metavar="pipeline combination file",
+                        help="Alternate pipeline file name specifying the preprocessing steps")
 
     parser.add_argument("-o","--output_prefix", action="store", dest="output_prefix",
                         default='',
@@ -823,6 +830,8 @@ def parse_args_check():
         else:
             # A OPPNI input.txt dataset file has been specified (NON BIDS). Prepend the data input path.
             options.input_data_orig = os.path.join(options.bids_dir, options.input_data_orig)
+            if not os.path.isfile(options.input_data_orig):
+                raise IOError('Input file specified doesn\'t exist: {}'.format(options.input_data_orig))
                     
     #        
     #LMP end   
@@ -898,7 +907,8 @@ def parse_args_check():
     if options.dry_run:
         hpc['dry_run'] = True
 
-    # validating the pipeline file
+    # validating the pipeline file (normally located in base data directory)
+    options.pipeline_file = os.path.join(options.bids_dir, options.pipeline_file)
     steps_dict = validate_pipeline_file(options.pipeline_file)
     setattr(options, 'pipeline_steps', steps_dict)
 

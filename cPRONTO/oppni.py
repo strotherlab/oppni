@@ -796,9 +796,9 @@ def parse_args_check():
     if BIDS_SUPPORT:        
         ''' 
         # TODO Validate parameters needed for BIDS here
-        '''
+        '''        
         #BIDS if no input_data_orig file specified        
-        if options.input_data_orig is None:
+        if options.input_data_orig is None and options.status_update_in is None:
             
             #if options.bidsoutput_dir is None:
             #    print("ERROR: BIDS, argument --output_dir, absolute output_path base must be provided")
@@ -827,7 +827,7 @@ def parse_args_check():
             elif options.analysis_level.startswith('group'):
                 #TODO verify which parts of OPPNI are to be run for 'group'
                 options.part = 2
-        else:
+        elif options.status_update_in is None:
             # A OPPNI input.txt dataset file has been specified (NON BIDS). Prepend the data input path.
             options.input_data_orig = os.path.join(options.bids_dir, options.input_data_orig)
             if not os.path.isfile(options.input_data_orig):

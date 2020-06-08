@@ -172,7 +172,9 @@ def validate_pipeline_file(pipeline_file):
 
 def validate_task_file(task_path, cond_names_in_contrast=None):
     """Basic validation of task spec file."""
-
+    if not os.path.isfile(task_path):
+        raise IOError('Task file specified doesn\'t exist: {}'.format(task_path))
+        
     with open(task_path, 'r') as tf:
         task_spec = tf.read().splitlines()
         # task_spec = [ line.strip('\n ') for line in task_spec ]
@@ -251,6 +253,9 @@ def validate_user_env(opt, verbose = False):
 def validate_input_file(input_file, options=None, new_input_file=None, cond_names_in_contrast=None):
     """Key function to ensure input file is valid, and creates a copy of the input file in the output folders.
         Also handles the reorganization of output files depending on options chosen."""
+        
+    if not os.path.isfile(input_file):
+        raise IOError('Input file specified doesn\'t exist: {}'.format(input_file))
 
     if (new_input_file is None) or (options is None) or (options.use_prev_processing_for_QC):
         # in case of resubmission, or when applying QC on an existing processing from older versions of OPPNI,
@@ -487,6 +492,15 @@ def parse_args_check():
     """Parser setup and assessment of different input flags."""
        
     parser = argparse.ArgumentParser(prog="oppni")
+    
+    parser.add_argument("bids_dir",
+                        help="Dataset directory path: Positional argument #1 required. The folder for BIDS data set or base folder (prefix) for OPPNI input.txt ")
+                        
+    parser.add_argument("bidsoutput_dir", 
+                        help="Output directory path: Positional argument #2 required.The folder where the output files will be stored. "
+                             "If you are running group level analysis this folder should have been pre-populated with the results of the participant level analysis. "
+                             "Becomes OUT= in the OPPNI input.txt files.")
+                                 
     parser.add_argument("-s", "--status", action="store", dest="status_update_in",
                         default=None,
                         help="Performs a status update on previously submitted processing. "
@@ -505,13 +519,15 @@ def parse_args_check():
                              "\n\t 2: Optimization step, "
                              "\n\t 3: Spatial normalization,"
                              "\n\t 4: quality control. ")
+                             
     parser.add_argument("-i", "--input_data", action="store", dest="input_data_orig",
-                        help="OPPNI input file containing the input and output data paths."
-                        "If a BIDS data set is specified (--bids_dir) this is the Input file path that will be used to create "
-                        "OPPNI input files when the BIDS data structure is processed", metavar="input specification file")
+                        help="Filename of OPPNI input.txt file containing the input and output data paths."
+                        "If specified this non-BIDS-dataset Input file will be used for the OPPNI pipeline", metavar="input specification file")
     
-    parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file", metavar="pipeline combination file",
-                        help="select the preprocessing steps")
+    parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file",
+                        default='pipeline.txt', 
+                        metavar="pipeline combination file",
+                        help="Alternate pipeline file name specifying the preprocessing steps")
 
     parser.add_argument("-o","--output_prefix", action="store", dest="output_prefix",
                         default='',
@@ -723,11 +739,12 @@ def parse_args_check():
                             help="The directory folder with the input data set formatted according to the BIDS standard. "
                              "NOTE: output_dir is required for bids")
     
-        parser.add_argument("--output_dir", action="store", dest="bidsoutput_dir",
-                            default=None,
-                            help="The directory folder where the output files will be stored. If you are running group level analysis "
-                             "this folder should have been pre-populated with the results of the participant level analysis. "
-                             "Becomes OUT= in the OPPNI input files.")
+        #Depeciated , now a required positional argument    
+        #parser.add_argument("--output_dir", action="store", dest="bidsoutput_dir",
+        #                    default=None,
+        #                    help="The directory folder where the output files will be stored. If you are running group level analysis "
+        #                     "this folder should have been pre-populated with the results of the participant level analysis. "
+        #                     "Becomes OUT= in the OPPNI input files.")
     
         parser.add_argument("--analysis_level", action="store", dest="analysis_level",
                             default="participant",
@@ -779,22 +796,21 @@ def parse_args_check():
     if BIDS_SUPPORT:        
         ''' 
         # TODO Validate parameters needed for BIDS here
-        '''
-        #BIDS - for BIDS write output to input_data_orig file        
-        if options.bids_dir is not None:
+        '''        
+        #BIDS if no input_data_orig file specified        
+        if options.input_data_orig is None and options.status_update_in is None:
             
-            if options.bidsoutput_dir is None:
-                print("ERROR: BIDS, argument --output_dir, absolute output_path base must be provided")
-                sys.exit(0)
-                
-            if options.input_data_orig is None:
-                options.input_data_orig = os.path.join(options.bidsoutput_dir,"inputFiles_for_OPPNI")
+            #if options.bidsoutput_dir is None:
+            #    print("ERROR: BIDS, argument --output_dir, absolute output_path base must be provided")
+            #    sys.exit(0)
+            
+            #Setup where we will create OPPNI input files from BIDS data    
+            options.input_data_orig = os.path.join(options.bidsoutput_dir,"inputFiles_for_OPPNI")
                         
             #override output prefix when processing BIDS data
             options.output_prefix = ''
             
             #Examine BIDS data set and produce a set of OPPNI input files.      
-            #newinputfile = bids_parsejobs(options.bids_dir, options.input_data_orig, options.analysis_level, options.participant_label, options.task_name, options.task_design, options.ndrop, 0, options.reference )        
             newinputfile = bids_parsejobs(options.bids_dir, options.input_data_orig, options.bidsoutput_dir, options.analysis_level, options.participant_label, options.task_name, options.task_design, options.ndrop, 0, options.reference )        
 
             #reset options.input_data_orig 
@@ -811,7 +827,12 @@ def parse_args_check():
             elif options.analysis_level.startswith('group'):
                 #TODO verify which parts of OPPNI are to be run for 'group'
                 options.part = 2
-                
+        elif options.status_update_in is None:
+            # A OPPNI input.txt dataset file has been specified (NON BIDS). Prepend the data input path.
+            options.input_data_orig = os.path.join(options.bids_dir, options.input_data_orig)
+            if not os.path.isfile(options.input_data_orig):
+                raise IOError('Input file specified doesn\'t exist: {}'.format(options.input_data_orig))
+                    
     #        
     #LMP end   
     #
@@ -886,7 +907,8 @@ def parse_args_check():
     if options.dry_run:
         hpc['dry_run'] = True
 
-    # validating the pipeline file
+    # validating the pipeline file (normally located in base data directory)
+    options.pipeline_file = os.path.join(options.bids_dir, options.pipeline_file)
     steps_dict = validate_pipeline_file(options.pipeline_file)
     setattr(options, 'pipeline_steps', steps_dict)
 

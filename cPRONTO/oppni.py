@@ -875,14 +875,17 @@ def parse_args_check():
     # sanity checks
     # on HPC inputs and obtaining the cfg of hpc
     options.numcores = int(options.numcores)
+    # for CBRAIN force run_locally
+    if options.hpc_type in ['CBRAIN']:
+        options.hpc_type = None
+        options.run_locally = True 
+
     hpc['type'] = options.hpc_type
     hpc['account'] = options.hpc_account
     if options.run_locally is False:
-
         if options.numcores > 1:
             setattr(options, 'numcores', int(1))
-            warnings.warn(
-                '--numcores is specified. This flag is deprecated, and is restricted to 1 in favor of single-core jobs.')
+            warnings.warn('--numcores is specified. This flag is deprecated, and is restricted to 1 in favor of single-core jobs.')
 
         hpc['type'] = find_hpc_type(options.hpc_type, options.run_locally)
         hpc['spec'], hpc['header'], hpc['prefix'], hpc['shell'] = get_hpc_spec(hpc['type'], options)

@@ -160,7 +160,7 @@ def bids_parsejobs(bids_dir, input_dir, output_dir, analysis_level, participant_
                     json_list[tsk]['01'] = {}                    
                     json_list[tsk]['01'] = layout.get(task=tsk, suffix='bold', extension='json',return_type='filename') #should only be one json file
                     for runnumber in runlist:
-                        niifile_list = layout.get(subject=subj, session=sess, run=int(runnumber), task=tsk, extension='nii.gz', return_type='file')
+                        niifile_list = layout.get(subject=subj, run=int(runnumber), task=tsk, extension='nii.gz', return_type='file')
                         if niifile_list:                                             
                             fmri_in_list[subj][tsk]['01'].append(layout.get(subject=subj, run=int(runnumber), task=tsk, extension='nii.gz', return_type='file')[0])
                             fmri_out_list[subj][tsk]['01'].append(path.join(output_dir, subj + '_task-' + tsk + 'run-' + runnumber))

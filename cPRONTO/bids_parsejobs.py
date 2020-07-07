@@ -45,10 +45,24 @@ def bids_parsejobs(bids_dir, input_dir, output_dir, analysis_level, participant_
         #create group inputfile from participant inputfiles (overwrite if exists)
         newinputfile = path.join( input_dir, 'input_files', groupFileName )
         participantFiles = glob.glob(path.join(input_dir, "input_files" , "input_" + groupName + "_*.txt"))
+        
+        #make a list of participants from space or comma separated list
+        if participant_labels:
+            participantlist = participant_labels.replace(","," ").split()
+        
         with open(newinputfile, 'w') as outfile:
             for fname in participantFiles:
                 with open(fname) as infile:
-                    outfile.write(infile.read())
+                    #proceed a line at a time if we have to check for participant subset
+                    if participant_labels:
+                        for line in infile:
+                            for participant in participantlist:                
+                                if line.find("sub-"+ participant):
+                                    outfile.writeln(line)
+                                    break #match go to next line                    
+                    else:
+                        outfile.write(infile.read())
+                        
                 infile.close()
             outfile.close()
                                     

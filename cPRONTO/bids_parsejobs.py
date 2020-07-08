@@ -57,8 +57,8 @@ def bids_parsejobs(bids_dir, input_dir, output_dir, analysis_level, participant_
                     if participant_labels:
                         for line in infile:
                             for participant in participantlist:                
-                                if line.find("sub-"+ participant):
-                                    outfile.writeln(line)
+                                if line.find("sub-" + participant):
+                                    outfile.write(line)
                                     break #match go to next line                    
                     else:
                         outfile.write(infile.read())

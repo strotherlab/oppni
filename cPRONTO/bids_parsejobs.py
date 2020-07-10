@@ -96,10 +96,10 @@ def bids_parsejobs(bids_dir, input_dir, output_dir, analysis_level, participant_
         if participant_labels:
             participantlist = participant_labels.replace(","," ").split()
         
-        #BIDS spec subject at top level        
+        #BIDS spec subject at top level, Note analysis_level == 'all' will ignore participant_labels        
         for subj in sublist:
             if analysis_level.startswith("participant"):
-                #Only process labels provided if none process participants         
+                #Only process labels provided if none process all participants         
                 if (participant_labels and (subj not in participantlist)):           
                     continue
                 

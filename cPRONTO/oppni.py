@@ -493,13 +493,26 @@ def parse_args_check():
        
     parser = argparse.ArgumentParser(prog="oppni")
     
+    # First positional argument
     parser.add_argument("bids_dir",
                         help="Dataset directory path: Positional argument #1 required. The folder for BIDS data set or base folder (prefix) for OPPNI input.txt ")
-                        
+    
+    # Second positional argument                    
     parser.add_argument("bidsoutput_dir", 
                         help="Output directory path: Positional argument #2 required.The folder where the output files will be stored. "
                              "If you are running group level analysis this folder should have been pre-populated with the results of the participant level analysis. "
                              "Becomes OUT= in the OPPNI input.txt files.")
+
+    # Third positional argument
+    parser.add_argument("analysis_level", 
+                            #choices=['participant', 'group','all'],
+                            help="Level of analysis that will be performed."
+                            "\n\tFor BIDSApp compliant processing valid value must begin with either participant or group."
+                            "Multiple participant level analysis can be run independently (in parallel) using the same output_dir."
+                            "\n\tFor OPPNI HPC processing referencing BIDS data set value to all"
+                            "\n\tFor OPPNI HPC processing referencing OPPNI input.txt files, set value to all")
+    
+    # Optional arguments follow
                                  
     parser.add_argument("-s", "--status", action="store", dest="status_update_in",
                         default=None,
@@ -733,11 +746,11 @@ def parse_args_check():
     # In Development
     #
     if BIDS_SUPPORT:
-
-        parser.add_argument("-b", "--bids_dir", action="store", dest="bids_dir",
-                            default=None,
-                            help="The directory folder with the input data set formatted according to the BIDS standard. "
-                             "NOTE: output_dir is required for bids")
+        #Depeciated , now a required positional argument    
+        #parser.add_argument("-b", "--bids_dir", action="store", dest="bids_dir",
+        #                    default=None,
+        #                    help="The directory folder with the input data set formatted according to the BIDS standard. "
+        #                     "NOTE: output_dir is required for bids")
     
         #Depeciated , now a required positional argument    
         #parser.add_argument("--output_dir", action="store", dest="bidsoutput_dir",
@@ -746,11 +759,12 @@ def parse_args_check():
         #                     "this folder should have been pre-populated with the results of the participant level analysis. "
         #                     "Becomes OUT= in the OPPNI input files.")
     
-        parser.add_argument("--analysis_level", action="store", dest="analysis_level",
-                            default="participant",
-                            #choices=['participant', 'group','participant1', 'group1', 'participant2', 'group2'],
-                            help="Level of the analysis that will be performed. Must begin with either participant or group."
-                             "Multiple participant level analysis can be run independently (in parallel) using the same output_dir.")
+        #Depeciated , now a required positional argument
+        #parser.add_argument("--analysis_level", action="store", dest="analysis_level",
+        #                    default="participant",
+        #                    #choices=['participant', 'group','participant1', 'group1', 'participant2', 'group2'],
+        #                    help="Level of the analysis that will be performed. Must begin with either participant or group."
+        #                     "Multiple participant level analysis can be run independently (in parallel) using the same output_dir.")
 
         parser.add_argument("--participant_label", action="store", dest="participant_label",
                             default=None,
@@ -758,6 +772,14 @@ def parse_args_check():
                              "corresponds to sub-<participant_label> from the BIDS spec (so it does not include 'sub-'). "
                              "If this parameter is not provided all subjects will be analyzed. "
                              "Multiple participants can be specified with a space or comma separated list.")
+        
+        #Not currently implemented                     
+        #parser.add_argument("--session_label", action="store", dest="session_label",
+        #                    default=None,
+        #                    help="The label(s) of the session(s) that should be analyzed. The label(s) "
+        #                     "corresponds to ses-<session_label> from the BIDS spec (so it does not include 'ses-'). "
+        #                     "If this parameter is not provided all sessions will be analyzed. "
+        #                     "Multiple sessions can be specified with a space or comma separated list.")
         
         parser.add_argument("--taskname", action="store", dest="task_name",
                             default="",
@@ -778,7 +800,7 @@ def parse_args_check():
     #LMP end
     #
 
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 3:
         print('Too few arguments!')
         parser.print_help()
         parser.exit(1)
@@ -803,6 +825,8 @@ def parse_args_check():
             #if options.bidsoutput_dir is None:
             #    print("ERROR: BIDS, argument --output_dir, absolute output_path base must be provided")
             #    sys.exit(0)
+            if not os.path.isdir(options.bids_dir):
+                raise IOError('BIDS path specified does not exist: {}'.format(options.bids_dir))
             
             #Setup where we will create OPPNI input files from BIDS data    
             options.input_data_orig = os.path.join(options.bidsoutput_dir,"inputFiles_for_OPPNI")
@@ -816,7 +840,7 @@ def parse_args_check():
             #reset options.input_data_orig 
             options.input_data_orig = newinputfile
             
-            #set OPPNI parts to be run based on analysis level
+            #set OPPNI parts to be run based on analysis level based on BIDSApp analysis level
             if options.analysis_level.startswith('participant'):
                 if options.participant_label is not None:
                     options.part = 1
@@ -824,11 +848,20 @@ def parse_args_check():
                 else:
                     options.part = 0
                     
+            elif options.analysis_level.startswith('session'):
+                print("BIDS session level analysis is not currently available.")
+                parser.exit(1)
+                    
             elif options.analysis_level.startswith('group'):
                 #TODO verify which parts of OPPNI are to be run for 'group'
                 options.part = 2
+                
         elif options.status_update_in is None:
-            # A OPPNI input.txt dataset file has been specified (NON BIDS). Prepend the data input path.
+            # A OPPNI input.txt data set file has been specified (NON BIDS). Prepend the data input path.
+            if (options.analysis_level.upper() != "ALL"):
+                print("Non BIDS input data specified, level_analysis has been set to 'all'.")
+                options.analysis_level = 'all'
+            
             options.input_data_orig = os.path.join(options.bids_dir, options.input_data_orig)
             if not os.path.isfile(options.input_data_orig):
                 raise IOError('Input file specified doesn\'t exist: {}'.format(options.input_data_orig))

@@ -5,6 +5,7 @@
 # Version 0.6.0 (May 2016)
 # Version 0.7.0 (Oct 2018) - L. Mark Prati - Octave support
 # Version 0.8.0 (Nov 2019) - L. Mark Prati - BIDS support
+# Version 0.9.0 (Jul 2020) - L. Mark Prati - BIDSApp support
 #
 from __future__ import print_function
  
@@ -15,9 +16,9 @@ __maintainer__  = "Mark Prati"
 __email__       = "mprati@research.baycrest.org"
 __status__      = "Development"
 __license__     = ""
-__version__     = "0.8.0"
+__version__     = "0.9.0"
 
-OPPNI = {"version":"0.8.0"};
+OPPNI = { "version":__version__ };
 
 #import pdb #debugger
 import argparse
@@ -63,7 +64,6 @@ if platform.python_version() < '3.3':
             if os.path.exists(os.path.join(path, file)):
                 return os.path.join(path, file)
 
-        #return None
 else:
     print('Using new version of Python ... using shutil import')
     print(platform.python_version())
@@ -74,7 +74,6 @@ if (os.environ.get('SINGULARITY_CONTAINER') == None):
     InSingularity = False
 else:
     InSingularity = True;
-
 
 # OPPNI related
 import cfg_front as cfg_pronto
@@ -196,7 +195,6 @@ def validate_task_file(task_path, cond_names_in_contrast=None):
 
 def not_unspecified( var ):
     """ Checks for null values of a give variable! """
-
     return var not in [ 'None', None, '' ]
 
 
@@ -301,8 +299,7 @@ def validate_input_file(input_file, options=None, new_input_file=None, cond_name
             # if one of the physiological methods are requested
             if options is not None and options.physio_correction_requested:
                 assert subject['physio'] is not None, \
-                    'RETROICOR is requested but physiological files not specified! Line number {}.'.format(
-                        line_count)
+                    'RETROICOR is requested but physiological files not specified! Line number {}.'.format(line_count)
             if options is not None and options.custom_mask_requested:
                 assert subject['mask'] is not None, \
                     'CUSOMREG is specified but not a binary mask! Line number {}.'.format(line_count)
@@ -504,7 +501,7 @@ def parse_args_check():
                              "Becomes OUT= in the OPPNI input.txt files.")
 
     # Third positional argument
-    parser.add_argument("analysis_level", 
+    parser.add_argument("analysis_level",
                             #choices=['participant', 'group','all'],
                             help="Level of analysis that will be performed."
                             "\n\tFor BIDSApp compliant processing valid value must begin with either participant or group."
@@ -766,7 +763,7 @@ def parse_args_check():
         #                    help="Level of the analysis that will be performed. Must begin with either participant or group."
         #                     "Multiple participant level analysis can be run independently (in parallel) using the same output_dir.")
 
-        parser.add_argument("--participant_label", action="store", dest="participant_label",
+        parser.add_argument("--participant_label", action="store", dest="participant_label", nargs = '+',
                             default=None,
                             help="The label(s) of the participant(s) that should be analyzed. The label(s) "
                              "corresponds to sub-<participant_label> from the BIDS spec (so it does not include 'sub-'). "
@@ -1699,38 +1696,40 @@ def reprocess_failed_subjects(prev_proc_status, prev_options, failed_sub_file, f
         raise
 
     hpc['dry_run'] = False
-
+    
     if prev_proc_status.preprocessing is NOT_DONE:
         failed_sub_p1 = validate_input_file(failed_sub_file, prev_options, None)
         # running the failed subjects throught part 1
         print('Resubmitting preprocessing jobs .. ')
         status_p1, jobs_p1 = run_preprocessing(failed_sub_p1, prev_options, failed_sub_file, garage)
-
-    if prev_proc_status.optimization is NOT_DONE:
-        # but optimization will be done entire dataset
-        print('Resubmitting stats & optim. jobs .. ')
-        status_p2, jobs_p2 = run_optimization(all_subjects, prev_options, prev_input_file_all, garage)
-
-    if prev_proc_status.spnorm is NOT_DONE:
-        failed_sub_spn = validate_input_file(failed_spnorm_file, prev_options, None)
-
-        print('Resubmitting spatial normalization jobs .. ')
-        sp_norm_step = 0  # both steps 1 and 2
-        status_spn, jobs_spn = process_spatial_norm(failed_sub_spn, prev_options, failed_spnorm_file, sp_norm_step,
-                                                    garage)
-
-    if prev_proc_status.gmask is NOT_DONE:
-        print('Resubmitting the group mask generation job .. ')
-        status_gm , jobs_gm  = process_group_mask_generation(all_subjects, prev_options, prev_input_file_all, garage)
-
-    if prev_proc_status.QC1 is NOT_DONE:
-        # rerunning QC
-        print('Resubmitting jobs for QC 1 .. ')
-        status_qc1, jobs_qc1 = run_qc_part_one(all_subjects, prev_options, prev_input_file_all, garage)
-
-    if prev_proc_status.QC2 is NOT_DONE:
-        print('Resubmitting jobs for QC 2 .. ')
-        status_qc2, jobs_qc2 = run_qc_part_two(all_subjects, prev_options, prev_input_file_all, garage)
+    
+    #Later parts only for group level processing    
+    if not prev_options.analysis_level.startswith("participant"):        
+        if prev_proc_status.optimization is NOT_DONE:
+            # but optimization will be done entire dataset
+            print('Resubmitting stats & optim. jobs .. ')
+            status_p2, jobs_p2 = run_optimization(all_subjects, prev_options, prev_input_file_all, garage)
+    
+        if prev_proc_status.spnorm is NOT_DONE:
+            failed_sub_spn = validate_input_file(failed_spnorm_file, prev_options, None)
+    
+            print('Resubmitting spatial normalization jobs .. ')
+            sp_norm_step = 0  # both steps 1 and 2
+            status_spn, jobs_spn = process_spatial_norm(failed_sub_spn, prev_options, failed_spnorm_file, sp_norm_step,
+                                                        garage)
+    
+        if prev_proc_status.gmask is NOT_DONE:
+            print('Resubmitting the group mask generation job .. ')
+            status_gm , jobs_gm  = process_group_mask_generation(all_subjects, prev_options, prev_input_file_all, garage)
+    
+        if prev_proc_status.QC1 is NOT_DONE:
+            # rerunning QC
+            print('Resubmitting jobs for QC 1 .. ')
+            status_qc1, jobs_qc1 = run_qc_part_one(all_subjects, prev_options, prev_input_file_all, garage)
+    
+        if prev_proc_status.QC2 is NOT_DONE:
+            print('Resubmitting jobs for QC 2 .. ')
+            status_qc2, jobs_qc2 = run_qc_part_two(all_subjects, prev_options, prev_input_file_all, garage)
 
     # saving the job ids to facilitate a status update in future
     job_id_file = os.path.join(garage, file_name_job_ids_by_group)

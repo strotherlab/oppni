@@ -33,6 +33,8 @@ def bids_parsejobs(bids_dir, input_dir, output_dir, analysis_level, participant_
     
     bids_parsejobs( bids_dir, input_dir, output_dir, analysis_level, participant_labels, task_name, task_design, drop1, drop2, atlasfile )
     '''
+    participantlist = []
+    
     # check if we need to create an input file of group processing
     if analysis_level.startswith("group"):
         if (analysis_level == "group"):
@@ -48,7 +50,13 @@ def bids_parsejobs(bids_dir, input_dir, output_dir, analysis_level, participant_
         
         #make a list of participants from space or comma separated list
         if participant_labels:
-            participantlist = participant_labels.replace(","," ").split()
+            #print("participantlabels: {}".format(participant_labels))
+            for label in participant_labels:
+                labellist = label.replace(","," ").split()
+                for item in labellist:
+                    participantlist.append(item)
+
+            #print("participantlist: {}".format(participantlist))
         
         with open(newinputfile, 'w') as outfile:
             for fname in participantFiles:
@@ -94,7 +102,13 @@ def bids_parsejobs(bids_dir, input_dir, output_dir, analysis_level, participant_
         
         #make a list of participants from space or comma separated list
         if participant_labels:
-            participantlist = participant_labels.replace(","," ").split()
+            #print("participantlabels: {}".format(participant_labels))
+            for label in participant_labels:
+                labellist = label.replace(","," ").split()
+                for item in labellist:
+                    participantlist.append(item)
+
+            #print("participantlist: {}".format(participantlist))
         
         #BIDS spec subject at top level, Note analysis_level == 'all' will ignore participant_labels        
         for subj in sublist:

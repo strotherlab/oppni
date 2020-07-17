@@ -55,18 +55,16 @@ if BIDS_SUPPORT:
 
 # Testing making my own which to allow ver < 3.3 - adlofts
 import platform
+print("Python version: " + platform.python_version())
+print("OPPNI wrapper version: " + __version__)
 if platform.python_version() < '3.3':
-    print('Using older version of Python ...  defining which function')
-    print(platform.python_version())
-
+    #print('Using older version of Python ...  defining which function')  
     def which(file):
         for path in os.environ["PATH"].split(os.pathsep):
             if os.path.exists(os.path.join(path, file)):
                 return os.path.join(path, file)
-
 else:
-    print('Using new version of Python ... using shutil import')
-    print(platform.python_version())
+    #print('Using new version of Python ... using shutil import')
     from shutil import which 
 
 #  Check if we are runnning from within singularity (are we a container image) - LMP
@@ -489,7 +487,9 @@ def parse_args_check():
     """Parser setup and assessment of different input flags."""
        
     parser = argparse.ArgumentParser(prog="oppni")
-    
+    parser.add_argument('--version', action='version',
+                    version='%(prog)s ' + __version__, help="Show program's version number and exit.")
+   
     # First positional argument
     parser.add_argument("bids_dir",
                         help="Dataset directory path: Positional argument #1 required. The folder for BIDS data set or base folder (prefix) for OPPNI input.txt ")

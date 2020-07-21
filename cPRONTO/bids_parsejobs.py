@@ -33,6 +33,8 @@ def bids_parsejobs(bids_dir, input_dir, output_dir, analysis_level, participant_
     
     bids_parsejobs( bids_dir, input_dir, output_dir, analysis_level, participant_labels, task_name, task_design, drop1, drop2, atlasfile )
     '''
+    participantlist = []
+    
     # check if we need to create an input file of group processing
     if analysis_level.startswith("group"):
         if (analysis_level == "group"):
@@ -45,10 +47,30 @@ def bids_parsejobs(bids_dir, input_dir, output_dir, analysis_level, participant_
         #create group inputfile from participant inputfiles (overwrite if exists)
         newinputfile = path.join( input_dir, 'input_files', groupFileName )
         participantFiles = glob.glob(path.join(input_dir, "input_files" , "input_" + groupName + "_*.txt"))
+        
+        #make a list of participants from space or comma separated list
+        if participant_labels:
+            #print("participantlabels: {}".format(participant_labels))
+            for label in participant_labels:
+                labellist = label.replace(","," ").split()
+                for item in labellist:
+                    participantlist.append(item)
+
+            #print("participantlist: {}".format(participantlist))
+        
         with open(newinputfile, 'w') as outfile:
             for fname in participantFiles:
                 with open(fname) as infile:
-                    outfile.write(infile.read())
+                    #proceed a line at a time if we have to check for participant subset
+                    if participant_labels:
+                        for line in infile:
+                            for participant in participantlist:                
+                                if (line.find("sub-" + participant) != -1):
+                                    outfile.write(line)
+                                    break #match go to next line                    
+                    else:
+                        outfile.write(infile.read())
+                        
                 infile.close()
             outfile.close()
                                     
@@ -80,12 +102,18 @@ def bids_parsejobs(bids_dir, input_dir, output_dir, analysis_level, participant_
         
         #make a list of participants from space or comma separated list
         if participant_labels:
-            participantlist = participant_labels.replace(","," ").split()
+            #print("participantlabels: {}".format(participant_labels))
+            for label in participant_labels:
+                labellist = label.replace(","," ").split()
+                for item in labellist:
+                    participantlist.append(item)
+
+            #print("participantlist: {}".format(participantlist))
         
-        #BIDS spec subject at top level        
+        #BIDS spec subject at top level, Note analysis_level == 'all' will ignore participant_labels        
         for subj in sublist:
             if analysis_level.startswith("participant"):
-                #Only process labels provided if none process participants         
+                #Only process labels provided if none process all participants         
                 if (participant_labels and (subj not in participantlist)):           
                     continue
                 
@@ -160,7 +188,7 @@ def bids_parsejobs(bids_dir, input_dir, output_dir, analysis_level, participant_
                     json_list[tsk]['01'] = {}                    
                     json_list[tsk]['01'] = layout.get(task=tsk, suffix='bold', extension='json',return_type='filename') #should only be one json file
                     for runnumber in runlist:
-                        niifile_list = layout.get(subject=subj, session=sess, run=int(runnumber), task=tsk, extension='nii.gz', return_type='file')
+                        niifile_list = layout.get(subject=subj, run=int(runnumber), task=tsk, extension='nii.gz', return_type='file')
                         if niifile_list:                                             
                             fmri_in_list[subj][tsk]['01'].append(layout.get(subject=subj, run=int(runnumber), task=tsk, extension='nii.gz', return_type='file')[0])
                             fmri_out_list[subj][tsk]['01'].append(path.join(output_dir, subj + '_task-' + tsk + 'run-' + runnumber))

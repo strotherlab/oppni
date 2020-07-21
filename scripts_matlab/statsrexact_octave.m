@@ -6,6 +6,7 @@ function [pval,P] = statsrexact_octave(v,w)
 % Edits By Andrew Lofts June 26 2018
 %
 %
+%
 % Original Help String...................................................
 %STATSREXACT Compute exact tail probability for signed rank statistic.
 %   [PVAL,ALLP]=STATSREXACT(V,W) computes the tail probability PVAL
@@ -13,12 +14,12 @@ function [pval,P] = statsrexact_octave(v,w)
 %   containing the probabilities (col. 2) for each W value (col. 1).
 %
 %   Private function used by the SIGNRANK function.
-
+%
 %   Copyright 2003-2006 The MathWorks, Inc. 
-
+%
 % Octave Additional display
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-disp('This is a hack version of MATLABs statsrexact. No changes have been made to it.');
+disp('Octave version of MATLABs statsrexact function. No changes have been made to it.');
 
 n = length(v);
 v = sort(v(:)'); % make sure it's a row

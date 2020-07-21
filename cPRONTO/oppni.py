@@ -5,6 +5,7 @@
 # Version 0.6.0 (May 2016)
 # Version 0.7.0 (Oct 2018) - L. Mark Prati - Octave support
 # Version 0.8.0 (Nov 2019) - L. Mark Prati - BIDS support
+# Version 0.9.0 (Jul 2020) - L. Mark Prati - BIDSApp support
 #
 from __future__ import print_function
  
@@ -15,9 +16,9 @@ __maintainer__  = "Mark Prati"
 __email__       = "mprati@research.baycrest.org"
 __status__      = "Development"
 __license__     = ""
-__version__     = "0.8.0"
+__version__     = "0.9.0"
 
-OPPNI = {"version":"0.8.0"};
+OPPNI = { "version":__version__ };
 
 #import pdb #debugger
 import argparse
@@ -54,19 +55,16 @@ if BIDS_SUPPORT:
 
 # Testing making my own which to allow ver < 3.3 - adlofts
 import platform
+print("Python version: " + platform.python_version())
+print("OPPNI wrapper version: " + __version__)
 if platform.python_version() < '3.3':
-    print('Using older version of Python ...  defining which function')
-    print(platform.python_version())
-
+    #print('Using older version of Python ...  defining which function')  
     def which(file):
         for path in os.environ["PATH"].split(os.pathsep):
             if os.path.exists(os.path.join(path, file)):
                 return os.path.join(path, file)
-
-        #return None
 else:
-    print('Using new version of Python ... using shutil import')
-    print(platform.python_version())
+    #print('Using new version of Python ... using shutil import')
     from shutil import which 
 
 #  Check if we are runnning from within singularity (are we a container image) - LMP
@@ -74,7 +72,6 @@ if (os.environ.get('SINGULARITY_CONTAINER') == None):
     InSingularity = False
 else:
     InSingularity = True;
-
 
 # OPPNI related
 import cfg_front as cfg_pronto
@@ -196,7 +193,6 @@ def validate_task_file(task_path, cond_names_in_contrast=None):
 
 def not_unspecified( var ):
     """ Checks for null values of a give variable! """
-
     return var not in [ 'None', None, '' ]
 
 
@@ -301,8 +297,7 @@ def validate_input_file(input_file, options=None, new_input_file=None, cond_name
             # if one of the physiological methods are requested
             if options is not None and options.physio_correction_requested:
                 assert subject['physio'] is not None, \
-                    'RETROICOR is requested but physiological files not specified! Line number {}.'.format(
-                        line_count)
+                    'RETROICOR is requested but physiological files not specified! Line number {}.'.format(line_count)
             if options is not None and options.custom_mask_requested:
                 assert subject['mask'] is not None, \
                     'CUSOMREG is specified but not a binary mask! Line number {}.'.format(line_count)
@@ -492,14 +487,29 @@ def parse_args_check():
     """Parser setup and assessment of different input flags."""
        
     parser = argparse.ArgumentParser(prog="oppni")
-    
+    parser.add_argument('--version', action='version',
+                    version='%(prog)s ' + __version__, help="Show program's version number and exit.")
+   
+    # First positional argument
     parser.add_argument("bids_dir",
                         help="Dataset directory path: Positional argument #1 required. The folder for BIDS data set or base folder (prefix) for OPPNI input.txt ")
-                        
+    
+    # Second positional argument                    
     parser.add_argument("bidsoutput_dir", 
                         help="Output directory path: Positional argument #2 required.The folder where the output files will be stored. "
                              "If you are running group level analysis this folder should have been pre-populated with the results of the participant level analysis. "
                              "Becomes OUT= in the OPPNI input.txt files.")
+
+    # Third positional argument
+    parser.add_argument("analysis_level",
+                            #choices=['participant', 'group','all'],
+                            help="Level of analysis that will be performed."
+                            "\n\tFor BIDSApp compliant processing valid value must begin with either participant or group."
+                            "Multiple participant level analysis can be run independently (in parallel) using the same output_dir."
+                            "\n\tFor OPPNI HPC processing referencing BIDS data set value to all"
+                            "\n\tFor OPPNI HPC processing referencing OPPNI input.txt files, set value to all")
+    
+    # Optional arguments follow
                                  
     parser.add_argument("-s", "--status", action="store", dest="status_update_in",
                         default=None,
@@ -733,11 +743,11 @@ def parse_args_check():
     # In Development
     #
     if BIDS_SUPPORT:
-
-        parser.add_argument("-b", "--bids_dir", action="store", dest="bids_dir",
-                            default=None,
-                            help="The directory folder with the input data set formatted according to the BIDS standard. "
-                             "NOTE: output_dir is required for bids")
+        #Depeciated , now a required positional argument    
+        #parser.add_argument("-b", "--bids_dir", action="store", dest="bids_dir",
+        #                    default=None,
+        #                    help="The directory folder with the input data set formatted according to the BIDS standard. "
+        #                     "NOTE: output_dir is required for bids")
     
         #Depeciated , now a required positional argument    
         #parser.add_argument("--output_dir", action="store", dest="bidsoutput_dir",
@@ -746,18 +756,27 @@ def parse_args_check():
         #                     "this folder should have been pre-populated with the results of the participant level analysis. "
         #                     "Becomes OUT= in the OPPNI input files.")
     
-        parser.add_argument("--analysis_level", action="store", dest="analysis_level",
-                            default="participant",
-                            #choices=['participant', 'group','participant1', 'group1', 'participant2', 'group2'],
-                            help="Level of the analysis that will be performed. Must begin with either participant or group."
-                             "Multiple participant level analysis can be run independently (in parallel) using the same output_dir.")
+        #Depeciated , now a required positional argument
+        #parser.add_argument("--analysis_level", action="store", dest="analysis_level",
+        #                    default="participant",
+        #                    #choices=['participant', 'group','participant1', 'group1', 'participant2', 'group2'],
+        #                    help="Level of the analysis that will be performed. Must begin with either participant or group."
+        #                     "Multiple participant level analysis can be run independently (in parallel) using the same output_dir.")
 
-        parser.add_argument("--participant_label", action="store", dest="participant_label",
+        parser.add_argument("--participant_label", action="store", dest="participant_label", nargs = '+',
                             default=None,
                             help="The label(s) of the participant(s) that should be analyzed. The label(s) "
                              "corresponds to sub-<participant_label> from the BIDS spec (so it does not include 'sub-'). "
                              "If this parameter is not provided all subjects will be analyzed. "
                              "Multiple participants can be specified with a space or comma separated list.")
+        
+        #Not currently implemented                     
+        #parser.add_argument("--session_label", action="store", dest="session_label",
+        #                    default=None,
+        #                    help="The label(s) of the session(s) that should be analyzed. The label(s) "
+        #                     "corresponds to ses-<session_label> from the BIDS spec (so it does not include 'ses-'). "
+        #                     "If this parameter is not provided all sessions will be analyzed. "
+        #                     "Multiple sessions can be specified with a space or comma separated list.")
         
         parser.add_argument("--taskname", action="store", dest="task_name",
                             default="",
@@ -778,7 +797,7 @@ def parse_args_check():
     #LMP end
     #
 
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 3:
         print('Too few arguments!')
         parser.print_help()
         parser.exit(1)
@@ -803,6 +822,8 @@ def parse_args_check():
             #if options.bidsoutput_dir is None:
             #    print("ERROR: BIDS, argument --output_dir, absolute output_path base must be provided")
             #    sys.exit(0)
+            if not os.path.isdir(options.bids_dir):
+                raise IOError('BIDS path specified does not exist: {}'.format(options.bids_dir))
             
             #Setup where we will create OPPNI input files from BIDS data    
             options.input_data_orig = os.path.join(options.bidsoutput_dir,"inputFiles_for_OPPNI")
@@ -816,7 +837,7 @@ def parse_args_check():
             #reset options.input_data_orig 
             options.input_data_orig = newinputfile
             
-            #set OPPNI parts to be run based on analysis level
+            #set OPPNI parts to be run based on analysis level based on BIDSApp analysis level
             if options.analysis_level.startswith('participant'):
                 if options.participant_label is not None:
                     options.part = 1
@@ -824,11 +845,20 @@ def parse_args_check():
                 else:
                     options.part = 0
                     
+            elif options.analysis_level.startswith('session'):
+                print("BIDS session level analysis is not currently available.")
+                parser.exit(1)
+                    
             elif options.analysis_level.startswith('group'):
                 #TODO verify which parts of OPPNI are to be run for 'group'
                 options.part = 2
+                
         elif options.status_update_in is None:
-            # A OPPNI input.txt dataset file has been specified (NON BIDS). Prepend the data input path.
+            # A OPPNI input.txt data set file has been specified (NON BIDS). Prepend the data input path.
+            if (options.analysis_level.upper() != "ALL"):
+                print("Non BIDS input data specified, level_analysis has been set to 'all'.")
+                options.analysis_level = 'all'
+            
             options.input_data_orig = os.path.join(options.bids_dir, options.input_data_orig)
             if not os.path.isfile(options.input_data_orig):
                 raise IOError('Input file specified doesn\'t exist: {}'.format(options.input_data_orig))
@@ -1666,38 +1696,40 @@ def reprocess_failed_subjects(prev_proc_status, prev_options, failed_sub_file, f
         raise
 
     hpc['dry_run'] = False
-
+    
     if prev_proc_status.preprocessing is NOT_DONE:
         failed_sub_p1 = validate_input_file(failed_sub_file, prev_options, None)
         # running the failed subjects throught part 1
         print('Resubmitting preprocessing jobs .. ')
         status_p1, jobs_p1 = run_preprocessing(failed_sub_p1, prev_options, failed_sub_file, garage)
-
-    if prev_proc_status.optimization is NOT_DONE:
-        # but optimization will be done entire dataset
-        print('Resubmitting stats & optim. jobs .. ')
-        status_p2, jobs_p2 = run_optimization(all_subjects, prev_options, prev_input_file_all, garage)
-
-    if prev_proc_status.spnorm is NOT_DONE:
-        failed_sub_spn = validate_input_file(failed_spnorm_file, prev_options, None)
-
-        print('Resubmitting spatial normalization jobs .. ')
-        sp_norm_step = 0  # both steps 1 and 2
-        status_spn, jobs_spn = process_spatial_norm(failed_sub_spn, prev_options, failed_spnorm_file, sp_norm_step,
-                                                    garage)
-
-    if prev_proc_status.gmask is NOT_DONE:
-        print('Resubmitting the group mask generation job .. ')
-        status_gm , jobs_gm  = process_group_mask_generation(all_subjects, prev_options, prev_input_file_all, garage)
-
-    if prev_proc_status.QC1 is NOT_DONE:
-        # rerunning QC
-        print('Resubmitting jobs for QC 1 .. ')
-        status_qc1, jobs_qc1 = run_qc_part_one(all_subjects, prev_options, prev_input_file_all, garage)
-
-    if prev_proc_status.QC2 is NOT_DONE:
-        print('Resubmitting jobs for QC 2 .. ')
-        status_qc2, jobs_qc2 = run_qc_part_two(all_subjects, prev_options, prev_input_file_all, garage)
+    
+    #Later parts only for group level processing    
+    if not prev_options.analysis_level.startswith("participant"):        
+        if prev_proc_status.optimization is NOT_DONE:
+            # but optimization will be done entire dataset
+            print('Resubmitting stats & optim. jobs .. ')
+            status_p2, jobs_p2 = run_optimization(all_subjects, prev_options, prev_input_file_all, garage)
+    
+        if prev_proc_status.spnorm is NOT_DONE:
+            failed_sub_spn = validate_input_file(failed_spnorm_file, prev_options, None)
+    
+            print('Resubmitting spatial normalization jobs .. ')
+            sp_norm_step = 0  # both steps 1 and 2
+            status_spn, jobs_spn = process_spatial_norm(failed_sub_spn, prev_options, failed_spnorm_file, sp_norm_step,
+                                                        garage)
+    
+        if prev_proc_status.gmask is NOT_DONE:
+            print('Resubmitting the group mask generation job .. ')
+            status_gm , jobs_gm  = process_group_mask_generation(all_subjects, prev_options, prev_input_file_all, garage)
+    
+        if prev_proc_status.QC1 is NOT_DONE:
+            # rerunning QC
+            print('Resubmitting jobs for QC 1 .. ')
+            status_qc1, jobs_qc1 = run_qc_part_one(all_subjects, prev_options, prev_input_file_all, garage)
+    
+        if prev_proc_status.QC2 is NOT_DONE:
+            print('Resubmitting jobs for QC 2 .. ')
+            status_qc2, jobs_qc2 = run_qc_part_two(all_subjects, prev_options, prev_input_file_all, garage)
 
     # saving the job ids to facilitate a status update in future
     job_id_file = os.path.join(garage, file_name_job_ids_by_group)

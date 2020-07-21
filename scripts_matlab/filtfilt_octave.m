@@ -45,7 +45,7 @@
 
 function y = filtfilt_octave(b, a, x)
   
-  %enable profiling
+  %enable octave profiling
   %profile on  
  
   if (nargin != 3)
@@ -100,7 +100,7 @@ function y = filtfilt_octave(b, a, x)
     y = rot90(y);               # rotate it back
   endif
   
-  %profile off;
+  %octave profile off;
   %pData = profile("info")
   %disp('Profile Dump after filtfilt ====');
   %profshow(pData,10);

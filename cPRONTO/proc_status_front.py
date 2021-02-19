@@ -30,7 +30,9 @@ def count_variations_pipeline_step(pipelineFile, descr):
     :return:
     :rtype: int
     """
-    reStep = re.compile(descr + "=\[([\d,]+)\]", re.DOTALL)
+    #LMP (2021-02-18) modified to support censorType parameter from pipeline file
+    #reStep = re.compile(descr + "=\[([\d,]+)\]", re.DOTALL)
+    reStep =  re.compile(descr + "=\[([\w\d\'+,]+)\]", re.DOTALL)
     digits = re.compile('(\d)+')
     with open(pipelineFile, 'r') as pipID:
         pipText = pipID.read()

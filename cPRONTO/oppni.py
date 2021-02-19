@@ -6,6 +6,7 @@
 # Version 0.7.0 (Oct 2018) - L. Mark Prati - Octave support
 # Version 0.8.0 (Nov 2019) - L. Mark Prati - BIDS support
 # Version 0.9.0 (Jul 2020) - L. Mark Prati - BIDSApp support
+# Version 0.9.1 (Feb 2021) - L. Mark Prati - censorType support
 #
 from __future__ import print_function
  
@@ -16,7 +17,7 @@ __maintainer__  = "Mark Prati"
 __email__       = "mprati@research.baycrest.org"
 __status__      = "Development"
 __license__     = ""
-__version__     = "0.9.0"
+__version__     = "0.9.1"
 
 OPPNI = { "version":__version__ };
 
@@ -112,7 +113,9 @@ reCustReg = re.compile(r"CUSTOMREG=([\w\./+_-]+)[\s]*")
 
 # for the pipeline file
 rePip = re.compile('([0-9A-Z\s]+)=.+', re.IGNORECASE)
-rePip2 = re.compile(r'([0-9A-Z\s]+)=\[([aA\d,]*)\][\s]*')
+#LMP (2021-02-18) modified to allow censorType parameter in pipeline file 
+#rePip2 = re.compile(r'([0-9A-Z\s]+)=\[([aA\d,]*)\][\s]*')
+rePip2 = re.compile(r'([\w\s]+)=\[([\d,\w\'+]*)\]\s*')
 
 
 def get_out_dir_line(line):
@@ -141,6 +144,7 @@ def make_time_stamp():
     return strftime('%Y%m%d-T%H', localtime())
 
 
+#LMP (2021-02-18) modified to allow censorType parameter in pipeline file
 def validate_pipeline_file(pipeline_file):
     if not os.path.isfile(pipeline_file):
         raise IOError('Pipeline file specified doesn\'t exist: {}'.format(pipeline_file))
@@ -151,19 +155,28 @@ def validate_pipeline_file(pipeline_file):
         for line in pip_f.readlines():
             steps_list_file.append(line.strip())
             
-    steps_spec = rePip2.findall(' '.join(steps_list_file).upper())
+    steps_spec = rePip2.findall(' '.join(steps_list_file))
+    #LMP
+    #print('steps_spec = {}'.format(steps_spec)) 
     # steps_no_spec = map( lambda str1: str1.strip(' \n'), steps_no_spec)
     steps_dict = {}
     for step in steps_spec:
-        if not step[0] in cfg_pronto.CODES_PREPROCESSING_STEPS:
+        #print('\nstep = {}'.format(step))
+        if not str(step[0]).upper() in cfg_pronto.CODES_PREPROCESSING_STEPS:
             print('Error in pipeline file: %s' % pipeline_file)
             raise TypeError('Unrecognized pipeline step: %s' % step[0])
 
-        step_values = step[1].replace(',', '')
-        steps_dict[step[0]] = [ int(val) if val.isdigit() else val for val in step_values]
-
+        step_values = step[1]  #.replace(',', '')
+        #LMP
+        #print('\nstep_values = {} : {}'.format(step[0], step_values))
+        #steps_dict[step[0]] = [ int(val) if val.isdigit() else val for val in step_values]
+        vals = step_values.split(",")
+        #print('\nvals = {}'.format(vals))
+        for idx, val in enumerate(vals):
+            if val.isdigit():
+                vals[idx] = int(val)
+        steps_dict[str(step[0]).upper()] = vals
     print('  Done.')
-
     return steps_dict
 
 

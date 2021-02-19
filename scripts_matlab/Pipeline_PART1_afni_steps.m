@@ -1,4 +1,4 @@
-function Pipeline_PART1_afni_steps(InputStruct,input_pipeset_half,dospnormfirst,DEOBLIQUE,TPATTERN,TOFWHM)
+function Pipeline_PART1_afni_steps(InputStruct,input_pipeset_half,dospnormfirst,DEOBLIQUE,TPATTERN,TOFWHM,censorType)
 
 % ------------------------------------------------------------------------%
 % Authors: Nathan Churchill, University of Toronto
@@ -9,6 +9,7 @@ function Pipeline_PART1_afni_steps(InputStruct,input_pipeset_half,dospnormfirst,
 % CODE_VERSION = '$Revision: 163 $';
 % CODE_DATE    = '$Date: 2014-12-03 17:30:16 -0500 (Wed, 03 Dec 2014) $';
 % ------------------------------------------------------------------------%
+% LMP (2021-02-09) added support for censorType parameter
 
 global NUMBER_OF_CORES MULTI_RUN_INPUTFILE CODE_PROPERTY
 NUMBER_OF_CORES = str2double(getenv('PIPELINE_NUMBER_OF_CORES'));
@@ -46,8 +47,13 @@ if ~isstruct(InputStruct)
 end
 
 if ~isnumeric(input_pipeset_half)
-    [input_pipeset_half] = get_pipe_list(input_pipeset_half);
+% LMP (2021-02-09) modified to support censorType parameter from pipeline file
+%   [input_pipeset_half] = get_pipe_list(input_pipeset_half);
+    [input_pipeset_half, detSet, mprSet, tskSet, phySet, gsSet, lpSet, Nhalf, Nfull, censorType] = get_pipe_list(input_pipeset_half);
 end
+
+display(sprintf('CENSOR type set to: %s',censorType));
+
 if numel(InputStruct(1).run)>1
     MULTI_RUN_INPUTFILE = true;
 end
@@ -154,7 +160,9 @@ for subject_counter = 1:N_Subject
             if ( ~isempty(find(C_select==1)) ) % full-volume despike
                 stringval = [OUTstr '_m0c1'];
                 censorpath  = [outputpath_m0  '_QC_output.mat'];
-                interpolate_fmri([OUTstr '_drop.nii'],[stringval '.nii'],censorpath,'volume+motion');
+                % LMP (2021-02-09) modified to support censorType parameter from pipeline file
+                % interpolate_fmri([OUTstr '_drop.nii'],[stringval '.nii'],censorpath,'volume+motion');
+                interpolate_fmri([OUTstr '_drop.nii'],[stringval '.nii'],censorpath,censorType);
                 kk = kk + 1;
                 pplList1{kk} = stringval;
             end
@@ -166,7 +174,9 @@ for subject_counter = 1:N_Subject
                 if ~exist([OUTstr '_m0c1.nii'],'file')
                     tempstringval = [OUTstr '_tmp_cens'];
                     censorpath  = [outputpath_m0  '_QC_output.mat'];
-                    interpolate_fmri([OUTstr '_drop.nii'],[tempstringval '.nii'],censorpath,'volume+motion');
+                    % LMP (2021-02-09) modified to support censorType parameter from pipeline file
+                    % interpolate_fmri([OUTstr '_drop.nii'],[tempstringval '.nii'],censorpath,'volume+motion');
+                    interpolate_fmri([OUTstr '_drop.nii'],[tempstringval '.nii'],censorpath,censorType);
                 % .otherwise copy over
                 else
                     copyfile([OUTstr '_m0c1.nii'],[tempstringval '.nii']);
@@ -195,7 +205,9 @@ for subject_counter = 1:N_Subject
                 if ~exist([OUTstr '_m0c1.nii'],'file')
                     tempstringval = [OUTstr '_tmp_cens'];
                     censorpath  = [outputpath_m0  '_QC_output.mat'];
-                    interpolate_fmri([OUTstr '_drop.nii'],[tempstringval '.nii'],censorpath,'volume+motion');
+                    % LMP (2021-02-09) modified to support censorType parameter from pipeline file
+                    % interpolate_fmri([OUTstr '_drop.nii'],[tempstringval '.nii'],censorpath,'volume+motion');
+                    interpolate_fmri([OUTstr '_drop.nii'],[tempstringval '.nii'],censorpath,censorType);
                 % .otherwise copy over
                 else
                     copyfile([OUTstr '_m0c1.nii'],[tempstringval '.nii']);
@@ -231,7 +243,9 @@ for subject_counter = 1:N_Subject
             if (  ~isempty(find(C_select==1))  )
                 stringval = [OUTstr '_m1c1'];
                 censorpath  = [outputpath_m1  '_QC_output.mat'];
-                interpolate_fmri([OUTstr '_drop+mc.nii'],[stringval '.nii'],censorpath,'volume+motion');
+                % LMP (2021-02-09) modified to support censorType parameter from pipeline file
+                % interpolate_fmri([OUTstr '_drop+mc.nii'],[stringval '.nii'],censorpath,'volume+motion');
+                interpolate_fmri([OUTstr '_drop+mc.nii'],[stringval '.nii'],censorpath,censorType);
                 kk = kk + 1;
                 pplList1{kk} = stringval;
             end
@@ -243,7 +257,9 @@ for subject_counter = 1:N_Subject
                 if ~exist([OUTstr '_m1c1.nii'],'file')
                     tempstringval = [OUTstr '_tmp_cens'];
                     censorpath  = [outputpath_m1  '_QC_output.mat'];
-                    interpolate_fmri([OUTstr '_drop+mc.nii'],[tempstringval '.nii'],censorpath,'volume+motion');
+                    % LMP (2021-02-09) modified to support censorType parameter from pipeline file
+                    % interpolate_fmri([OUTstr '_drop+mc.nii'],[tempstringval '.nii'],censorpath,'volume+motion');
+                    interpolate_fmri([OUTstr '_drop+mc.nii'],[tempstringval '.nii'],censorpath,censorType);
                 % .otherwise copy over
                 else
                     copyfile([OUTstr '_m1c1.nii'],[tempstringval '.nii']);
@@ -272,7 +288,9 @@ for subject_counter = 1:N_Subject
                 if ~exist([OUTstr '_m1c1.nii'],'file')
                     tempstringval = [OUTstr '_tmp_cens'];
                     censorpath  = [outputpath_m1  '_QC_output.mat'];
-                    interpolate_fmri([OUTstr '_drop+mc.nii'],[tempstringval '.nii'],censorpath,'volume+motion');
+                    % LMP (2021-02-09) modified to support censorType parameter from pipeline file
+                    % interpolate_fmri([OUTstr '_drop+mc.nii'],[tempstringval '.nii'],censorpath,'volume+motion');
+                    interpolate_fmri([OUTstr '_drop+mc.nii'],[tempstringval '.nii'],censorpath,censorType);
                 % .otherwise copy over
                 else
                     copyfile([OUTstr '_m1c1.nii'],[tempstringval '.nii']);

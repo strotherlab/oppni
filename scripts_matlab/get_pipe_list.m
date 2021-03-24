@@ -53,6 +53,7 @@ pipeset_new = []; K=2;
 
 %
 %  LMP (2021-02-09) --- set alternate censor type if it is specified as 3rd arg ----
+%  LMP (2021-02-25) --- make censorType last parameter in option list
 %
 %  'motion'       : outlier in motion parameter estimates (MPEs)
 %  'volume'       : outlier in full-volume fMRI data
@@ -62,12 +63,15 @@ pipeset_new = []; K=2;
 
 censortypelist = {'motion'; 'volume'; 'volume+motion'; 'slice';'slice+motion'};
 censorType = 'volume+motion';
-if((size(strfind(substr{K},','),2) > 1 ) )
+if((size(strfind(substr{K},','),2) > 0 ) )
     args = split(substr{K},',');
-    ct = split(args{3},"'");
-    censorType = ct{2};
-    if ~any(strcmp(censortypelist, censorType))
-        censorType = 'volume+motion';
+    lastindx = size(args,1);
+    ct = split(args{lastindx},"'"); %check for quoted string
+    if (size(ct,1) == 3)
+        censorType = ct{2};
+        if ~any(strcmp(censortypelist, censorType))
+            censorType = 'volume+motion';
+        end
     end
 end
 

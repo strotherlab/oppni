@@ -1,7 +1,7 @@
 #
 # Mass Launch OPPNI against a data set cycling throuh a multiple parameter sets (see Looping Conditions) 
 #
-# Command line args to overright defaults added by Mark Prati (mprati@research.baycrest.org) 2019/01/08
+# Command line args to override defaults added by Mark Prati (mprati@research.baycrest.org) 2019/01/08
 # for instruction type:
 # ]python mass_launcher.py -h
 #

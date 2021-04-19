@@ -1,11 +1,8 @@
 # -*- coding: cp1252 -*-
-#LMP 06/19 Start mods for P3 compatibility
-# 
-from tkinter import Tk, Button,OptionMenu, Toplevel, Message, Checkbutton, Frame, Label, LabelFrame, Entry, Menu, END, LEFT, RIGHT, BOTH, Y, INSERT,IntVar, StringVar, W, E, S, N, Listbox, Scrollbar, VERTICAL, HORIZONTAL, SUNKEN
-from tkinter import scrolledtext, messagebox
-from tkinter.filedialog import askopenfilename, askdirectory, asksaveasfilename, askopenfilenames
-#import tkinter.messagebox
-#import tkinter.scrolledtext
+from Tkinter import Tk, Button,OptionMenu, Toplevel, Message, Checkbutton, Frame, Label, LabelFrame, Entry, Menu, END, LEFT, RIGHT, BOTH, Y, INSERT,IntVar, StringVar, W, E, S, N, Listbox, Scrollbar, VERTICAL, HORIZONTAL, SUNKEN
+from tkFileDialog import askopenfilename, askdirectory, asksaveasfilename, askopenfilenames
+import tkMessageBox
+import ScrolledText
 import os,sys
 import numpy
 from  scipy.io import loadmat, savemat

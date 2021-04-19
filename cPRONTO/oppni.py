@@ -543,15 +543,15 @@ def parse_args_check():
                              "\n\t 3: Spatial normalization,"
                              "\n\t 4: quality control. ")
                              
-    parser.add_argument("-i", "--input_data", action="store", dest="input_data_orig",
+    parser.add_argument('-i','--input_data', action="store", dest="input_data_orig",default=None,
+                        metavar="input specification file",
                         help="Filename of OPPNI input.txt file containing the input and output data paths."
-                        "If specified this non-BIDS-dataset Input file will be used for the OPPNI pipeline", metavar="input specification file")
+                        "If specified this non-BIDS-dataset Input file will be used for the OPPNI pipeline")
     
-    parser.add_argument("-c", "--pipeline", action="store", dest="pipeline_file",
-                        default='pipeline.txt', 
-                        metavar="pipeline combination file",
-                        help="Alternate pipeline file name specifying the preprocessing steps")
-
+    parser.add_argument("-c", "--pipeline", dest="pipeline_file",
+                        default='pipeline.txt',                        
+                        help="Alternate pipeline file name specifying the preprocessing steps", metavar="pipeline combination file")
+    
     parser.add_argument("-o","--output_prefix", action="store", dest="output_prefix",
                         default='',
                         help="Output folder prefix for storage of all the processing and results. "
@@ -830,7 +830,7 @@ def parse_args_check():
         # TODO Validate parameters needed for BIDS here
         '''        
         #BIDS if no input_data_orig file specified        
-        if options.input_data_orig is None and options.status_update_in is None:
+        if options.input_data_orig is None and options.status_update_in is None and options.print_options_path is None:
             
             #if options.bidsoutput_dir is None:
             #    print("ERROR: BIDS, argument --output_dir, absolute output_path base must be provided")
@@ -866,7 +866,7 @@ def parse_args_check():
                 #TODO verify which parts of OPPNI are to be run for 'group'
                 options.part = 2
                 
-        elif options.status_update_in is None:
+        elif options.status_update_in is None and options.print_options_path is None:
             # A OPPNI input.txt data set file has been specified (NON BIDS). Prepend the data input path.
             if (options.analysis_level.upper() != "ALL"):
                 print("Non BIDS input data specified, level_analysis has been set to 'all'.")

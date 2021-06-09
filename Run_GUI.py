@@ -1,7 +1,7 @@
 #!/usr/bin/python
-
 #$ -cwd -j y
 #$ -S /usr/bin/python
+
 import os.path
 import sys
 codepathname  = os.path.dirname(sys.argv[0])

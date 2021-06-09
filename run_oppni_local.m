@@ -7,7 +7,6 @@ function run_oppni_local( subject_inputs, pipelines, analysis_model, TR_MSEC, co
 %
 %     run_oppni_local( subject_inputs, pipelines, analysis_model, TR_MSEC, contrast_list, TEMPLATE_VOL, VOXDIMS, DEOBLIQUE, TPATTERN )
 %
-%
 
 CODE_VERSION = '$Revision: 158 $';
 CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';

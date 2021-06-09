@@ -1,5 +1,5 @@
 #! /bin/bash
-
+# helper script to install CPAC
 # these are packages that are common to centos 5, 6, and 7
 centos_packages=("git" "make" "unzip" "netpbm" "gcc" "python-devel"\
     "gcc-gfortran" "gcc-c++" "libgfortran" "lapack" "lapack-devel" "blas"\

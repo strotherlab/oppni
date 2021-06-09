@@ -1,3 +1,4 @@
+# organized collection of important options and constants and names
 
 from collections import namedtuple
 

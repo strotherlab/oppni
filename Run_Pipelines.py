@@ -1,8 +1,8 @@
 #!/usr/bin/python
-
+#
 #$ -cwd -j y
 #$ -S /usr/bin/python
-
+#
 # RUN_PIPELINES: This script is used to submit fMRI pipeline optimization
 # jobs. Consists of 3 parts.
 #

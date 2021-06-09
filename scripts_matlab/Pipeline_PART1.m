@@ -1,5 +1,6 @@
 function Pipeline_PART1(InputStruct, input_pipeset, analysis_model, modelparam, niiout, contrast_list_str, dospnormfirst, DEOBLIQUE, TPATTERN, TOFWHM, KEEPMEAN)
 %
+%
 %==========================================================================
 % PIPELINE_PART1 : main script used for running pipelines and obtaining
 % performance metrics

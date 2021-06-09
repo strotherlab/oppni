@@ -1,6 +1,8 @@
 
 *NOTE*: We're currently working on releasing an Octave version that is fully-refreshed and tested. **This repo is a placeholder for the codebase, and not a point of entry for installation**. Please contact me or Prof. Stephen Strother for more details on how to utilize OPPNI to improve your fMRI preprocessing and analyses.
 
+**MANUAL** for users of Compute Canada : [download](https://github.com/raamana/oppni/blob/master/Manual_v10_Feb2010_OPPNI.pdf)
+
 ----
 
 # OPPNI (Optimization of Preprocessing Pipelines for NeuroImaging) for fMRI analysis by the Strother Laboratory

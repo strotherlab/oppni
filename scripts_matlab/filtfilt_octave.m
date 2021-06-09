@@ -45,7 +45,7 @@
 
 function y = filtfilt_octave(b, a, x)
   
-  %enable profiling
+  %enable octave profiling
   %profile on  
  
   if (nargin != 3)
@@ -79,13 +79,13 @@ function y = filtfilt_octave(b, a, x)
   si(1) = [];
 
   ## This loop generally executes tens of thousands of times.
-  ## For optimization all repetitivly redundent calculation should be moved ouside the loop body.
+  ## For optimization all repetitively redundant calculation should be moved outside the loop body.
   ## Mods by Mark Prati
   ###########################
   sx2 = size(x,2);
   lrefl1 = lrefl + 1;
   lxlrefl = lx + lrefl;
-  printf("filtfilt_octave - lx = %d, la = %d, lb = %d, n = %d, lrefl = %d, (loop columns) sx2 = %d\n",lx,la,lb,n,lrefl,sx2);  
+  # printf("filtfilt_octave - lx = %d, la = %d, lb = %d, n = %d, lrefl = %d, (loop columns) sx2 = %d\n",lx,la,lb,n,lrefl,sx2);  
   # Optimize by pre-allocating matrix memory 
   y = zeros(lx,sx2);
   ###########################
@@ -100,7 +100,7 @@ function y = filtfilt_octave(b, a, x)
     y = rot90(y);               # rotate it back
   endif
   
-  %profile off;
+  %octave profile off;
   %pData = profile("info")
   %disp('Profile Dump after filtfilt ====');
   %profshow(pData,10);

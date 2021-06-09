@@ -96,7 +96,7 @@ def run_part_one(bids_dir, subject_label, task_name, output_dir, analysis_level)
     print(cmd)
     try:
         txt_out = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
-        print txt_out
+        print (txt_out)
     except:
         print("Unexpected error:", sys.exc_info()[0])
         raise

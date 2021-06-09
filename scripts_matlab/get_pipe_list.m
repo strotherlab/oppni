@@ -1,4 +1,4 @@
-function [pipeset_half, detSet, mprSet, tskSet, phySet, gsSet, lpSet, Nhalf, Nfull] = get_pipe_list( filename )
+function [pipeset_half, detSet, mprSet, tskSet, phySet, gsSet, lpSet, Nhalf, Nfull, censorType] = get_pipe_list( filename )
 
 % ------------------------------------------------------------------------%
 % Authors: Nathan Churchill, University of Toronto
@@ -9,7 +9,8 @@ function [pipeset_half, detSet, mprSet, tskSet, phySet, gsSet, lpSet, Nhalf, Nfu
 % CODE_VERSION = '$Revision: 158 $';
 % CODE_DATE    = '$Date: 2014-12-02 18:11:11 -0500 (Tue, 02 Dec 2014) $';
 % ------------------------------------------------------------------------%
-
+% LMP (2021-02-09) - modified to allow censorType parameter from pipeline file
+% 
 % reads in the inputfile
 fid = fopen(filename);
 newline = fgetl(fid);
@@ -49,6 +50,31 @@ if( ~isempty( strfind(substr{K},'1') ) )  pipeset_new = [pipeset_new; 1];   end
 % PIPE-2:Censor --------------------------------------------
 pipeset_old = pipeset_new;
 pipeset_new = []; K=2;
+
+%
+%  LMP (2021-02-09) --- set alternate censor type if it is specified as 3rd arg ----
+%  LMP (2021-02-25) --- make censorType last parameter in option list
+%
+%  'motion'       : outlier in motion parameter estimates (MPEs)
+%  'volume'       : outlier in full-volume fMRI data
+%  'volume+motion': outlier in both full-volume fMRI and MPEs
+%  'slice'        : outlier in individual fMRI axial slices
+%  'slice+motion' : outlier in both fMRI slice and MPEs
+
+censortypelist = {'motion'; 'volume'; 'volume+motion'; 'slice';'slice+motion'};
+censorType = 'volume+motion';
+if((size(strfind(substr{K},','),2) > 0 ) )
+    args = split(substr{K},',');
+    lastindx = size(args,1);
+    ct = split(args{lastindx},"'"); %check for quoted string
+    if (size(ct,1) == 3)
+        censorType = ct{2};
+        if ~any(strcmp(censortypelist, censorType))
+            censorType = 'volume+motion';
+        end
+    end
+end
+
 %
 if( ~isempty( strfind(substr{K},'0') ) )
     tmpset     =[ pipeset_old, 0*ones(size(pipeset_old,1),1) ];

@@ -2,8 +2,8 @@ function [p, h, stats] = signrank_octave(x,y,varargin)
 % Modified version of signrank from the MATLAB stats toolbox, so that it
 % works with the default settings in octave. The defaults must be used for
 % now.
-% Edits By Andrew Lofts June 26 2018
 %
+% Edits By Andrew Lofts June 26 2018
 %
 % Original Help String...................................................
 %SIGNRANK Wilcoxon signed rank test for zero median.
@@ -70,15 +70,12 @@ function [p, h, stats] = signrank_octave(x,y,varargin)
 %      [2] Gibbons, J.D.  Nonparametric Statistical Inference,
 %          2nd ed.  M. Dekker, 1985.
 
-
-
 % Check most of the inputs now
 
 % Addition displays for octave hack version
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-disp('Using the signrank_octave function, that mimics signrank not implemented in octave');
-disp('Defeults must be used')
-disp('Errors are described differently')
+disp('Using the signrank_octave function, that mimics MATLAB signrank');
+disp('Defaults must be used. Note:'errors are described differently')
 
 alpha = 0.05;
 if nargin>2 && isnumeric(varargin{1})
@@ -236,7 +233,7 @@ elseif strcmpi(method, 'oldexact')
 	
 else   % strcmpi(method, 'exact')
     
-    disp('This version of signrank uses a hack version of statsrexet for the exact method. no changes have been made to it. See statsrexet_octave')
+    disp('This version of signrank uses statsrexet_octave.m for the exact method. See statsrexet_octave')
     
 	[p, many_w_p] = statsrexact_octave(tie_rank, w);   % probability of smaller tail
 

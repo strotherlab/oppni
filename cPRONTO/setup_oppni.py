@@ -8,27 +8,36 @@
 #    .octaverc
 #    matlab/startup.m
 #
-#    This script assumes the following required software paths are accessable from your terminal:
+#    This script assumes the following required software paths are accessible from your terminal:
 #    oppni,afni,fsl,matlab,octave. 
 #
-#    If required software can not be located by this script it will be reported as an error and the script will terminate
-#    Once the requird software has been installed, this script should be re-run.
+#    If any required software can not be located by this script it will be reported as an error and the script will terminate
+#    Once all prerequisite software packages have been installed, this script should be re-run.
 #
 #    Modified to support HPC environments using Octave
-#    Also see "install_octave_packages.sh" which is called from this script.
+#    Also see "install_octave_packages.sh" bash script which is called from this script.
 #    L. Mark Prati mprati@research.baycrest.org
 #
 # Updates:
 # 24-07-19 - added octave image package
-#
+# 20-02-20 - tidy up..
 
 import os, sys, subprocess, argparse, shutil
 from time import localtime, strftime
 from distutils.spawn import find_executable
 
+__author__      = "L. Mark Prati, Pradeep Reddy Raamana"
+__copyright__   = "Copyright 2019, The OPPNI Project"
+__credits__     = ["Stephen Strother"]
+__maintainer__  = "Mark Prati"
+__email__       = "mprati@research.baycrest.org"
+__status__      = "Development"
+__license__     = ""
+__version__     = "1.0.0"
+
 identifier_matlab_native_mode = 'USING-MATLAB-CODE'.upper()
 
-# default cvmfs computecanada stack versions of software avalable on CC and CAC clusters
+# default cvmfs computecanada stack versions of software available on CC and CAC clusters
 CVMFS_AFNI =    '/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/afni/20180404' 
 CVMFS_FSL =     '/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/intel2018.3/fsl/5.0.11/fsl'
 CVMFS_OCTAVE =  '/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/octave/4.4.1/bin'
@@ -66,10 +75,10 @@ def parse_args_check():
                         default=False,
                         help="Preconfigured setup for the users located at the Rotman Research Institute making use of Rotman SGE.")
     
-    parser.add_argument("-e", "--env", action="store", choices=['ROTMAN','CAC','CC'], dest="env",
+    parser.add_argument("-e", "--env", action="store", choices=['ROTMAN','CAC','CC', 'FRONTENAC', 'CEDAR', 'GRAHAM'], dest="env",
                         default='CUSTOM',
-                        help="Select a preconfigured Strother-Lab setup for either Rotman SGE, CC FRONTENAC, CC CEDAR or GRAHAM choose from {'ROTMAN','CAC,'CC'}"
-                             "Strother-Lab uses specific versions of supporting sofware such as AFNI and FSL")
+                        help="Select a preconfigured Strother-Lab setup for either Rotman: SGE, CAC: FRONTENAC, CC: CEDAR or GRAHAM choose from {'CAC,'CC','ROTMAN'}"
+                             "Strother-Lab uses specific versions of supporting software such as AFNI and FSL")
 
 
     if len(sys.argv) < 2:
@@ -92,7 +101,7 @@ def parse_args_check():
     if options.env == 'CUSTOM':
         if (options.oppni_path is None) or (options.afni_path is None) or (options.fsl_path is None) or (options.mcr_path is None and options.octave_path is None):
             raise ValueError('Some of the the required paths are not specified.')
-    elif options.env.upper() == 'ROTMAN' :
+    elif options.env.upper() == 'ROTMAN' : #historical 
         print ('Preconfigured setup for Rotman is chosen. Ignoring the other paths provided, if any.')
         options.oppni_path  = '/opt/oppni'
         options.afni_path   = '/opt/afni'
@@ -100,17 +109,18 @@ def parse_args_check():
         options.fsl_dir     = '/opt/fsl'
         options.mcr_path    = '/opt/mcr/v80'
         options.octave_path = '/opt/octave'
-    elif options.env.upper() == 'CC' :    
+    elif options.env.upper() in [ 'CC', 'CEDAR', 'GRAHAM'] :    
         print ('Preconfigured Strother lab setup for CC CEDAR / GRAHAM chosen. Ignoring the other paths provided, if any.')
-        options.oppni_path  = '/home/raamana/software/oppni'
-        options.afni_path   = '/home/raamana/software/afni'
+        options.oppni_path  = '/home/raamana/software/oppni/cPRONTO'
+        #options.afni_path   = '/home/raamana/software/afni'
+        options.afni_path   = CVMFS_AFNI        
         options.fsl_path    = '/home/raamana/software/fsl/bin'
         options.fsl_dir     = '/home/raamana/software/fsl'
         options.mcr_path    = '/home/raamana/software/mcr/v80'
         options.octave_path = CVMFS_OCTAVE
-    elif options.env.upper() == 'CAC' :
+    elif options.env.upper() in ['CAC', 'FRONTENAC'] :
         print ('Preconfigured Strother lab setup for CAC FRONTENAC chosen. Ignoring the other paths provided, if any.')
-        options.oppni_path  = '/global/home/hpc3194/software/oppni'
+        options.oppni_path  = '/global/home/hpc3194/software/oppni/cPRONTO'
         options.afni_path   = '/global/home/hpc3194/software/afni'
         options.fsl_path    = '/global/home/hpc3194/software/fsl/bin'
         options.fsl_dir     = '/global/home/hpc3194/software/fsl'
@@ -154,7 +164,7 @@ def parse_args_check():
             else:
                 print("\nSpecified AFNI path {} doesn't exist!".format(options.afni_path))
                 print("WARNING: AFNI must be installed for OPPNI to run\n")
-        elif options.env.upper() in ['CC','CAC']:
+        elif options.env.upper() in ['CC','CAC','FRONTENAC','GRAHAM','CEDAR']:
             #check for cvmfs stack version
             if os.path.isdir(CVMFS_AFNI):
                 print("Using AFNI located here: {}".format(CVMFS_AFNI))
@@ -173,7 +183,7 @@ def parse_args_check():
             else:
                 print("\nSpecified FSL path {} doesn't exist!".format(options.fsl_path))
                 print("WARNING: FSL may be needed for some OPPNI functions\n")
-        elif options.env.upper() in ['CC','CAC']:
+        elif options.env.upper() in ['CC','CAC','FRONTENAC','GRAHAM','CEDAR']:
             #check for cvmfs stack version
             if os.path.isdir(CVMFS_FSL):
                 print("Using FSL located here: {}".format(CVMFS_FSL))
@@ -191,7 +201,7 @@ def parse_args_check():
             else:
                 print("Specified Octave path {} doesn't exist. Octave option will be unavailable!".format(options.octave_path))
                 options.octave_path = None
-        elif options.env.upper() in ['CC','CAC']:
+        elif options.env.upper() in ['CC','CAC','FRONTENAC','GRAHAM','CEDAR']:
             #check for cvmfs stack version
             if os.path.isdir(CVMFS_OCTAVE):
                 print("Using Octave located here: {}".format(CVMFS_OCTAVE))
@@ -240,7 +250,7 @@ def run_system_checks(options):
 
 
 def add_matlab_paths(ms, oppni_path):
-    "Adds the oppni matlab codes to the user matlab path."
+    #Adds the oppni matlab codes to the user matlab path.
 
     long_code_str="""
 if ~isdeployed
@@ -277,7 +287,7 @@ try
     disp('Allowing rm -r commands without confirmation'); 
     if exist ('do_braindead_shortcircuit_evaluation','builtin') 
         do_braindead_shortcircuit_evaluation(true); 
-        disp('Enabling Matlab short cicuit evaluations'); 
+        disp('Enabling Matlab short circuit evaluations'); 
     end 
 catch 
     disp('No Octave version Found or Packages not installed'); 
@@ -364,7 +374,7 @@ def remove_section_from_textfile(file_path, start_text, end_text):
         #only remove if a bound section is found
         if s_found and e_found:
             s_found = e_found = False   #reset flags
-            fin.seek(0) #back to the begining
+            fin.seek(0) #back to the beginning
             with open(file_path + ".new",'w') as fout:
                 for line in fin:
                     #write output until the section start is found
@@ -399,7 +409,7 @@ def remove_section_from_textfile(file_path, start_text, end_text):
 
 
 def setup_paths():
-    "Modifying or creating the necessary startup files or bash profiles to add different software to user environment."
+    #Modifying or creating the necessary startup files or bash profiles to add different software to user environment.
 
     options = parse_args_check()
     if check_current_setup() == False:
@@ -439,7 +449,7 @@ def setup_paths():
             raise SystemError('SGE paths for user are not setup properly!')
             
     # checking if SLURM is properly setup for HPC clusters    
-    if options.env.upper() in ['CAC','CC']:
+    if options.env.upper() in ['CAC','CC','FRONTENAC','GRAHAM','CEDAR']:
         #need to load octave module on HPC clusters
         bp.write('\nmodule load nixpkgs/16.09 gcc/7.3.0 octave/4.4.1')
         
@@ -488,14 +498,14 @@ def setup_paths():
 
 
 def check_current_setup():
-    "Check for a pre-existing oppni setup, return True if existing setup is to be maintained"
+    #Check for a pre-existing OPPNI setup, return True if existing setup is to be maintained
     oppni_path = os.getenv("OPPNI_PATH")
     afni_path = os.getenv("AFNI_PATH")
     fsl_path = os.getenv("FSL_PATH")
     octave_path = os.getenv("OCTAVE_PATH")
     
     if oppni_path or afni_path or fsl_path or octave_path:
-        print("The following OPPNI setup PATH environment variable exist:\n")
+        print("\nThe following OPPNI setup PATH environment variable exist:\n")
         if oppni_path:
             print("   OPPNI_PATH = {}".format(oppni_path))
         if afni_path:
@@ -505,7 +515,7 @@ def check_current_setup():
         if octave_path:
             print("   OCTAVE_PATH = {}".format(octave_path))
             
-        #check for existance of some expected files:    
+        #check for existence of some expected files:    
         home_dir = os.getenv('HOME')
         bash_profile = os.path.join(home_dir,'.bash_profile')
         if os.path.exists(bash_profile):
@@ -515,9 +525,9 @@ def check_current_setup():
         if os.path.exists(octaverc):
             print("   octaverc: {}".format(octaverc))
             
-        return input("\nDo you want to overwrite the existing environment [Yes]/No: ").upper() in ['Y','Yes']
+        return input("\nDo you want to overwrite the existing environment [Yes]/No: ").upper() in ['Y','YES']
     else:
-        print("No previous setup found - continuing with oppni setup...")
+        print("\nNo previous setup found - continuing with OPPNI setup...")
         return True
         
 

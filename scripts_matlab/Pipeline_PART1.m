@@ -251,7 +251,8 @@ if ~isstruct(InputStruct)
 end
 
 %% acquire a list of all pipeline choices
-[pipeset_half, detSet, mprSet, tskSet, phySet, gsSet, lpSet, Nhalf, Nfull] = get_pipe_list(input_pipeset);
+% LMP (2021-02-09) added censorType
+[pipeset_half, detSet, mprSet, tskSet, phySet, gsSet, lpSet, Nhalf, Nfull, censorType] = get_pipe_list(input_pipeset);
 pipeset_full = zeros( Nfull, 10 );
 
 if numel(InputStruct(1).run)>1
@@ -267,7 +268,8 @@ check_input_file_integrity(InputStruct,max(pipeset_half(:,3)),max(tskSet));
 InputStruct = interpret_contrast_list_str(InputStruct,modelparam,analysis_model,contrast_list_str);             % generate contrast list for each subject and run
 
 %% run all AFNI-based preprocessing steps
-Pipeline_PART1_afni_steps(InputStruct, pipeset_half, dospnormfirst,DEOBLIQUE,TPATTERN,TOFWHM );
+% LMP (2021-02-09) added censorType
+Pipeline_PART1_afni_steps(InputStruct, pipeset_half, dospnormfirst,DEOBLIQUE,TPATTERN,TOFWHM, censorType );
 
 spatial_normalization_noise_roi(InputStruct); % Transform user defined 
 

@@ -1341,7 +1341,7 @@ def get_hpc_spec(h_type=None, options=None):
         else:
             header.append('{0} {1}{2}'.format(prefix, val[0], val[1]))
 
-    if h_type in ('FRONTENAC', 'SLURM','CEDAR','GRAHAM'):
+    if h_type in ('FRONTENAC','CAC','SLURM','CEDAR','GRAHAM'):
         # controlling the output job name
         header.append('{0} --output=%x_%j.log'.format(prefix))
 

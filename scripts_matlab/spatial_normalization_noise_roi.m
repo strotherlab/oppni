@@ -45,6 +45,9 @@ end
 read_version;
 
 if ~isstruct(InputStruct)
+    %DEBUG
+    disp(sprintf("LMP-DEBUG: RE-Read_Input_File"));
+
     [InputStruct,MULTI_RUN_INPUTFILE] = Read_Input_File(InputStruct);
 end
 
@@ -53,6 +56,10 @@ setenv('FSLOUTPUTTYPE','NIFTI')
 for ksub = 1:numel(InputStruct)
     if ~isempty(InputStruct(ksub).run(1).Noise_ROI)
         input_nifti_file  = InputStruct(ksub).run(1).Noise_ROI;
+
+        %DEBUG
+        disp(sprintf("LMP-DEBUG: Noise_ROI file = %s",input_nifti_file));
+
         [path_temp,input_nifti_name]  = fileparts(input_nifti_file);input_nifti_name = [input_nifti_name '.nii'];
         output_nifti_file = [InputStruct(ksub).run(1).Output_nifti_file_path '/intermediate_processed/noise_roi/' input_nifti_name ];
         if ~exist(output_nifti_file,'file')

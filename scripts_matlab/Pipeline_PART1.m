@@ -1,6 +1,5 @@
 function Pipeline_PART1(InputStruct, input_pipeset, analysis_model, modelparam, niiout, contrast_list_str, dospnormfirst, DEOBLIQUE, TPATTERN, TOFWHM, KEEPMEAN)
 %
-%
 %==========================================================================
 % PIPELINE_PART1 : main script used for running pipelines and obtaining
 % performance metrics
@@ -510,12 +509,19 @@ for ksub = 1:numel(InputStruct)
                 % load the nifti files
                 if ~isempty(Noise_ROI{krun})
                     [tmp,roi_name,ext] = fileparts(Noise_ROI{krun});
-                    roi_full_name = [outdir '/intermediate_processed/noise_roi/' roi_name '.nii'];
+
+                    %LMP 13/09/2021
+                    if ext == ".gz"
+                        roi_full_name = [outdir '/intermediate_processed/noise_roi/' roi_name ];
+                    else
+                        roi_full_name = [outdir '/intermediate_processed/noise_roi/' roi_name '.nii'];
+                    end
+
                     VV = load_untouch_nii(roi_full_name);
                     noise_roi{krun} = nifti_to_mat(VV,MM);
                 else
                     noise_roi{krun}= [];
-		 end
+         	end
                 % 
             end
 

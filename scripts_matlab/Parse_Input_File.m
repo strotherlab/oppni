@@ -116,11 +116,14 @@ if ~isempty(ifile)
     ips   = [strfind( tline, ' ' )-1 length(tline)];
     ips   = ips(ips>ifile);
     noise_roi_file = tline(ifile:ips(1));
-    [noise_roi_path_temp,noise_roi_file_prefix,ext] = fileparts(noise_roi_file);
+    %LMP 13/09/2021
+    [noise_roi_path_temp,noise_roi_file_prefix,noise_roi_ext] = fileparts(noise_roi_file);
+    %[noise_roi_path_temp,noise_roi_file_prefix,ext] = fileparts(noise_roi_file);
     
     if(isempty(strfind(noise_roi_file_prefix,',')))
          noise_roi_file_prefix = cellstr(noise_roi_file_prefix);
-    else noise_roi_file_prefix = regexp(noise_roi_file_prefix,',','split');
+    else 
+         noise_roi_file_prefix = regexp(noise_roi_file_prefix,',','split');
     end
     
     if length(noise_roi_file_prefix)~=N_run
@@ -147,17 +150,23 @@ for k = 1:N_run
     if ~isempty(split_info_file_prefix{k})
         % re-generate split_info path+filename        
         if(isempty(split_info_file_path_temp))
-              split_info_file{k} = [split_info_file_prefix{k} split_info_file_ext];
-        else  split_info_file{k} = [split_info_file_path_temp '/' split_info_file_prefix{k} split_info_file_ext];
+            split_info_file{k} = [split_info_file_prefix{k} split_info_file_ext];
+        else  
+            split_info_file{k} = [split_info_file_path_temp '/' split_info_file_prefix{k} split_info_file_ext];
         end
     else
         error('split_info file missing for one of the runs');
     end
+
     if ~isempty(noise_roi_path_temp)
-        NOISE_ROI{k} = [noise_roi_path_temp '/' noise_roi_file_prefix{k} '.nii'];
+        %LMP 13/09/2021
+        NOISE_ROI{k} = [noise_roi_path_temp '/' noise_roi_file_prefix{k} noise_roi_ext];
+        %NOISE_ROI{k} = [noise_roi_path_temp '/' noise_roi_file_prefix{k} '.nii'];
     else
         NOISE_ROI{k} = noise_roi_file_prefix{k};
     end
+    disp(sprintf("LMP-DEBUG: NOISE_ROI{k} = %s", NOISE_ROI{k}));
+
 end
     
     
